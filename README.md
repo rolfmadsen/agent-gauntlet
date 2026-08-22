@@ -1,6 +1,6 @@
 # agent-gauntlet 🛡️
 
-[![CI](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml/badge.svg)](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml)
+[![CI](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml)
 [![Mutants Killed](https://img.shields.io/badge/mutants%20killed-100%25-brightgreen.svg)](tools/mutants.py)
 [![Evidence Authority](https://img.shields.io/badge/evidence-HMAC--SHA256%20sealed-blue.svg)](evidence.md)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](pyproject.toml)

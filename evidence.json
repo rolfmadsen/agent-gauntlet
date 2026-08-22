@@ -2,9 +2,9 @@
   "task_id": "006-github-actions-ci",
   "task_title": "Task 006: GitHub Actions Continuous Integration (CI) Workflow",
   "status": "PASSED",
-  "source_tree_hash": "6900e8b38e536cef",
-  "timestamp": 1787412667.2995453,
-  "signature": "3e9a1102cd314c94031bfbb53196e22e4753453b954d635be9ed6b6e82fa40ea",
+  "source_tree_hash": "0fc41e5ec850f7e0",
+  "timestamp": 1787412855.22292,
+  "signature": "a9244c75d1a80ab0c872e6dcc472a429c4a018bc4edd4790495895902a6e9c8c",
   "acceptance_criteria": [
     "Oprette `.github/workflows/ci.yml` med triggers p\u00e5 `push` og `pull_request`.",
     "Konfigurere test-matrix for Python `3.10`, `3.11` og `3.12` p\u00e5 `ubuntu-latest`.",
@@ -21,31 +21,31 @@
       "name": "lint",
       "passed": false,
       "exit_code": 127,
-      "duration_seconds": 0.0003585319973353762
+      "duration_seconds": 0.0006339339997794013
     },
     {
       "name": "types",
       "passed": false,
       "exit_code": 127,
-      "duration_seconds": 0.0003627109981607646
+      "duration_seconds": 0.00062609399901703
     },
     {
       "name": "unit",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 0.7807980500001577
+      "duration_seconds": 0.7741468969979906
     },
     {
       "name": "invariants",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 0.2933368560006784
+      "duration_seconds": 0.27886694699918735
     },
     {
       "name": "mutation-testing-gauntlet",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 8.449509410002065
+      "duration_seconds": 7.893686186998821
     }
   ]
 }
