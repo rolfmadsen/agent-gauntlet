@@ -13,8 +13,8 @@ from agent_gauntlet.features.evidence import (
     CheckSummary,
     EvidenceAuthority,
     EvidenceRecord,
+    compute_source_state,
 )
-from tools.source_state import compute_source_state
 
 
 class TestCliAcceptance(unittest.TestCase):

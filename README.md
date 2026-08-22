@@ -1,5 +1,11 @@
 # agent-gauntlet 🛡️
 
+[![CI](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml/badge.svg)](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml)
+[![Mutants Killed](https://img.shields.io/badge/mutants%20killed-100%25-brightgreen.svg)](tools/mutants.py)
+[![Evidence Authority](https://img.shields.io/badge/evidence-HMAC--SHA256%20sealed-blue.svg)](evidence.md)
+[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](pyproject.toml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 **agent-gauntlet** er en universel multi-stack verifikations- og actionable diagnostics motor bygget på **Uncle Bobs (Robert C. Martin) TDD- og Clean Craftsmanship-filosofi**.
 
 Den omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Linters, Type-checkere, Unit tests, Property- og Invariant-tests, Mutationsafprøvning og HMAC-signerede evidensregistre) og oversætter rå fejludskrifter til **Actionable Diagnostics**, som AI-agenter kan handle direkte på.

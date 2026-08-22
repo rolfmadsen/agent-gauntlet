@@ -21,7 +21,7 @@ from agent_gauntlet.features.gauntlet.runner import run_gauntlet
 from agent_gauntlet.features.scaffold.scaffolder import ProjectScaffolder
 from agent_gauntlet.features.stacks.detector import detect_stack
 from agent_gauntlet.features.stacks.profiles import SUPPORTED_STACKS
-from tools.source_state import compute_source_state
+from agent_gauntlet.features.evidence.source_state import compute_source_state
 
 
 def _resolve_task_contract(
