@@ -1,0 +1,35 @@
+# agent-gauntlet configuration for python
+stack = "python"
+save_evidence = true
+evidence_file = "evidence.json"
+evidence_markdown_file = "evidence.md"
+
+[[layers]]
+name = "lint"
+command = ["ruff", "check", "."]
+optional = true
+timeout_seconds = 30.0
+
+[[layers]]
+name = "types"
+command = ["pyright"]
+optional = true
+timeout_seconds = 60.0
+
+[[layers]]
+name = "unit"
+command = ["/usr/bin/python3", "-m", "unittest", "discover", "tests"]
+optional = false
+timeout_seconds = 60.0
+
+[[layers]]
+name = "invariants"
+command = ["/usr/bin/python3", "-m", "unittest", "discover", "-s", "tests", "-p", "*propert*.py"]
+optional = true
+timeout_seconds = 60.0
+
+[[layers]]
+name = "mutation-testing-gauntlet"
+command = ["/usr/bin/python3", "tools/mutants.py"]
+optional = true
+timeout_seconds = 120.0

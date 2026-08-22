@@ -1,0 +1,42 @@
+{
+  "task_id": "gauntlet-run",
+  "task_title": "",
+  "status": "PASSED",
+  "source_tree_hash": "d3bf4469ffc755d8",
+  "timestamp": 1787412020.5924587,
+  "signature": "a2ca93b96837c7d5599472e71315004ba93ee22f2becab11ae98abf133d3872e",
+  "acceptance_criteria": [],
+  "unresolved_criteria": [],
+  "checks": [
+    {
+      "name": "lint",
+      "passed": false,
+      "exit_code": 127,
+      "duration_seconds": 0.0004298669991840143
+    },
+    {
+      "name": "types",
+      "passed": false,
+      "exit_code": 127,
+      "duration_seconds": 0.000421448999986751
+    },
+    {
+      "name": "unit",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.7143023169992375
+    },
+    {
+      "name": "invariants",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 0.30633467600273434
+    },
+    {
+      "name": "mutation-testing-gauntlet",
+      "passed": true,
+      "exit_code": 0,
+      "duration_seconds": 9.03558280499783
+    }
+  ]
+}
