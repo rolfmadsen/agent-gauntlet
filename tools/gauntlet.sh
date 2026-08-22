@@ -5,20 +5,22 @@ set -e
 
 cd "$(dirname "$0")/.."
 
+PYTHON_BIN="$(which python3 || which python)"
+
 echo "=== Layer 1: Unit & Acceptance Tests ==="
-PYTHONPATH=src python3 -m unittest discover tests
+PYTHONPATH=src $PYTHON_BIN -m unittest discover tests
 
 echo "=== Layer 2: Property & Invariant Tests ==="
-PYTHONPATH=src python3 -m unittest tests/features/test_gauntlet_properties.py
+PYTHONPATH=src $PYTHON_BIN -m unittest tests/features/test_gauntlet_properties.py
 
 echo "=== Layer 3: Mutation Testing Negative Control ==="
-python3 tools/mutants.py --negative-control
+$PYTHON_BIN tools/mutants.py --negative-control
 
 echo "=== Layer 4: Mutation Testing Gauntlet ==="
-python3 tools/mutants.py
+$PYTHON_BIN tools/mutants.py
 
 echo "=== Layer 5: Source State Tree Binding ==="
-python3 tools/source_state.py
+$PYTHON_BIN tools/source_state.py
 
 echo ""
 echo ">>> ALL GAUNTLET LAYERS PASSED <<<"

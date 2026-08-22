@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 import json
-import tomllib
 from pathlib import Path
 from typing import Any
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    try:
+        import tomli as tomllib  # type: ignore[no-redef]
+    except ModuleNotFoundError:
+        tomllib = None  # type: ignore[assignment]
 
 from agent_gauntlet.features.config.schema import GauntletConfig, LayerConfig
 from agent_gauntlet.features.stacks.detector import detect_stack
