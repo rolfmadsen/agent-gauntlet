@@ -1,42 +1,51 @@
 {
-  "task_id": "gauntlet-run",
-  "task_title": "",
+  "task_id": "006-github-actions-ci",
+  "task_title": "Task 006: GitHub Actions Continuous Integration (CI) Workflow",
   "status": "PASSED",
   "source_tree_hash": "d3bf4469ffc755d8",
-  "timestamp": 1787412020.5924587,
-  "signature": "a2ca93b96837c7d5599472e71315004ba93ee22f2becab11ae98abf133d3872e",
-  "acceptance_criteria": [],
+  "timestamp": 1787412382.8692684,
+  "signature": "ed2483898907f2a9c422a2b42460210fc87742c34b2664e63e3faec3dcb3b70b",
+  "acceptance_criteria": [
+    "Oprette `.github/workflows/ci.yml` med triggers p\u00e5 `push` og `pull_request`.",
+    "Konfigurere test-matrix for Python `3.10`, `3.11` og `3.12` p\u00e5 `ubuntu-latest`.",
+    "Installere pakken i editable tilstand (`pip install -e .`).",
+    "K\u00f8re komplet test-suite (`python -m unittest discover tests`).",
+    "K\u00f8re mutation gauntlet (`python tools/mutants.py`).",
+    "K\u00f8re fuld 5-lags gauntlet (`sh tools/gauntlet.sh`).",
+    "Validere kryptografisk evidens og drift-kontrol (`agent-gauntlet check-evidence`).",
+    "Opdatere `tasks/006-github-actions-ci.md` til `Status: DONE` og forsegle `evidence.json`."
+  ],
   "unresolved_criteria": [],
   "checks": [
     {
       "name": "lint",
       "passed": false,
       "exit_code": 127,
-      "duration_seconds": 0.0004298669991840143
+      "duration_seconds": 0.00030933800007915124
     },
     {
       "name": "types",
       "passed": false,
       "exit_code": 127,
-      "duration_seconds": 0.000421448999986751
+      "duration_seconds": 0.00027289800345897675
     },
     {
       "name": "unit",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 0.7143023169992375
+      "duration_seconds": 0.7353265990022919
     },
     {
       "name": "invariants",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 0.30633467600273434
+      "duration_seconds": 0.2887038799999573
     },
     {
       "name": "mutation-testing-gauntlet",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 9.03558280499783
+      "duration_seconds": 7.361611984000774
     }
   ]
 }
