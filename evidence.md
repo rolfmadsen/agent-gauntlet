@@ -3,11 +3,11 @@
 **Task ID**: `012-okf-metadata-and-verification-gatekeeper`  
 **Task Title**: Task 012: OKF Metadata Validation & Verification Gatekeeper  
 **Status**: `PASSED`  
-**Source Tree Hash**: `c1d6d0abef036bdb`  
-**Signature**: `be9dac8142020828b349e4f61953f255e536657ab093f1e4eb06a59e2d6335df`  
-**Timestamp**: `2026-08-23T13:51:45Z`  
-**Head**: `b9a91b5`  
-**Source Commit**: `b9a91b5`  
+**Source Tree Hash**: `05fbba2ef4df2507`  
+**Signature**: `54098c593a81aa996722615773afed0d33f72d910964093d95c0898cfd746a89`  
+**Timestamp**: `2026-08-23T13:54:43Z`  
+**Head**: `c023072`  
+**Source Commit**: `c023072`  
 
 ## Acceptance Criteria
 
@@ -27,8 +27,8 @@
 |---|---|---|---|
 | `lint` | `FAILED` | `127` | `0.000s` |
 | `types` | `FAILED` | `127` | `0.000s` |
-| `unit` | `PASSED` | `0` | `0.985s` |
-| `invariants` | `PASSED` | `0` | `0.282s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `9.347s` |
+| `unit` | `PASSED` | `0` | `0.940s` |
+| `invariants` | `PASSED` | `0` | `0.293s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `9.456s` |
 
 ---

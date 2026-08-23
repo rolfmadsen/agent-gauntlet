@@ -2,9 +2,9 @@
   "task_id": "012-okf-metadata-and-verification-gatekeeper",
   "task_title": "Task 012: OKF Metadata Validation & Verification Gatekeeper",
   "status": "PASSED",
-  "source_tree_hash": "c1d6d0abef036bdb",
-  "timestamp": 1787493105.5020726,
-  "signature": "be9dac8142020828b349e4f61953f255e536657ab093f1e4eb06a59e2d6335df",
+  "source_tree_hash": "05fbba2ef4df2507",
+  "timestamp": 1787493283.712562,
+  "signature": "54098c593a81aa996722615773afed0d33f72d910964093d95c0898cfd746a89",
   "acceptance_criteria": [
     "Oprette `src/agent_gauntlet/features/okf/` med `models.py`, `validator.py` og `stamper.py`.",
     "Implementere validering af:",
@@ -20,31 +20,31 @@
       "name": "lint",
       "passed": false,
       "exit_code": 127,
-      "duration_seconds": 0.0003207949994248338
+      "duration_seconds": 0.00030248999973991886
     },
     {
       "name": "types",
       "passed": false,
       "exit_code": 127,
-      "duration_seconds": 0.00031436700010090135
+      "duration_seconds": 0.00025302200083388016
     },
     {
       "name": "unit",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 0.9851991510004154
+      "duration_seconds": 0.9402536369998415
     },
     {
       "name": "invariants",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 0.28191103400240536
+      "duration_seconds": 0.29289375499865855
     },
     {
       "name": "mutation-testing-gauntlet",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 9.346914106998156
+      "duration_seconds": 9.456363496999984
     }
   ]
 }
