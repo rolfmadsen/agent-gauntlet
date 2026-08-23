@@ -1,3 +1,18 @@
+---
+type: Architectural Decision Record
+title: 'ADR 0003: Surgical Gatekeeper & No Remote Push'
+status: stable
+tags:
+- architecture
+- adr
+generated:
+  by: human:maintainer
+  at: '2026-08-23T10:00:00Z'
+verified:
+- by: human:maintainer
+  at: '2026-08-23T10:00:00Z'
+---
+
 # 3. Kirurgisk Pre-Invocation Gatekeeper & Ingen Remote Push
 
 **Status**: `accepted`  

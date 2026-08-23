@@ -80,7 +80,9 @@ flowchart TD
 ```text
 agent-gauntlet/
 ├── tasks/                        # Aktive og afsluttede opgaver (rene handoffs)
-├── CONTEXT.md                    # Domæneordbog (Aristoteles' genus et differentiam)
+├── docs/adr/                     # Arkitekturbeslutninger (ADRs)
+├── CONTEXT.md                    # Domæne-glossary (Aristoteles' genus et differentiam)
+├── ROADMAP.md                    # Prioriteret feature-køreplan & udvidelser
 ├── gauntlet.toml                 # Deklarativ multi-stack konfiguration
 ├── plugins/agent-gauntlet/       # Antigravity IDE plugin & skills (grill-me, diagnose)
 ├── src/agent_gauntlet/
@@ -91,6 +93,8 @@ agent-gauntlet/
 │       ├── diagnostics/          # Actionable LLM feedback engine & extractors
 │       ├── evidence/             # HMAC-SHA256 authority & drift check
 │       ├── gauntlet/             # Multi-layer runner & timeout kontrol
+│       ├── hooks/                # Pre-invocation hook gatekeeper
+│       ├── scaffold/             # Ikke-destruktiv bootstrap motor
 │       └── stacks/               # Auto-detektor & standardprofiler (Python, TS, Rust)
 └── tests/features/               # 1:1 testsymmetri mod features
 ```
@@ -111,7 +115,7 @@ pip install -e ~/Github/agent-gauntlet
 ---
 
 ### 2. Initialiser i dit Projekt (⭐ Anbefalet Standard & Best Practice)
-For at sikre at regler, domæneordbog, arkitektur-ADRs og testkontrakter **følger din kildekode i Git**, initialiseres `agent-gauntlet` direkte i projektets rodmappe:
+For at sikre at regler ([.agents/AGENTS.md](.agents/AGENTS.md)), begreber ([CONTEXT.md](CONTEXT.md)), Architecture Decision Records (ADR) ([docs/adr/](docs/adr/)) og verifikationskrav ([gauntlet.toml](gauntlet.toml) & [tasks/](tasks/)) **følger din kildekode i Git**, initialiseres `agent-gauntlet` direkte i projektets rodmappe:
 
 ```bash
 cd /sti/til/dit-projekt
@@ -123,13 +127,13 @@ agent-gauntlet init
 #### 📦 Hvad `agent-gauntlet init` opretter i projektet:
 | Fil / Mappe | Formål |
 |---|---|
-| `gauntlet.toml` | Deklarativ konfiguration af linter, types, tests, mutation testing |
-| `CONTEXT.md` | Domæneordbog for projektet (Aristoteles' genus et differentiam) |
-| `tasks/001-bootstrap.md` | Opgavemappe til håndhævelse af task-kontrakter & acceptkriterier |
-| `docs/adr/` | Arkitekturbeslutninger (ADRs) til projekt-specifikke regler |
-| `.agents/AGENTS.md` | AI-agent retningslinjer, Response HUD og task-management protokoller |
-| `.agents/hooks.json` | Pre-Invocation Hook til Stop/Go gatekeeperen |
-| `.agents/skills/` | Bundled skills (`old-coder`, `grill-me`, `grill-with-docs`, `diagnose`) |
+| [`gauntlet.toml`](gauntlet.toml) | Deklarativ konfiguration af linter, types, tests, mutation testing |
+| [`CONTEXT.md`](CONTEXT.md) | Domæne-glossary for projektet (Aristoteles' genus et differentiam) |
+| [`tasks/001-bootstrap.md`](tasks/) | Opgavemappe til håndhævelse af task-kontrakter & acceptkriterier |
+| [`docs/adr/`](docs/adr/) | Architecture Decision Records (ADR) til projekt-specifikke beslutninger |
+| [`.agents/AGENTS.md`](.agents/AGENTS.md) | AI-agent retningslinjer, Response HUD og task-management protokoller |
+| [`.agents/hooks.json`](.agents/hooks.json) | Pre-Invocation Hook til Stop/Go gatekeeperen |
+| [`.agents/skills/`](.agents/skills/) | Bundled skills (`old-coder`, `grill-me`, `grill-with-docs`, `diagnose`) |
 
 > [!TIP]
 > **🛡️ Ikke-destruktiv garanti (Safety First):**  
@@ -268,3 +272,25 @@ Kør hele verifikationskæden med 100% mutationsdrab og negative controls:
 ```bash
 sh tools/gauntlet.sh
 ```
+
+---
+
+## 🗺️ Arkitektur (ADRs)
+
+- 🏛️ **[docs/adr/](docs/adr/)**: Arkitekturbeslutninger (Architecture Decision Records) der fastlægger projektets invariante tekniske valg og designprincipper.
+
+## 🗺️ Roadmap
+
+- 🗺️ **[ROADMAP.md](ROADMAP.md)**: Prioriteret oversigt over fremtidige features (Multi-Harness integration, Changed-Line Differential Coverage, Fresh-Context Adversarial Verifier m.fl.).
+
+---
+
+## 🙏 Anerkendelse & Inspiration (Credits)
+
+`agent-gauntlet` bygger videre på idéer og pionerarbejde inden for agentisk softwareudvikling:
+
+- **[Matt Pocock](https://github.com/mattpocock)**: For skabelsen af workflow-skills (`grill-me`, `grill-with-docs`, `diagnose` m.fl.), som muliggør sokratisk kravsafklaring og domæneforankring.
+- **[amazingang (old-coder)](https://github.com/amazingang/old-coder)**: For formuleringen af Evidence-First filosofien (*"Trust moves from inspection to constraints"*).
+- **[Robert C. Martin ("Uncle Bob")](https://x.com/unclebobmartin/status/2080257779395154409)**: For den oprindelige idé om at erstatte manuel kodeinspektion med en uomgængelig *gauntlet* af tests, typer, mutation testing og invarianter.
+
+

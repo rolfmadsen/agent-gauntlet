@@ -1,3 +1,18 @@
+---
+type: Architectural Decision Record
+title: 'ADR 0001: Package-by-Feature Architecture'
+status: stable
+tags:
+- architecture
+- adr
+generated:
+  by: human:maintainer
+  at: '2026-08-23T10:00:00Z'
+verified:
+- by: human:maintainer
+  at: '2026-08-23T10:00:00Z'
+---
+
 # 1. Package-by-Feature (Screaming Architecture)
 
 **Status**: `accepted`  

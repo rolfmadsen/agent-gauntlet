@@ -1,5 +1,5 @@
 {
   "pre_tool_invocation": {
-    "command": ["python3", "-m", "agent_gauntlet.features.hooks.gatekeeper"]
+    "command": ["python3", "-m", "agent_gauntlet.features.adapters.antigravity.hook"]
   }
 }

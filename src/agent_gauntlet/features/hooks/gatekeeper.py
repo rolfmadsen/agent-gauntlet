@@ -40,26 +40,44 @@ FORBIDDEN_COMMAND_PATTERNS = [
 ]
 
 ALLOWED_METADATA_PATHS = {
+    "claude.md",
     "context.md",
     "evidence.json",
     "evidence.md",
     "gauntlet.toml",
     "gauntlet.json",
-    "readme.md",
     "pyproject.toml",
+    "readme.md",
+    "roadmap.md",
+    "spec.md",
 }
 
 
-def _is_active_task_content(content: str) -> bool:
-    """Check if task file content represents an active/approved task."""
+def parse_task_status(content: str) -> str:
+    """Extract task status from task markdown content."""
     status_match = re.search(r"\*\*Status\*\*:\s*`?([A-Za-z_-]+)`?", content, re.IGNORECASE)
     if status_match:
-        status = status_match.group(1).upper()
-        if status in ("DONE", "COMPLETED", "DEPRECATED", "SUPERSEDED"):
-            return False
+        return status_match.group(1).upper()
+
+    header_match = re.search(r"\bStatus:\s*`?([A-Za-z_-]+)`?", content, re.IGNORECASE)
+    if header_match:
+        return header_match.group(1).upper()
+
+    return ""
+
+
+def is_task_active(content: str) -> bool:
+    """Check if task file content represents an active/approved task."""
+    status = parse_task_status(content)
+    if status and status in ("DONE", "COMPLETED", "DEPRECATED", "SUPERSEDED"):
+        return False
     # Check for presence of acceptance criteria section
     has_criteria = "acceptance criteria" in content.lower() or "- [" in content
     return has_criteria
+
+
+# Backward-compatible alias
+_is_active_task_content = is_task_active
 
 
 def has_active_task(workspace: Path) -> bool:
@@ -71,7 +89,7 @@ def has_active_task(workspace: Path) -> bool:
     for task_path in tasks_dir.glob("*.md"):
         try:
             content = task_path.read_text(encoding="utf-8")
-            if _is_active_task_content(content):
+            if is_task_active(content):
                 return True
         except (OSError, UnicodeDecodeError):
             continue
@@ -146,8 +164,14 @@ def main_hook_entrypoint(argv: list[str] | None = None) -> int:
         # If no json payload provided, fail open
         return 0
 
-    tool_name = payload.get("tool_name", "")
-    tool_input = payload.get("tool_input", {})
+    tool_name = ""
+    tool_input = {}
+    if "toolCall" in payload and isinstance(payload["toolCall"], dict):
+        tool_name = payload["toolCall"].get("name", "")
+        tool_input = payload["toolCall"].get("args", {})
+    else:
+        tool_name = payload.get("tool_name", "")
+        tool_input = payload.get("tool_input", {})
 
     result = evaluate_tool_invocation(workspace=workspace, tool_name=tool_name, tool_input=tool_input)
     if not result.allowed:

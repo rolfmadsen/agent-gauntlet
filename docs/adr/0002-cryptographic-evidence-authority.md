@@ -1,3 +1,18 @@
+---
+type: Architectural Decision Record
+title: 'ADR 0002: Cryptographic Evidence Authority'
+status: stable
+tags:
+- architecture
+- adr
+generated:
+  by: human:maintainer
+  at: '2026-08-23T10:00:00Z'
+verified:
+- by: human:maintainer
+  at: '2026-08-23T10:00:00Z'
+---
+
 # 2. Cryptographic Evidence Authority & Source State Binding
 
 **Status**: `accepted`  

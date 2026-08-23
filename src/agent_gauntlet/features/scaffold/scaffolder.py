@@ -6,6 +6,7 @@ import json
 import shutil
 from pathlib import Path
 
+from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES
 from agent_gauntlet.features.config.loader import (
     generate_default_config_json,
     generate_default_config_toml,
@@ -17,7 +18,16 @@ from agent_gauntlet.features.scaffold.models import (
 )
 from agent_gauntlet.features.stacks.detector import detect_stack
 
-DEFAULT_CONTEXT_MD = """# Domain Language Glossary (CONTEXT.md)
+DEFAULT_CONTEXT_MD = """---
+type: Knowledge Bundle Index
+title: Domain Language Glossary (CONTEXT.md)
+description: Canonical domain vocabulary and definitions using Aristotle's formula
+status: stable
+generated: { by: process:agent-gauntlet-init, at: "2026-08-23T12:00:00Z" }
+tags: [glossary, domain-model, ubiquitous-language, okf]
+---
+
+# Domain Language Glossary (CONTEXT.md)
 
 This file defines the canonical domain vocabulary for the repository using Aristotle's formula (*definitio per genus et differentiam*):
 - **Formula**: "A [Term] is a [Genus], that [Differentia]."
@@ -31,7 +41,16 @@ This file defines the canonical domain vocabulary for the repository using Arist
 A [Genus], that [Differentia].
 """
 
-DEFAULT_SPEC_MD = """# Specification: System Architecture & Capabilities
+DEFAULT_SPEC_MD = """---
+type: System Specification
+title: Specification - System Architecture & Capabilities
+description: Macro system architecture, philosophy, and invariants
+status: stable
+generated: { by: process:agent-gauntlet-init, at: "2026-08-23T12:00:00Z" }
+tags: [specification, architecture, invariants]
+---
+
+# Specification: System Architecture & Capabilities
 
 ## 🎯 Philosophy & Core Principles
 - **Uncle Bob Clean Architecture & TDD**: Strict Red -> Green -> Refactor discipline.
@@ -55,7 +74,16 @@ DEFAULT_SPEC_MD = """# Specification: System Architecture & Capabilities
 - [ ] 100% mutation kill-rate.
 """
 
-DEFAULT_BOOTSTRAP_TASK = """# Task 001: Initial Project Bootstrap & Setup
+DEFAULT_BOOTSTRAP_TASK = """---
+type: Task Package
+title: "Task 001: Initial Project Bootstrap & Setup"
+description: Etablere initial projektstruktur og køre første grønne gauntlet
+status: draft
+generated: { by: process:agent-gauntlet-init, at: "2026-08-23T12:00:00Z" }
+tags: [bootstrap, setup, gauntlet]
+---
+
+# Task 001: Initial Project Bootstrap & Setup
 
 **Status**: `ACTIVE`
 **Intent**: `🚀 NEW FEATURE`
@@ -87,7 +115,17 @@ This directory contains lightweight Architecture Decision Records for the projec
 - **Lazy Creation**: Create new ADRs only for irreversible, non-obvious architectural trade-offs.
 """
 
-DEFAULT_ADR_0001 = """# ADR 0001: Initial Architecture & Tech Stack
+DEFAULT_ADR_0001 = """---
+type: Architectural Decision Record
+title: "ADR 0001: Initial Architecture & Tech Stack"
+description: Valg af standard pakkestruktur og flerlags verifikationsgauntlet
+status: stable
+generated: { by: process:agent-gauntlet-init, at: "2026-08-23T12:00:00Z" }
+verified: { by: process:agent-gauntlet-init, at: "2026-08-23T12:00:00Z" }
+tags: [architecture, tech-stack, adr]
+---
+
+# ADR 0001: Initial Architecture & Tech Stack
 
 **Status**: `ACCEPTED`
 **Dato**: `2026-08-22`
@@ -102,6 +140,7 @@ Anvende standard pakkestruktur og verificere al kode gennem en flerlags gauntlet
 - **Positivt**: Høj pålidelighed og verificerbar kode.
 - **Negativt**: Kræver at tests og typer vedligeholdes kontinuerligt.
 """
+
 
 DEFAULT_AGENTS_MD = """# Agent Guidelines: agent-gauntlet
 
@@ -133,15 +172,21 @@ The agent has direct access to bundled skills located in [.agents/skills/](.agen
 
 ## 🗂️ Task Management Protocol (`tasks/`)
 1. **Curated Scope:** Every non-trivial work item is tracked as a concise markdown file in `tasks/<number>-<title>.md`.
-2. **Standard Task Structure:**
+2. **OKF v0.2 Frontmatter Governance:**
+   * **In SPEC phase:** Agent creates task with `generated: { by: <harness>/<model>, at: <iso> }` and `status: draft`.
+   * **In DONE phase:** `agent-gauntlet verify` automatically stamps `verified: { by: process:agent-gauntlet-verify, at: <iso> }` and `status: stable`.
+   * **Manual Human Review:** If manually verified by a human, stamp `verified: { by: human:maintainer, at: <iso> }`.
+   * **Zero Fake Signoffs:** An agent must NEVER stamp `by: human:...` on code it wrote and tested itself; automated testing is always attributed honestly to `process:agent-gauntlet-verify`.
+3. **Standard Task Structure:**
    * `# Task <number>: <Title>` (Header with `Status: ACTIVE | DONE`, `Intent: 🚀 NEW FEATURE | 🐛 BUG FIX | 🔄 REFACTOR`)
    * `## 🎯 Formål`: Konkret målsætning og afgrænsning.
    * `## 📋 Acceptance Criteria`: Eksekverbare `- [ ]` punkter med klare forventede inputs og outputs.
    * `## 🚫 Must NOT`: Negative begrænsninger og arkitektur-invarianter, der under ingen omstændigheder må brydes.
    * `## 📝 Revisions`: Append-only ændringslog for mid-task ændringer og afviste forslag (hvad brugeren sagde nej til).
    * `## 🧪 Verifikation`: Konkrete kommandoer til afprøvning og validering.
-3. **Clean Session Handoffs:** A new chat session starts by reading the designated `tasks/<task>.md` and `CONTEXT.md`.
-4. **No Memory Rot:** Completed tasks are marked `DONE` and remain frozen; persistent domain knowledge is distilled into `CONTEXT.md` and `docs/adr/`.
+4. **Clean Session Handoffs:** A new chat session starts by reading the designated `tasks/<task>.md` and `CONTEXT.md`.
+5. **No Memory Rot:** Completed tasks are marked `DONE` and remain frozen; persistent domain knowledge is distilled into `CONTEXT.md` and `docs/adr/`.
+
 
 ---
 
@@ -177,11 +222,27 @@ SPEC / GRILL → (Human Approval) → RED → GREEN → REFACTOR → GAUNTLET �
    - Mutation Testing Gauntlet (`mutants.py`)
    - Source-State Tree Digest
 6. **EVIDENCE**: Persist cryptographically signed evidence ledger in `evidence.json` and `evidence.md`.
+7. **SESSION HANDOFF**: Display the clean `🏁 SESSION HANDOFF` card (Variant A) with the copy-paste starter prompt in the final user-facing response:
+   > ### 🏁 SESSION HANDOFF • `<task_id>`
+   > **Status**: `TASK: DONE` | **Evidens**: `FORSEGLET (HMAC-SHA256)` | **Context**: `Fresh Session Recommended`
+   > 💡 *Start venligst en frisk chat-session for at bevare et skarpt kontekstvindue uden context rot.*
+   >
+   > 📋 **Kopiér og indsæt følgende starter-prompt i en ny chat:**
+   > ```text
+   > <handoff_prompt>
+   > ```
 """
+
+DEFAULT_CLAUDE_MD = """# Claude Code Guidelines: agent-gauntlet
+
+> This repository is governed by the **agent-gauntlet** Evidence-First Development & Clean Craftsmanship methodology.
+> The canonical project rules, response protocols, and domain instructions are defined in [.agents/AGENTS.md](.agents/AGENTS.md).
+"""
+
 
 DEFAULT_HOOKS_JSON = """{
   "pre_tool_invocation": {
-    "command": ["python3", "-m", "agent_gauntlet.features.hooks.gatekeeper"]
+    "command": ["python3", "-m", "agent_gauntlet.features.adapters.antigravity.hook"]
   }
 }
 """
@@ -249,12 +310,18 @@ class ProjectScaffolder:
         self,
         workspace: Path,
         stack: str | None = None,
+        harness: str = "antigravity",
         config_format: str = "toml",
         force: bool = False,
     ) -> ScaffoldResult:
         """Scaffolds all essential files and folders in workspace."""
+        if harness not in SUPPORTED_HARNESSES:
+            raise ValueError(
+                f"Unsupported harness '{harness}'. Supported harnesses: {', '.join(SUPPORTED_HARNESSES)}"
+            )
+
         chosen_stack = stack or detect_stack(workspace) or "python"
-        result = ScaffoldResult(workspace=workspace, stack=chosen_stack)
+        result = ScaffoldResult(workspace=workspace, stack=chosen_stack, harness=harness)
 
         # 1. Config file
         config_name = f"gauntlet.{config_format}"
@@ -272,7 +339,7 @@ class ProjectScaffolder:
             )
         )
 
-        # 2. CONTEXT.md & spec.md
+        # 2. CONTEXT.md & spec.md & CLAUDE.md
         result.entries.append(
             self._write_file_safely(
                 workspace / "CONTEXT.md",
@@ -286,6 +353,14 @@ class ProjectScaffolder:
                 workspace / "spec.md",
                 DEFAULT_SPEC_MD,
                 "System architecture & capability specification template",
+                force,
+            )
+        )
+        result.entries.append(
+            self._write_file_safely(
+                workspace / "CLAUDE.md",
+                DEFAULT_CLAUDE_MD,
+                "Claude Code guidance bridge pointing to .agents/AGENTS.md",
                 force,
             )
         )

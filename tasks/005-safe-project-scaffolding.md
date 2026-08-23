@@ -1,3 +1,18 @@
+---
+type: Task Package
+title: 'Task 005: Safe Project Scaffolding'
+status: stable
+tags:
+- task
+- gauntlet
+generated:
+  by: antigravity/gemini-3.7-flash
+  at: '2026-08-23T11:00:00Z'
+verified:
+- by: process:agent-gauntlet-verify
+  at: '2026-08-23T11:30:00Z'
+---
+
 # Task 005: Sikker, Ikke-Destruktiv Projekt-Scaffolding & Afinstallations-Guide
 
 **Status**: `DONE`  

@@ -1,19 +1,18 @@
 {
-  "task_id": "006-github-actions-ci",
-  "task_title": "Task 006: GitHub Actions Continuous Integration (CI) Workflow",
+  "task_id": "012-okf-metadata-and-verification-gatekeeper",
+  "task_title": "Task 012: OKF Metadata Validation & Verification Gatekeeper",
   "status": "PASSED",
-  "source_tree_hash": "0fc41e5ec850f7e0",
-  "timestamp": 1787412855.22292,
-  "signature": "a9244c75d1a80ab0c872e6dcc472a429c4a018bc4edd4790495895902a6e9c8c",
+  "source_tree_hash": "c1d6d0abef036bdb",
+  "timestamp": 1787493105.5020726,
+  "signature": "be9dac8142020828b349e4f61953f255e536657ab093f1e4eb06a59e2d6335df",
   "acceptance_criteria": [
-    "Oprette `.github/workflows/ci.yml` med triggers p\u00e5 `push` og `pull_request`.",
-    "Konfigurere test-matrix for Python `3.10`, `3.11` og `3.12` p\u00e5 `ubuntu-latest`.",
-    "Installere pakken i editable tilstand (`pip install -e .`).",
-    "K\u00f8re komplet test-suite (`python -m unittest discover tests`).",
-    "K\u00f8re mutation gauntlet (`python tools/mutants.py`).",
-    "K\u00f8re fuld 5-lags gauntlet (`sh tools/gauntlet.sh`).",
-    "Validere kryptografisk evidens og drift-kontrol (`agent-gauntlet check-evidence`).",
-    "Opdatere `tasks/006-github-actions-ci.md` til `Status: DONE` og forsegle `evidence.json`."
+    "Oprette `src/agent_gauntlet/features/okf/` med `models.py`, `validator.py` og `stamper.py`.",
+    "Implementere validering af:",
+    "Tilf\u00f8je `okf` CLI underkommandoer (`validate` og `stamp`) i `src/agent_gauntlet/cli.py`.",
+    "Opdatere `scaffolder.py` til at generere tasks, ADRs, specs og AGENTS.md med gyldigt OKF frontmatter.",
+    "Opdatere eksisterende `.md` filer i projektet (`tasks/`, `docs/adr/`, `spec.md`, `CONTEXT.md`) til 100% valid OKF frontmatter.",
+    "Skrive unit tests i `tests/features/test_okf.py` og tilf\u00f8je mutation-tests i `tools/mutants.py`.",
+    "K\u00f8re `tools/gauntlet.sh` og opn\u00e5 100% gr\u00f8n verifikation og forseglet evidens."
   ],
   "unresolved_criteria": [],
   "checks": [
@@ -21,31 +20,31 @@
       "name": "lint",
       "passed": false,
       "exit_code": 127,
-      "duration_seconds": 0.0006339339997794013
+      "duration_seconds": 0.0003207949994248338
     },
     {
       "name": "types",
       "passed": false,
       "exit_code": 127,
-      "duration_seconds": 0.00062609399901703
+      "duration_seconds": 0.00031436700010090135
     },
     {
       "name": "unit",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 0.7741468969979906
+      "duration_seconds": 0.9851991510004154
     },
     {
       "name": "invariants",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 0.27886694699918735
+      "duration_seconds": 0.28191103400240536
     },
     {
       "name": "mutation-testing-gauntlet",
       "passed": true,
       "exit_code": 0,
-      "duration_seconds": 7.893686186998821
+      "duration_seconds": 9.346914106998156
     }
   ]
 }

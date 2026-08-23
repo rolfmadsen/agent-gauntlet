@@ -15,11 +15,18 @@ TARGET_RUNNER = ROOT / "src/agent_gauntlet/features/gauntlet/runner.py"
 TARGET_AUTHORITY = ROOT / "src/agent_gauntlet/features/evidence/authority.py"
 TARGET_GATEKEEPER = ROOT / "src/agent_gauntlet/features/hooks/gatekeeper.py"
 TARGET_SCAFFOLDER = ROOT / "src/agent_gauntlet/features/scaffold/scaffolder.py"
+TARGET_ADAPTER = ROOT / "src/agent_gauntlet/features/adapters/antigravity/adapter.py"
+TARGET_VALIDATOR = ROOT / "src/agent_gauntlet/features/adapters/antigravity/validator.py"
+TARGET_OKF_VALIDATOR = ROOT / "src/agent_gauntlet/features/okf/validator.py"
+TARGET_OKF_STAMPER = ROOT / "src/agent_gauntlet/features/okf/stamper.py"
 TARGET_CLI = ROOT / "src/agent_gauntlet/cli.py"
+
+
 def _clean_pycache() -> None:
     for p in ROOT.rglob("__pycache__"):
         if p.is_dir():
             shutil.rmtree(p, ignore_errors=True)
+
 
 MUTANT_ENV = {
     **os.environ,
@@ -37,6 +44,15 @@ HOOK_TESTS = [
     "tests.features.test_hooks",
 ]
 
+ADAPTER_TESTS = [
+    "tests.features.test_adapter_antigravity",
+    "tests.features.test_adapters_base",
+]
+
+OKF_TESTS = [
+    "tests.features.test_okf",
+]
+
 SCAFFOLD_TESTS = [
     "tests.features.test_scaffold",
 ]
@@ -47,6 +63,7 @@ CLI_TESTS = [
     "tests.test_cli.TestCliAcceptance.test_check_evidence_tampered_fails",
     "tests.test_cli.TestCliAcceptance.test_check_evidence_drifted_fails",
 ]
+
 
 MUTANTS = [
     # --- run_gauntlet mutants ---
@@ -200,6 +217,42 @@ MUTANTS = [
         "        target_path.parent.mkdir(parents=True, exist_ok=True)",
         SCAFFOLD_TESTS,
     ),
+    # --- adapter mutants ---
+    (
+        TARGET_ADAPTER,
+        "AD-M1 normalize_tool_call invert command check",
+        '        if tool_name == "run_command":',
+        '        if tool_name != "run_command":',
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_ADAPTER,
+        "AD-M2 evaluate_invocation fail-open decision",
+        '            decision="allow" if hook_res.allowed else "deny",',
+        '            decision="allow",',
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_ADAPTER,
+        "AD-M3 evaluate_invocation fail-open allowed flag",
+        "            allowed=hook_res.allowed,",
+        "            allowed=True,",
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_VALIDATOR,
+        "VAL-M1 validator ignore missing manifest",
+        "        if not manifest_file.is_file():",
+        "        if False:",
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_VALIDATOR,
+        "VAL-M2 validator ignore missing skill",
+        "                    if not skill_file.is_file():",
+        "                    if False:",
+        ADAPTER_TESTS,
+    ),
     # --- cli mutants ---
     (
         TARGET_CLI,
@@ -215,7 +268,44 @@ MUTANTS = [
         "        if False:",
         CLI_TESTS,
     ),
+    # --- OKF validator & stamper mutants ---
+    (
+        TARGET_OKF_VALIDATOR,
+        "M_OKF1 ignore required type check",
+        "    if not doc_type or not str(doc_type).strip():",
+        "    if False:",
+        OKF_TESTS,
+    ),
+    (
+        TARGET_OKF_VALIDATOR,
+        "M_OKF2 ignore future timestamp check in generated",
+        "                    generated_dt = dt\n                    if dt > future_tolerance:",
+        "                    generated_dt = dt\n                    if False:",
+        OKF_TESTS,
+    ),
+    (
+        TARGET_OKF_VALIDATOR,
+        "M_OKF3 ignore chronological inversion check",
+        "                    if generated_dt and dt < generated_dt:",
+        "                    if False:",
+        OKF_TESTS,
+    ),
+    (
+        TARGET_OKF_VALIDATOR,
+        "M_OKF4 ignore missing source resource check",
+        '                elif not src.get("resource") or not str(src.get("resource")).strip():',
+        "                elif False:",
+        OKF_TESTS,
+    ),
+    (
+        TARGET_OKF_STAMPER,
+        "M_OKF5 ignore status update in stamper",
+        '    if status:\n        meta["status"] = status',
+        '    if False:\n        meta["status"] = status',
+        OKF_TESTS,
+    ),
 ]
+
 
 CONTROL = [
     (
@@ -297,6 +387,10 @@ def main() -> int:
         TARGET_AUTHORITY: TARGET_AUTHORITY.read_text(),
         TARGET_GATEKEEPER: TARGET_GATEKEEPER.read_text(),
         TARGET_SCAFFOLDER: TARGET_SCAFFOLDER.read_text(),
+        TARGET_ADAPTER: TARGET_ADAPTER.read_text(),
+        TARGET_VALIDATOR: TARGET_VALIDATOR.read_text(),
+        TARGET_OKF_VALIDATOR: TARGET_OKF_VALIDATOR.read_text(),
+        TARGET_OKF_STAMPER: TARGET_OKF_STAMPER.read_text(),
         TARGET_CLI: TARGET_CLI.read_text(),
     }
 

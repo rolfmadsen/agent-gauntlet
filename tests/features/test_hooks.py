@@ -35,7 +35,7 @@ class TestGatekeeperHook(unittest.TestCase):
         self.assertEqual(verdict.verdict_code, GatekeeperVerdict.ALLOW)
 
     def test_allows_editing_tasks_and_context(self) -> None:
-        """Editing tasks/ or CONTEXT.md is always allowed without pre-existing tasks."""
+        """Editing tasks/, CONTEXT.md, CLAUDE.md, ROADMAP.md, spec.md is always allowed."""
         verdict = evaluate_tool_invocation(
             workspace=self.workspace,
             tool_name="write_to_file",
@@ -43,12 +43,13 @@ class TestGatekeeperHook(unittest.TestCase):
         )
         self.assertTrue(verdict.allowed)
 
-        verdict_ctx = evaluate_tool_invocation(
-            workspace=self.workspace,
-            tool_name="replace_file_content",
-            tool_input={"TargetFile": str(self.workspace / "CONTEXT.md")},
-        )
-        self.assertTrue(verdict_ctx.allowed)
+        for filename in ["CONTEXT.md", "CLAUDE.md", "ROADMAP.md", "spec.md"]:
+            verdict_meta = evaluate_tool_invocation(
+                workspace=self.workspace,
+                tool_name="replace_file_content",
+                tool_input={"TargetFile": str(self.workspace / filename)},
+            )
+            self.assertTrue(verdict_meta.allowed, f"Should allow editing {filename}")
 
     def test_blocks_src_edit_when_no_active_task_exists(self) -> None:
         """Modifying files in src/ or tests/ is blocked if no active task exists in tasks/."""

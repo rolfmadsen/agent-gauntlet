@@ -30,6 +30,7 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
         self.assertTrue((self.workspace / "gauntlet.toml").is_file())
         self.assertTrue((self.workspace / "CONTEXT.md").is_file())
         self.assertTrue((self.workspace / "spec.md").is_file())
+        self.assertTrue((self.workspace / "CLAUDE.md").is_file())
 
         # Tasks directory
         self.assertTrue((self.workspace / "tasks").is_dir())

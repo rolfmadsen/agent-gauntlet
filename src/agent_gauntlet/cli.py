@@ -6,8 +6,10 @@ import argparse
 import json
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
+from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES, get_adapter
 from agent_gauntlet.features.config.loader import (
     generate_default_config_json,
     generate_default_config_toml,
@@ -22,6 +24,13 @@ from agent_gauntlet.features.scaffold.scaffolder import ProjectScaffolder
 from agent_gauntlet.features.stacks.detector import detect_stack
 from agent_gauntlet.features.stacks.profiles import SUPPORTED_STACKS
 from agent_gauntlet.features.evidence.source_state import compute_source_state
+from agent_gauntlet.features.hooks.gatekeeper import is_task_active
+from agent_gauntlet.features.okf.models import OkfValidationFinding, OkfValidationReport
+from agent_gauntlet.features.okf.stamper import stamp_okf_file
+from agent_gauntlet.features.okf.validator import (
+    validate_okf_file,
+    validate_okf_workspace,
+)
 
 
 def _resolve_task_contract(
@@ -52,7 +61,7 @@ def _resolve_task_contract(
         for candidate in sorted(tasks_dir.glob("*.md")):
             try:
                 content = candidate.read_text(encoding="utf-8")
-                if "status" in content.lower() and "done" not in content.lower().split("status")[1][:40]:
+                if is_task_active(content):
                     target_file = candidate
                     break
             except Exception:
@@ -89,6 +98,29 @@ def _resolve_task_contract(
             acceptance_criteria.append(item)
 
     return task_id, task_title, acceptance_criteria, unresolved_criteria
+
+
+def _generate_session_handoff_prompt(
+    workspace: Path, task_id: str, task_title: str = ""
+) -> str:
+    """Generates a clean starter prompt for the next chat session."""
+    tasks_dir = workspace / "tasks"
+    next_task_suggestion = ""
+    if tasks_dir.is_dir():
+        for candidate in sorted(tasks_dir.glob("*.md")):
+            if candidate.stem != task_id and not candidate.name.startswith(f"{task_id}-"):
+                try:
+                    content = candidate.read_text(encoding="utf-8")
+                    if is_task_active(content):
+                        next_task_suggestion = f" (f.eks. tasks/{candidate.name})"
+                        break
+                except Exception:
+                    continue
+
+    return (
+        f"Fortsæt udviklingen i projektet. Læs venligst CONTEXT.md, docs/adr/ og den næste opgave i tasks/{next_task_suggestion} "
+        f"for at fastlægge acceptkriterier og køre TDD-cyklussen for næste feature."
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -133,19 +165,43 @@ def main(argv: list[str] | None = None) -> int:
         help="Configuration format (default: toml)",
     )
     init_parser.add_argument(
+        "--harness",
+        choices=SUPPORTED_HARNESSES,
+        default="antigravity",
+        help="Target agent harness profile (default: antigravity)",
+    )
+    init_parser.add_argument(
         "--force",
         action="store_true",
         help="Overwrite existing configuration file",
     )
 
-    # 2. tree-hash
+    # 2. validate-plugin
+    validate_plugin_parser = subparsers.add_parser(
+        "validate-plugin",
+        help="Mechanically validate adapter plugin structure, manifest, skills, and hooks",
+        parents=[common_parser],
+    )
+    validate_plugin_parser.add_argument(
+        "--plugin-dir",
+        default="plugins/agent-gauntlet",
+        help="Path to plugin directory (default: plugins/agent-gauntlet)",
+    )
+    validate_plugin_parser.add_argument(
+        "--harness",
+        choices=SUPPORTED_HARNESSES,
+        default="antigravity",
+        help="Target harness type (default: antigravity)",
+    )
+
+    # 3. tree-hash
     subparsers.add_parser(
         "tree-hash",
         help="Compute SHA-256 source tree hash of workspace",
         parents=[common_parser],
     )
 
-    # 3. check-evidence
+    # 4. check-evidence
     check_parser = subparsers.add_parser(
         "check-evidence",
         help="Verify HMAC signature and tree-hash match of evidence ledger",
@@ -196,6 +252,53 @@ def main(argv: list[str] | None = None) -> int:
         help="Persist evidence.json and evidence.md upon completion",
     )
 
+    # 5. okf
+    okf_parser = subparsers.add_parser(
+        "okf",
+        help="Validate and stamp Open Knowledge Format (OKF v0.2) markdown documentation",
+        parents=[common_parser],
+    )
+    okf_subparsers = okf_parser.add_subparsers(dest="okf_subcommand", required=True)
+
+    okf_validate_parser = okf_subparsers.add_parser(
+        "validate",
+        help="Validate OKF v0.2 frontmatter and temporal/actor invariants across markdown files",
+        parents=[common_parser],
+    )
+    okf_validate_parser.add_argument(
+        "paths",
+        nargs="*",
+        default=[],
+        help="Target files or directories to validate (default: tasks/, docs/adr/, spec.md, CONTEXT.md)",
+    )
+
+    okf_stamp_parser = okf_subparsers.add_parser(
+        "stamp",
+        help="Stamp or update OKF v0.2 frontmatter in a markdown document",
+        parents=[common_parser],
+    )
+    okf_stamp_parser.add_argument("file", help="Path to markdown file to stamp")
+    okf_stamp_parser.add_argument("--type", dest="doc_type", default=None, help="Concept type")
+    okf_stamp_parser.add_argument(
+        "--status",
+        choices=["draft", "stable", "deprecated"],
+        default=None,
+        help="Lifecycle status",
+    )
+    okf_stamp_parser.add_argument(
+        "--verified-by", default=None, help="Actor who verified this doc (e.g. human:developer)"
+    )
+    okf_stamp_parser.add_argument(
+        "--verified-at", default=None, help="ISO 8601 UTC timestamp of verification"
+    )
+    okf_stamp_parser.add_argument(
+        "--generated-by", default=None, help="Actor who generated this doc"
+    )
+    okf_stamp_parser.add_argument(
+        "--generated-at", default=None, help="ISO 8601 UTC timestamp of generation"
+    )
+    okf_stamp_parser.add_argument("--title", default=None, help="Display title")
+
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
@@ -210,6 +313,7 @@ def main(argv: list[str] | None = None) -> int:
         result = scaffolder.scaffold(
             workspace=workspace,
             stack=args.stack,
+            harness=args.harness,
             config_format=args.format,
             force=args.force,
         )
@@ -217,7 +321,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.json:
             print(json.dumps(result.to_dict(), indent=2))
         else:
-            print(f"Scaffolded agent-gauntlet workspace for stack profile '{result.stack}':")
+            print(f"Scaffolded agent-gauntlet workspace for stack '{result.stack}' and harness '{result.harness}':")
             for entry in result.entries:
                 try:
                     rel = Path(entry.path).relative_to(workspace)
@@ -230,6 +334,40 @@ def main(argv: list[str] | None = None) -> int:
                 )
                 print(f"  {tag} {entry.status.value:11} {rel} ({entry.description})")
         return 0
+
+    # --- Command: validate-plugin ---
+    if args.command == "validate-plugin":
+        adapter = get_adapter(args.harness)
+        target_dir = Path(args.plugin_dir)
+        if not target_dir.is_absolute():
+            target_dir = (workspace / target_dir).resolve()
+
+        res = adapter.validate_plugin(target_dir)
+        if args.json:
+            print(
+                json.dumps(
+                    {
+                        "valid": res.valid,
+                        "plugin_dir": str(target_dir),
+                        "harness": args.harness,
+                        "issues": [
+                            {"severity": i.severity.value, "path": i.path, "message": i.message}
+                            for i in res.issues
+                        ],
+                    },
+                    indent=2,
+                )
+            )
+        else:
+            status_label = "VALID" if res.valid else "INVALID"
+            print(f"[{status_label}] Plugin validation for '{target_dir}' ({args.harness}):")
+            if not res.issues:
+                print("  [+] Manifest, skills, and hooks are intact and valid.")
+            else:
+                for issue in res.issues:
+                    tag = "[!]" if issue.severity.value == "ERROR" else "[*]"
+                    print(f"  {tag} {issue.severity.value} ({issue.path}): {issue.message}")
+        return 0 if res.valid else 1
 
     # --- Command: tree-hash ---
     if args.command == "tree-hash":
@@ -271,6 +409,79 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[VALID] Evidence signature verified ({record.signature[:16]}...) and matches current source tree ({current_tree}).")
         return 0
 
+    # --- Command: okf ---
+    if args.command == "okf":
+        if args.okf_subcommand == "validate":
+            targets = args.paths if args.paths else None
+            report = validate_okf_workspace(workspace, target_paths=targets)
+
+            if args.json:
+                print(
+                    json.dumps(
+                        {
+                            "valid": report.valid,
+                            "total_files": report.total_files,
+                            "valid_files": report.valid_files,
+                            "findings": [
+                                {
+                                    "file_path": f.file_path,
+                                    "rule": f.rule,
+                                    "message": f.message,
+                                    "remediation_hint": f.remediation_hint,
+                                    "severity": f.severity,
+                                }
+                                for f in report.findings
+                            ],
+                        },
+                        indent=2,
+                    )
+                )
+            else:
+                tag = "[VALID]" if report.valid else "[INVALID]"
+                print(f"{tag} OKF v0.2 validation: {report.valid_files}/{report.total_files} files compliant.")
+                if report.findings:
+                    print("\nOKF Findings:")
+                    for f in report.findings:
+                        try:
+                            rel_p = Path(f.file_path).relative_to(workspace)
+                        except ValueError:
+                            rel_p = f.file_path
+                        print(f"  [!] {f.rule} in {rel_p}")
+                        print(f"      Message: {f.message}")
+                        if f.remediation_hint:
+                            print(f"      Hint:    {f.remediation_hint}")
+
+            return 0 if report.valid else 1
+
+        if args.okf_subcommand == "stamp":
+            target_file = Path(args.file)
+            if not target_file.is_absolute():
+                target_file = (workspace / target_file).resolve()
+
+            if not target_file.is_file():
+                print(f"FAILED: File '{target_file}' does not exist.", file=sys.stderr)
+                return 1
+
+            stamp_okf_file(
+                file_path=target_file,
+                doc_type=args.doc_type,
+                status=args.status,
+                verified_by=args.verified_by,
+                verified_at=args.verified_at,
+                generated_by=args.generated_by,
+                generated_at=args.generated_at,
+                title=args.title,
+            )
+            if args.json:
+                print(json.dumps({"status": "STAMPED", "file": str(target_file)}, indent=2))
+            else:
+                try:
+                    rel_p = target_file.relative_to(workspace)
+                except ValueError:
+                    rel_p = target_file
+                print(f"[+] Stamped OKF frontmatter in {rel_p}")
+            return 0
+
     # --- Command: verify ---
     if args.command == "verify":
         head, commit, tree = compute_source_state(workspace)
@@ -283,6 +494,22 @@ def main(argv: list[str] | None = None) -> int:
             if not context_file.exists() or not context_file.read_text(encoding="utf-8").strip():
                 print("FAILED: Pre-flight check failed! CONTEXT.md is missing or empty. Please define domain glossary in CONTEXT.md or use --standalone.")
                 return 1
+
+            okf_report = validate_okf_workspace(workspace)
+            if not okf_report.valid:
+                print(f"FAILED: Pre-flight OKF validation failed! {len(okf_report.findings)} documentation defect(s) found:")
+                for f in okf_report.findings[:5]:
+                    try:
+                        rel_p = Path(f.file_path).relative_to(workspace)
+                    except ValueError:
+                        rel_p = f.file_path
+                    print(f"  [!] {f.rule} in {rel_p}: {f.message}")
+                    if f.remediation_hint:
+                        print(f"      Hint: {f.remediation_hint}")
+                if len(okf_report.findings) > 5:
+                    print(f"  ... and {len(okf_report.findings) - 5} more defect(s). Run 'agent-gauntlet okf validate' for full report.")
+                return 1
+
 
         layers: list[LayerDefinition] = []
         if args.test_target:
@@ -335,6 +562,30 @@ def main(argv: list[str] | None = None) -> int:
             (workspace / config.evidence_markdown_file).write_text(
                 authority.generate_evidence_markdown(signed_record, head=head, source_commit=commit)
             )
+            if report.success and task_id and task_id not in ("default-run", "gauntlet-run"):
+                tasks_dir = workspace / "tasks"
+                if tasks_dir.is_dir():
+                    for candidate in sorted(tasks_dir.glob("*.md")):
+                        if (
+                            candidate.stem == task_id
+                            or candidate.name == task_id
+                            or candidate.name.startswith(f"{task_id}-")
+                            or candidate.stem.startswith(task_id)
+                        ):
+                            now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                            stamp_okf_file(
+                                file_path=candidate,
+                                status="stable",
+                                verified_by="process:agent-gauntlet-verify",
+                                verified_at=now_utc,
+                            )
+                            break
+
+        handoff_prompt = (
+            _generate_session_handoff_prompt(workspace, signed_record.task_id, signed_record.task_title)
+            if report.success
+            else ""
+        )
 
         if args.diagnostics_json:
             output_payload = {
@@ -342,6 +593,7 @@ def main(argv: list[str] | None = None) -> int:
                 "source_tree_hash": tree,
                 "signature": signed_record.signature,
                 "diagnostic_reports": [r.to_dict() for r in diagnostic_reports],
+                "handoff_prompt": handoff_prompt,
             }
             print(json.dumps(output_payload, indent=2))
         elif args.json:
@@ -369,6 +621,19 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"      Message: {f.message}")
                     if f.remediation_hint:
                         print(f"      Hint:    {f.remediation_hint}")
+
+            if report.success and handoff_prompt:
+                import textwrap
+
+                print("\n" + "╭" + "─" * 76 + "╮")
+                print(f"│ 🏁 SESSION HANDOFF: {signed_record.task_id:<53} │")
+                print("│" + " " * 76 + "│")
+                print("│ 💡 Start venligst en frisk chat-session for at undgå context rot.          │")
+                print("│ 📋 Kopiér og indsæt følgende starter-prompt i en ny chat:                  │")
+                print("├" + "─" * 76 + "┤")
+                for wrapped_line in textwrap.wrap(handoff_prompt, width=74):
+                    print(f"│ {wrapped_line:<74} │")
+                print("╰" + "─" * 76 + "╯")
 
         return 0 if report.success else 1
 

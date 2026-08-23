@@ -1,3 +1,18 @@
+---
+type: Task Package
+title: 'Task 003: Clean Package Architecture'
+status: stable
+tags:
+- task
+- gauntlet
+generated:
+  by: antigravity/gemini-3.7-flash
+  at: '2026-08-23T11:00:00Z'
+verified:
+- by: process:agent-gauntlet-verify
+  at: '2026-08-23T11:30:00Z'
+---
+
 # Task 003: Package-by-Feature (Screaming Architecture) & Test-symmetri
 
 **Status**: `DONE`  

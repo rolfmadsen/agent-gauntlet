@@ -15,7 +15,8 @@
     "diagnostic_parser": "agent_gauntlet.features.diagnostics.parser:DiagnosticParser",
     "config_loader": "agent_gauntlet.features.config.loader:load_config",
     "stack_detector": "agent_gauntlet.features.stacks.detector:detect_stack",
-    "gatekeeper": "agent_gauntlet.features.hooks.gatekeeper:main_hook_entrypoint"
+    "gatekeeper": "agent_gauntlet.features.hooks.gatekeeper:main_hook_entrypoint",
+    "antigravity_hook": "agent_gauntlet.features.adapters.antigravity.hook:main_hook_entrypoint"
   },
   "scripts": {
     "gauntlet": "sh tools/gauntlet.sh",

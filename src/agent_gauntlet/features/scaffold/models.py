@@ -30,6 +30,7 @@ class ScaffoldResult:
 
     workspace: Path
     stack: str
+    harness: str = "antigravity"
     entries: list[ScaffoldEntry] = field(default_factory=list)
     success: bool = True
 
@@ -38,6 +39,7 @@ class ScaffoldResult:
         return {
             "workspace": str(self.workspace),
             "stack": self.stack,
+            "harness": self.harness,
             "success": self.success,
             "created": [e.path for e in self.entries if e.status == ScaffoldStatus.CREATED],
             "skipped": [e.path for e in self.entries if e.status == ScaffoldStatus.SKIPPED],

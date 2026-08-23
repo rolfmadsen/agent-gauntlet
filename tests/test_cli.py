@@ -183,7 +183,135 @@ class TestCliAcceptance(unittest.TestCase):
         data = json.loads(stdout.getvalue())
         self.assertEqual(data["verdict"], "PASSED")
         self.assertIn("diagnostic_reports", data)
+        self.assertIn("handoff_prompt", data)
+        self.assertIn("CONTEXT.md", data["handoff_prompt"])
+
+    def test_verify_includes_session_handoff_prompt(self) -> None:
+        """Scenario CLI-06: Passing verify prints a clean Session Handoff prompt block."""
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(
+                [
+                    "verify",
+                    "-w",
+                    str(self.workspace),
+                    "--task-id",
+                    "008-session-handoff-prompt-generator",
+                    "--test-target",
+                    "tests.features.test_gauntlet",
+                ]
+            )
+        self.assertEqual(exit_code, 0)
+        output = stdout.getvalue()
+        self.assertIn("SESSION HANDOFF", output.upper())
+        self.assertIn("CONTEXT.md", output)
+
+
+    def test_init_with_harness(self) -> None:
+        """Scenario CLI-INIT-HARNESS: init accepts --harness and records it in ScaffoldResult."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["init", "-w", tmpdir, "--harness", "antigravity", "--json"])
+            self.assertEqual(exit_code, 0)
+            data = json.loads(stdout.getvalue())
+            self.assertEqual(data["harness"], "antigravity")
+
+    def test_validate_plugin_command_valid(self) -> None:
+        """Scenario CLI-PLUGIN-VALID: validate-plugin returns 0 for repo's plugin."""
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main([
+                "validate-plugin",
+                "-w",
+                str(self.workspace),
+                "--plugin-dir",
+                "plugins/agent-gauntlet",
+                "--harness",
+                "antigravity",
+            ])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("VALID", stdout.getvalue().upper())
+
+    def test_validate_plugin_command_json(self) -> None:
+        """Scenario CLI-PLUGIN-JSON: validate-plugin --json outputs valid JSON."""
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main([
+                "validate-plugin",
+                "-w",
+                str(self.workspace),
+                "--plugin-dir",
+                "plugins/agent-gauntlet",
+                "--json",
+            ])
+        self.assertEqual(exit_code, 0)
+        data = json.loads(stdout.getvalue())
+        self.assertTrue(data["valid"])
+        self.assertEqual(data["harness"], "antigravity")
+
+    def test_validate_plugin_command_invalid(self) -> None:
+        """Scenario CLI-PLUGIN-INVALID: validate-plugin fails for broken directory."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main([
+                    "validate-plugin",
+                    "-w",
+                    str(self.workspace),
+                    "--plugin-dir",
+                    tmpdir,
+                ])
+            self.assertEqual(exit_code, 1)
+            self.assertIn("INVALID", stdout.getvalue().upper())
+
+
+    def test_okf_validate_command(self) -> None:
+        """Scenario CLI-OKF-VALIDATE: okf validate returns 0 for workspace documentation."""
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(["okf", "validate", "-w", str(self.workspace)])
+        self.assertEqual(exit_code, 0)
+        self.assertIn("VALID", stdout.getvalue())
+
+    def test_okf_validate_json(self) -> None:
+        """Scenario CLI-OKF-JSON: okf validate --json outputs structured report."""
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            exit_code = main(["okf", "validate", "-w", str(self.workspace), "--json"])
+        self.assertEqual(exit_code, 0)
+        data = json.loads(stdout.getvalue())
+        self.assertTrue(data["valid"])
+        self.assertGreater(data["total_files"], 0)
+
+    def test_okf_stamp_command(self) -> None:
+        """Scenario CLI-OKF-STAMP: okf stamp updates frontmatter in target file."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_file = Path(tmpdir) / "test.md"
+            test_file.write_text("# Test Document\nBody", encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main([
+                    "okf",
+                    "stamp",
+                    str(test_file),
+                    "-w",
+                    tmpdir,
+                    "--type",
+                    "Task Package",
+                    "--status",
+                    "draft",
+                    "--generated-by",
+                    "antigravity/gemini-3.7-flash",
+                ])
+            self.assertEqual(exit_code, 0)
+            self.assertIn("Stamped OKF", stdout.getvalue())
+            content = test_file.read_text(encoding="utf-8")
+            self.assertIn("type: Task Package", content)
+            self.assertIn("status: draft", content)
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
