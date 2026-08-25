@@ -84,15 +84,13 @@ SPEC / GRILL → (Human Approval) → RED → GREEN → REFACTOR → GAUNTLET �
    - Acceptance & Unit Tests
    - Invariant & Property Tests (`hypothesis`, `proptest`)
    - Mutation Testing Gauntlet (`mutants.py`)
-   - Source-State Tree Digest
-6. **EVIDENCE**: Persist cryptographically signed evidence ledger in `evidence.json` and `evidence.md`.
+6. **EVIDENCE**: Persist verification report in `verification-report.json` and `evidence.md`.
 7. **SESSION HANDOFF**: Display the clean `🏁 SESSION HANDOFF` card with the copy-paste starter prompt in the final user-facing response:
    > ### 🏁 SESSION HANDOFF • `<task_id>`
-   > **Status**: `TASK: DONE` | **Evidens**: `FORSEGLET (HMAC-SHA256)` | **Context**: `Fresh Session Recommended`
+   > **Status**: `TASK: DONE` | **Evidens**: `FORSEGLET (Two-Tier Model)` | **Context**: `Fresh Session Recommended`
    > 💡 *Start venligst en frisk chat-session for at bevare et skarpt kontekstvindue uden context rot.*
    >
    > 📋 **Kopiér og indsæt følgende starter-prompt i en ny chat:**
    > ```text
    > <handoff_prompt>
    > ```
-

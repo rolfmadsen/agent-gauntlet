@@ -103,19 +103,15 @@ def _get_file_mode(path: Path, is_symlink: bool) -> str:
         return "120000"
     try:
         st_mode = path.stat().st_mode
-        mode_octal = st_mode & 0o777
-        # On POSIX, use actual mode; if non-POSIX fallback, standard permissions
-        if os.name != "nt":
-            return f"{mode_octal:03o}"
-        # Portable Windows fallback
-        is_exec = (st_mode & 0o111) != 0 or path.suffix.lower() in (".sh", ".py", ".bat", ".cmd", ".exe")
-        return "755" if is_exec else "644"
+        # ADR 0005: Only track executable bit (executable vs non-executable)
+        is_exec = (st_mode & 0o111) != 0
+        return "1" if is_exec else "0"
     except OSError:
-        return "644"
+        return "0"
 
 
 def _compute_digest_of_files(root: Path, files: Sequence[Path]) -> str:
-    """Compute a single digest over a sequence of files."""
+    """Compute a single length-prefixed digest over a sequence of files."""
     digest = hashlib.sha256()
     for f in sorted(files):
         if f.is_file() and not _is_excluded(f.relative_to(root)):
@@ -137,7 +133,8 @@ def compute_workspace_manifest(
 ) -> CanonicalWorkspaceManifest:
     """
     Computes a deterministic, platform-independent canonical workspace manifest.
-    Detects symlink workspace escapes and tracks content and POSIX mode digests.
+    Detects symlink workspace escapes and tracks content and executable-bit digests
+    using length-prefixed binary encoding to prevent delimiter injection attacks.
     """
     target_root = (root or Path.cwd()).resolve()
     target_scopes = tuple(scopes) if scopes else DEFAULT_SCOPES
@@ -193,26 +190,47 @@ def compute_workspace_manifest(
     sorted_items = sorted(items, key=lambda x: x[0].encode("utf-8"))
     file_list = [item[0] for item in sorted_items]
 
-    # Generate canonical manifest lines (<hash> <mode> <path>\n)
-    manifest_lines = "".join(f"{h} {m} {p}\n" for p, h, m in sorted_items)
-    source_manifest_digest = hashlib.sha256(manifest_lines.encode("utf-8")).hexdigest()
+    # Generate length-prefixed canonical manifest digest (prevents newline delimiter injection)
+    manifest_hasher = hashlib.sha256()
+    for p, h, m in sorted_items:
+        p_bytes = p.encode("utf-8")
+        manifest_hasher.update(h.encode("ascii"))
+        manifest_hasher.update(m.encode("ascii"))
+        manifest_hasher.update(len(p_bytes).to_bytes(4, "big"))
+        manifest_hasher.update(p_bytes)
+    source_manifest_digest = manifest_hasher.hexdigest()
 
-    # Generate portable content lines (<hash> <path>\n)
-    content_lines = "".join(f"{h} {p}\n" for p, h, _ in sorted_items)
-    source_content_digest = hashlib.sha256(content_lines.encode("utf-8")).hexdigest()
+    # Generate length-prefixed portable content digest
+    content_hasher = hashlib.sha256()
+    for p, h, _ in sorted_items:
+        p_bytes = p.encode("utf-8")
+        content_hasher.update(h.encode("ascii"))
+        content_hasher.update(len(p_bytes).to_bytes(4, "big"))
+        content_hasher.update(p_bytes)
+    source_content_digest = content_hasher.hexdigest()
 
     # Auxiliary digests
-    config_files = [target_root / "gauntlet.toml", target_root / "gauntlet.json"]
+    config_files = [target_root / "gauntlet.toml", target_root / "gauntlet.json", target_root / "pyproject.toml"]
     config_digest = _compute_digest_of_files(target_root, config_files)
 
     task_dir = target_root / "tasks"
     task_files = list(task_dir.glob("*.md")) if task_dir.is_dir() else []
     task_digest = _compute_digest_of_files(target_root, task_files)
 
-    policy_files = [target_root / "spec.md", target_root / "CONTEXT.md"]
+    # Policy files: spec.md, CONTEXT.md, ADRs, agent instructions, hooks and workflows
+    policy_files = [
+        target_root / "spec.md",
+        target_root / "CONTEXT.md",
+        target_root / ".agents" / "AGENTS.md",
+        target_root / ".agents" / "hooks.json",
+    ]
     adr_dir = target_root / "docs" / "adr"
     if adr_dir.is_dir():
         policy_files.extend(adr_dir.glob("*.md"))
+    workflows_dir = target_root / ".github" / "workflows"
+    if workflows_dir.is_dir():
+        policy_files.extend(workflows_dir.glob("*.yml"))
+        policy_files.extend(workflows_dir.glob("*.yaml"))
     policy_digest = _compute_digest_of_files(target_root, policy_files)
 
     # Git metadata probe

@@ -28,6 +28,14 @@ FORBIDDEN_COMMAND_PATTERNS = [
     r"\bgit\s+push\b",
     r"\bgh\s+pr\s+create\b",
     r"\bgh\s+release\s+create\b",
+    r"\bgit\s+reset\s+--(hard|merge)\b",
+    r"\bgit\s+clean\s+-[a-zA-Z]*f",
+    r"\bgit\s+branch\s+-D\b",
+]
+
+SHELL_PROTECTED_PATH_PATTERNS = [
+    r"(?:>|>>|\btee\b)\s+[^\s;&|]*(?:src|tests)/",
+    r"\b(?:rm|cp|mv|sed\s+-i|truncate|touch)\b.*?\b(?:src|tests)(?:/|\b)",
 ]
 
 ALLOWED_METADATA_PATHS = {
@@ -42,6 +50,15 @@ ALLOWED_METADATA_PATHS = {
     "roadmap.md",
     "spec.md",
     "verification-report.json",
+}
+
+SAFE_READONLY_TOOLS = {
+    "view_file",
+    "list_dir",
+    "grep_search",
+    "read_url_content",
+    "ask_question",
+    "generate_image",
 }
 
 
@@ -107,9 +124,25 @@ class PolicyEngine:
                         allowed=False,
                         decision="deny",
                         verdict_code=GatekeeperVerdict.BLOCKED_FORBIDDEN_COMMAND,
-                        reason=f"🛑 Forbidden Command: Remote publication via '{command_line}' is strictly prohibited. Git operations must remain local.",
-                        rule_id="NO_REMOTE_PUBLICATION",
+                        reason=f"🛑 Forbidden Command: Destructive operation or remote publication via '{command_line}' is strictly prohibited.",
+                        rule_id="NO_DESTRUCTIVE_OR_REMOTE_COMMAND",
                     )
+
+            # Check if shell command modifies protected code without an active task
+            if not context.has_active_task:
+                for shell_pattern in SHELL_PROTECTED_PATH_PATTERNS:
+                    if re.search(shell_pattern, command_line, re.IGNORECASE):
+                        return PolicyDecision(
+                            allowed=False,
+                            decision="deny",
+                            verdict_code=GatekeeperVerdict.BLOCKED_NO_ACTIVE_TASK,
+                            reason=(
+                                f"🛑 Pre-Invocation Gate: Shell command '{command_line}' targets protected source files in `src/` or `tests/` "
+                                "without an active task in `tasks/`. Opret eller aktivér venligst en task først."
+                            ),
+                            rule_id="ACTIVE_TASK_REQUIRED",
+                        )
+
             return PolicyDecision(
                 allowed=True,
                 decision="allow",
@@ -127,9 +160,10 @@ class PolicyEngine:
 
             if not target_file or not str(target_file).strip():
                 return PolicyDecision(
-                    allowed=True,
-                    decision="allow",
-                    verdict_code=GatekeeperVerdict.ALLOW,
+                    allowed=False,
+                    decision="deny",
+                    verdict_code=GatekeeperVerdict.BLOCKED_MALFORMED_INPUT,
+                    reason="🛑 Pre-Invocation Gate: Empty target file path provided for file write operation.",
                 )
 
             target_path = target_file if target_file.is_absolute() else (context.workspace_root / target_file)
@@ -139,11 +173,13 @@ class PolicyEngine:
             try:
                 rel_path = resolved_target.relative_to(resolved_root)
             except ValueError:
-                # File is outside workspace root; allow sandbox isolation to handle
+                # File is outside workspace root -> Strict fail-closed workspace escape prevention
                 return PolicyDecision(
-                    allowed=True,
-                    decision="allow",
-                    verdict_code=GatekeeperVerdict.ALLOW,
+                    allowed=False,
+                    decision="deny",
+                    verdict_code=GatekeeperVerdict.BLOCKED_FORBIDDEN_COMMAND,
+                    reason=f"🛑 Workspace Escape: File write target '{resolved_target}' is outside workspace root '{resolved_root}'.",
+                    rule_id="WORKSPACE_ESCAPE_PROHIBITED",
                 )
 
             rel_str = str(rel_path).replace("\\", "/").lower()
@@ -181,11 +217,30 @@ class PolicyEngine:
                 verdict_code=GatekeeperVerdict.ALLOW,
             )
 
-        # 3. Read and other operations allowed unconditionally
+        # 3. Read operations allowed
+        if isinstance(request, FileReadRequest) or request.capability_type == CapabilityType.READ_FILE:
+            return PolicyDecision(
+                allowed=True,
+                decision="allow",
+                verdict_code=GatekeeperVerdict.ALLOW,
+            )
+
+        # 4. Recognized safe tools allowed
+        tool_name = getattr(request, "raw_tool_name", "") or getattr(request, "tool_name", "")
+        if tool_name in SAFE_READONLY_TOOLS:
+            return PolicyDecision(
+                allowed=True,
+                decision="allow",
+                verdict_code=GatekeeperVerdict.ALLOW,
+            )
+
+        # 5. Deny-by-default on unrecognized tools or malformed requests
         return PolicyDecision(
-            allowed=True,
-            decision="allow",
-            verdict_code=GatekeeperVerdict.ALLOW,
+            allowed=False,
+            decision="deny",
+            verdict_code=GatekeeperVerdict.BLOCKED_MALFORMED_INPUT,
+            reason=f"🛑 Pre-Invocation Gate: Unrecognized or unclassified tool capability '{tool_name}'. Deny-by-default enforced.",
+            rule_id="FAIL_CLOSED_DENY_UNKNOWN",
         )
 
 

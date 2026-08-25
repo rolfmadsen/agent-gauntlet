@@ -7,7 +7,6 @@ from pathlib import Path
 
 from agent_gauntlet.features.evidence.source_state import (
     WorkspaceEscapeError,
-    compute_source_state,
     compute_workspace_manifest,
 )
 
@@ -120,21 +119,34 @@ class TestCanonicalWorkspaceManifest(unittest.TestCase):
             self.assertEqual(manifest.files, ["src/app.py"])
             self.assertEqual(manifest.included_files_count, 1)
 
-    def test_offline_non_git_workspace_manifest(self) -> None:
-        """Invariant: Manifest generation works cleanly without git or .git folder."""
+    def test_umask_variation_preserves_digest(self) -> None:
+        """Invariant: Non-executable permission differences (e.g. 644 vs 664) yield identical manifest digest."""
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
-            (root / "spec.md").write_text("# Spec", encoding="utf-8")
+            (root / "src").mkdir()
+            f = root / "src" / "app.py"
+            f.write_text("print('hello')", encoding="utf-8")
+            os.chmod(f, 0o644)
+            m1 = compute_workspace_manifest(root)
 
-            manifest = compute_workspace_manifest(root)
-            self.assertEqual(manifest.files, ["spec.md"])
-            self.assertIsNone(manifest.vcs)
+            os.chmod(f, 0o664)
+            m2 = compute_workspace_manifest(root)
+            self.assertEqual(m1.source_manifest_digest, m2.source_manifest_digest)
 
-            head, commit, tree = compute_source_state(root)
-            self.assertEqual(head, "(no git)")
-            self.assertEqual(commit, "(no git)")
-            self.assertEqual(tree, manifest.source_manifest_digest[:16])
+    def test_policy_digest_tracks_hooks_and_workflows(self) -> None:
+        """Invariant: Modifications to .agents/hooks.json or .github/workflows alter policy_digest."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            (root / ".agents").mkdir()
+            hooks = root / ".agents" / "hooks.json"
+            hooks.write_text("{}", encoding="utf-8")
+            m1 = compute_workspace_manifest(root)
+
+            hooks.write_text('{"hooks": []}', encoding="utf-8")
+            m2 = compute_workspace_manifest(root)
+            self.assertNotEqual(m1.policy_digest, m2.policy_digest)
 
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -1,7 +1,7 @@
 ---
 type: Architectural Decision Record
 title: 'ADR 0005: Two-Tier Evidence and Trust Boundary Model'
-status: draft
+status: stable
 tags:
 - architecture
 - adr

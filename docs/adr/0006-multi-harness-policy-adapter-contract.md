@@ -1,7 +1,7 @@
 ---
 type: Architectural Decision Record
 title: 'ADR 0006: Multi-Harness Policy Adapter Contract and Trusted Context'
-status: draft
+status: stable
 tags:
 - architecture
 - adr

@@ -2,6 +2,7 @@
 
 import io
 import json
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -245,6 +246,10 @@ class TestCliAcceptance(unittest.TestCase):
             tests_dir.mkdir(parents=True, exist_ok=True)
             (tests_dir / "test_sample.py").write_text(
                 "import unittest\nclass TestS(unittest.TestCase):\n    def test_ok(self): pass\n",
+                encoding="utf-8",
+            )
+            (ws / "gauntlet.toml").write_text(
+                f'stack = "python"\n[[layers]]\nname = "unit"\ncommand = ["{sys.executable}", "-m", "unittest", "discover", "tests"]\noptional = false\n',
                 encoding="utf-8",
             )
 
@@ -832,9 +837,71 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertEqual(exit_code, 1)
             self.assertIn("failed to parse", stderr.getvalue().lower())
 
+    def test_verify_fails_when_workspace_is_self_mutated(self) -> None:
+        """Scenario CLI-15: verify fails with FAILED verdict if test execution modifies source workspace."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            # Create a task
+            task_file = ws / "tasks/001-mutation.md"
+            task_file.write_text(
+                "---\ntype: Task Package\ntitle: Mut\ndescription: d\nstatus: draft\ntags: [t]\n"
+                "generated: { by: antigravity/gemini-3.7-flash, at: '2026-08-25T15:00:00Z' }\n---\n"
+                "# Task 001\n- [x] Done\n",
+                encoding="utf-8",
+            )
+            # Create a test script that mutates src/ during run
+            (ws / "tests").mkdir(parents=True, exist_ok=True)
+            (ws / "tests" / "test_mutator.py").write_text(
+                f"import unittest, pathlib\n"
+                f"class TestM(unittest.TestCase):\n"
+                f"    def test_mutate(self):\n"
+                f"        (pathlib.Path('{ws}') / 'src' / 'leaked.py').write_text('exploit')\n",
+                encoding="utf-8",
+            )
+            (ws / "gauntlet.toml").write_text(
+                f'stack = "python"\n[[layers]]\nname = "unit"\ncommand = ["{sys.executable}", "-m", "unittest", "discover", "tests"]\noptional = false\n',
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                main(["verify", "-w", str(ws), "--task-id", "001-mutation", "--json"])
+            data = json.loads(stdout.getvalue())
+            self.assertEqual(data["verdict"], "FAILED")
+
+    def test_verify_marks_partial_on_optional_layer_failure(self) -> None:
+        """Scenario CLI-16: verify marks run as PARTIAL if an optional layer fails."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            task_file = ws / "tasks/001-opt.md"
+            task_file.write_text(
+                "---\ntype: Task Package\ntitle: Opt\ndescription: d\nstatus: draft\ntags: [t]\n"
+                "generated: { by: antigravity/gemini-3.7-flash, at: '2026-08-25T15:00:00Z' }\n---\n"
+                "# Task 001\n- [x] Done\n",
+                encoding="utf-8",
+            )
+            (ws / "tests").mkdir(parents=True, exist_ok=True)
+            (ws / "tests" / "test_sample.py").write_text(
+                "import unittest\nclass TestS(unittest.TestCase):\n    def test_ok(self): pass\n",
+                encoding="utf-8",
+            )
+            (ws / "gauntlet.toml").write_text(
+                f'stack = "python"\n'
+                f'[[layers]]\nname = "unit"\ncommand = ["{sys.executable}", "-m", "unittest", "discover", "tests"]\noptional = false\n'
+                f'[[layers]]\nname = "opt_layer"\ncommand = ["{sys.executable}", "-c", "import sys; sys.exit(9)"]\noptional = true\n',
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                main(["verify", "-w", str(ws), "--task-id", "001-opt", "--json"])
+            data = json.loads(stdout.getvalue())
+            self.assertEqual(data["verdict"], "PARTIAL")
+
 
 if __name__ == "__main__":
     unittest.main()
+
 
 
 

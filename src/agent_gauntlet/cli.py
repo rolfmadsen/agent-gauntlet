@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -748,9 +749,16 @@ def main(argv: list[str] | None = None) -> int:
                 exit_code=layer.exit_code,
                 duration_seconds=layer.duration_seconds,
                 optional=(layer.requirement == LayerRequirement.OPTIONAL),
+                log_digest=hashlib.sha256(layer.output.encode("utf-8")).hexdigest() if layer.output else "",
             )
             for layer in report.layers
         ]
+
+        check_defs_hasher = hashlib.sha256()
+        for layer_def in layers:
+            cmd_str = " ".join(layer_def.command)
+            check_defs_hasher.update(f"{layer_def.name}:{cmd_str}:{layer_def.optional}\n".encode("utf-8"))
+        check_definitions_digest = check_defs_hasher.hexdigest()
 
         task_contract = TaskContract(
             task_id=task_id,
@@ -768,6 +776,7 @@ def main(argv: list[str] | None = None) -> int:
             config_digest=manifest_post.config_digest,
             task_digest=manifest_post.task_digest,
             policy_digest=manifest_post.policy_digest,
+            check_definitions_digest=check_definitions_digest,
             included_files_count=manifest_post.included_files_count,
             vcs=manifest_post.vcs,
         )
@@ -783,15 +792,21 @@ def main(argv: list[str] | None = None) -> int:
             },
         )
 
-        if report.success:
-            if args.test_target:
-                verdict = "PARTIAL"
-            elif unresolved:
-                verdict = "INCOMPLETE"
-            else:
-                verdict = "PASSED"
-        else:
+        has_failed_checks = any(not c.passed or c.exit_code != 0 for c in checks)
+        is_self_mutated = manifest_pre.source_manifest_digest != manifest_post.source_manifest_digest
+
+        if is_self_mutated:
             verdict = "FAILED"
+        elif not report.success:
+            verdict = "FAILED"
+        elif args.test_target:
+            verdict = "PARTIAL"
+        elif unresolved:
+            verdict = "INCOMPLETE"
+        elif has_failed_checks:
+            verdict = "PARTIAL"
+        else:
+            verdict = "PASSED"
 
         report_obj = VerificationReport(
             schema_version="2.0.0",

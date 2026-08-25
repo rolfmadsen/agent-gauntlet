@@ -189,6 +189,60 @@ class TestAttestationAndTrustPolicy(unittest.TestCase):
         )
         self.assertEqual(status, AttestationStatus.INVALID)
 
+    def test_sigstore_dsse_envelope_parsing_and_verification(self) -> None:
+        """P0 Invariant: Sigstore Bundle v0.2 DSSE envelope is parsed, decoded, and validated."""
+        import base64
+        statement = {
+            "_type": "https://in-toto.io/Statement/v1",
+            "predicateType": "https://agent-gauntlet.dev/attestation/v1",
+            "subject": [
+                {
+                    "name": "verification-report.json",
+                    "digest": {"sha256": self.report_subject_digest},
+                }
+            ],
+            "predicate": {"verdict": "PASSED"},
+        }
+        payload_b64 = base64.b64encode(json.dumps(statement).encode("utf-8")).decode("utf-8")
+        sigstore_bundle = {
+            "mediaType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
+            "dsseEnvelope": {
+                "payload": payload_b64,
+                "payloadType": "application/vnd.in-toto+json",
+                "signatures": [{"keyid": "k1", "sig": "valid_mock_signature_bytes"}],
+            },
+            "verificationMaterial": {
+                "tlogEntries": [{"logIndex": "12345"}],
+            },
+        }
+        bundle = self.attestation_engine.load_bundle(sigstore_bundle)
+        self.assertEqual(bundle.subject_digest, self.report_subject_digest)
+        self.assertEqual(bundle.predicate_type, "https://agent-gauntlet.dev/attestation/v1")
+
+        status = self.attestation_engine.verify_bundle_against_report(bundle, self.report_json)
+        self.assertEqual(status, AttestationStatus.VALID)
+
+    def test_sigstore_dsse_fabricated_signature_rejected(self) -> None:
+        """P0 Invariant: DSSE envelope with empty signatures is rejected as INVALID."""
+        import base64
+        statement = {
+            "_type": "https://in-toto.io/Statement/v1",
+            "subject": [{"digest": {"sha256": self.report_subject_digest}}],
+        }
+        payload_b64 = base64.b64encode(json.dumps(statement).encode("utf-8")).decode("utf-8")
+        fabricated_bundle = {
+            "mediaType": "application/vnd.dev.sigstore.bundle+json;version=0.2",
+            "dsseEnvelope": {
+                "payload": payload_b64,
+                "payloadType": "application/vnd.in-toto+json",
+                "signatures": [],  # Fabricated / empty signatures
+            },
+        }
+        bundle = self.attestation_engine.load_bundle(fabricated_bundle)
+        status = self.attestation_engine.verify_bundle_against_report(bundle, self.report_json)
+        self.assertEqual(status, AttestationStatus.INVALID)
+
 
 if __name__ == "__main__":
     unittest.main()
+

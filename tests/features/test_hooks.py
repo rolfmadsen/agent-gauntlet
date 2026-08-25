@@ -127,14 +127,43 @@ class TestPolicyEngineDirect(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp_dir.cleanup()
 
-    def test_policy_engine_denies_remote_publication(self) -> None:
-        """PolicyEngine denies git push and gh pr create requests."""
+    def test_policy_engine_denies_remote_publication_and_destructive_git(self) -> None:
+        """PolicyEngine denies git push, git reset --hard, and git clean."""
         context = TrustedEnforcementContext(workspace_root=self.workspace, has_active_task=True)
-        req = CommandExecutionRequest(command_line="git push origin main")
+        for cmd in ["git push origin main", "git reset --hard HEAD~1", "git clean -fdx", "git branch -D main"]:
+            req = CommandExecutionRequest(command_line=cmd)
+            decision = self.engine.evaluate(req, context)
+            self.assertFalse(decision.allowed, f"Command '{cmd}' should be denied")
+            self.assertEqual(decision.decision, "deny")
+
+    def test_policy_engine_denies_shell_write_to_src_when_inactive(self) -> None:
+        """PolicyEngine blocks shell commands targeting src/ or tests/ without active task."""
+        context = TrustedEnforcementContext(workspace_root=self.workspace, has_active_task=False)
+        for cmd in ["echo 'bad' > src/exploit.py", "rm -rf src/", "sed -i 's/a/b/' tests/test.py"]:
+            req = CommandExecutionRequest(command_line=cmd)
+            decision = self.engine.evaluate(req, context)
+            self.assertFalse(decision.allowed, f"Shell write '{cmd}' should be denied without active task")
+            self.assertEqual(decision.decision, "deny")
+
+    def test_policy_engine_denies_workspace_escape_write(self) -> None:
+        """PolicyEngine blocks file writes outside workspace root."""
+        context = TrustedEnforcementContext(workspace_root=self.workspace, has_active_task=True)
+        outside_path = self.workspace.parent / "escape.py"
+        req = FileWriteRequest(target_file=outside_path)
         decision = self.engine.evaluate(req, context)
         self.assertFalse(decision.allowed)
         self.assertEqual(decision.decision, "deny")
-        self.assertEqual(decision.rule_id, "NO_REMOTE_PUBLICATION")
+        self.assertEqual(decision.rule_id, "WORKSPACE_ESCAPE_PROHIBITED")
+
+    def test_policy_engine_denies_unknown_tools_fail_closed(self) -> None:
+        """PolicyEngine strictly denies unknown tool capabilities by default."""
+        verdict = evaluate_tool_invocation(
+            workspace=self.workspace,
+            tool_name="unauthorized_custom_tool",
+            tool_input={"param": "value"},
+        )
+        self.assertFalse(verdict.allowed)
+        self.assertEqual(verdict.decision, "deny")
 
     def test_policy_engine_enforces_active_task_for_src_writes(self) -> None:
         """PolicyEngine denies writes to src/ when has_active_task=False."""
@@ -149,3 +178,8 @@ class TestPolicyEngineDirect(unittest.TestCase):
         decision_allowed = self.engine.evaluate(req, context_active)
         self.assertTrue(decision_allowed.allowed)
         self.assertEqual(decision_allowed.decision, "allow")
+
+
+if __name__ == "__main__":
+    unittest.main()
+

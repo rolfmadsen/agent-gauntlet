@@ -186,8 +186,8 @@ MUTANTS = [
     (
         TARGET_MANIFEST,
         "MNF-M2 ignore file mode bit in manifest lines",
-        '    manifest_lines = "".join(f"{h} {m} {p}\\n" for p, h, m in sorted_items)',
-        '    manifest_lines = "".join(f"{h} 644 {p}\\n" for p, h, m in sorted_items)',
+        '        manifest_hasher.update(m.encode("ascii"))',
+        '        manifest_hasher.update(b"0")',
         CORE_TESTS,
     ),
     (
@@ -325,15 +325,15 @@ MUTANTS = [
     (
         TARGET_CLI,
         "CLI-M5 verify ignore unresolved criteria",
-        "            elif unresolved:\n                verdict = \"INCOMPLETE\"",
-        "            elif False:\n                verdict = \"INCOMPLETE\"",
+        "        elif unresolved:\n            verdict = \"INCOMPLETE\"",
+        "        elif False:\n            verdict = \"INCOMPLETE\"",
         CLI_TESTS,
     ),
     (
         TARGET_CLI,
         "CLI-M6 verify targeted test fail-open to PASSED",
-        "            if args.test_target:\n                verdict = \"PARTIAL\"",
-        "            if False:\n                verdict = \"PARTIAL\"",
+        "        elif args.test_target:\n            verdict = \"PARTIAL\"",
+        "        elif False:\n            verdict = \"PARTIAL\"",
         CLI_TESTS,
     ),
     (
