@@ -46,7 +46,9 @@ class TestCliAcceptance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main(["init", "-w", tmpdir, "--stack", "typescript", "--format", "json"])
+                exit_code = main(
+                    ["init", "-w", tmpdir, "--stack", "typescript", "--format", "json"]
+                )
             self.assertEqual(exit_code, 0)
             created_file = Path(tmpdir) / "gauntlet.json"
             self.assertTrue(created_file.exists())
@@ -92,7 +94,9 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)])
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)]
+                )
             self.assertEqual(exit_code, 0)
             self.assertIn("VALID", stdout.getvalue().upper())
             self.assertIn("LOCAL", stdout.getvalue().upper())
@@ -115,7 +119,9 @@ class TestCliAcceptance(unittest.TestCase):
 
             stderr = io.StringIO()
             with redirect_stderr(stderr):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", str(temp_path)])
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(temp_path)]
+                )
             self.assertEqual(exit_code, 1)
             self.assertIn("legacy v1 hmac evidence detected", stderr.getvalue().lower())
 
@@ -137,7 +143,16 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", str(temp_path), "--legacy-advisory"])
+                exit_code = main(
+                    [
+                        "check-evidence",
+                        "-w",
+                        str(ws),
+                        "--evidence-file",
+                        str(temp_path),
+                        "--legacy-advisory",
+                    ]
+                )
             self.assertEqual(exit_code, 0)
             self.assertIn("LEGACY_UNATTESTED", stdout.getvalue())
 
@@ -162,7 +177,9 @@ class TestCliAcceptance(unittest.TestCase):
 
             stderr = io.StringIO()
             with redirect_stderr(stderr):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", str(temp_path)])
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(temp_path)]
+                )
             self.assertEqual(exit_code, 1)
             self.assertIn("drift detected", stderr.getvalue().lower())
 
@@ -292,7 +309,6 @@ class TestCliAcceptance(unittest.TestCase):
             )
             task_file.write_text(initial_task_content, encoding="utf-8")
 
-
             # Create passing test file
             tests_dir = tmp_path / "tests"
             tests_dir.mkdir(parents=True, exist_ok=True)
@@ -304,15 +320,17 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "verify",
-                    "-w",
-                    str(tmp_path),
-                    "--task-id",
-                    "001-sample-task",
-                    "--test-target",
-                    "tests.test_sample",
-                ])
+                exit_code = main(
+                    [
+                        "verify",
+                        "-w",
+                        str(tmp_path),
+                        "--task-id",
+                        "001-sample-task",
+                        "--test-target",
+                        "tests.test_sample",
+                    ]
+                )
             self.assertEqual(exit_code, 0)
 
             # Assert verification-report.json was created and is unsigned Schema v2
@@ -331,7 +349,6 @@ class TestCliAcceptance(unittest.TestCase):
                 "verify must not mutate task markdown files (zero self-mutation invariant)",
             )
 
-
     def test_init_with_harness(self) -> None:
         """Scenario CLI-INIT-HARNESS: init accepts --harness and records it in ScaffoldResult."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -346,15 +363,17 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-PLUGIN-VALID: validate-plugin returns 0 for repo's plugin."""
         stdout = io.StringIO()
         with redirect_stdout(stdout):
-            exit_code = main([
-                "validate-plugin",
-                "-w",
-                str(self.workspace),
-                "--plugin-dir",
-                "plugins/agent-gauntlet",
-                "--harness",
-                "antigravity",
-            ])
+            exit_code = main(
+                [
+                    "validate-plugin",
+                    "-w",
+                    str(self.workspace),
+                    "--plugin-dir",
+                    "plugins/agent-gauntlet",
+                    "--harness",
+                    "antigravity",
+                ]
+            )
         self.assertEqual(exit_code, 0)
         self.assertIn("VALID", stdout.getvalue().upper())
 
@@ -362,14 +381,16 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-PLUGIN-JSON: validate-plugin --json outputs valid JSON."""
         stdout = io.StringIO()
         with redirect_stdout(stdout):
-            exit_code = main([
-                "validate-plugin",
-                "-w",
-                str(self.workspace),
-                "--plugin-dir",
-                "plugins/agent-gauntlet",
-                "--json",
-            ])
+            exit_code = main(
+                [
+                    "validate-plugin",
+                    "-w",
+                    str(self.workspace),
+                    "--plugin-dir",
+                    "plugins/agent-gauntlet",
+                    "--json",
+                ]
+            )
         self.assertEqual(exit_code, 0)
         data = json.loads(stdout.getvalue())
         self.assertTrue(data["valid"])
@@ -380,16 +401,17 @@ class TestCliAcceptance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "validate-plugin",
-                    "-w",
-                    str(self.workspace),
-                    "--plugin-dir",
-                    tmpdir,
-                ])
+                exit_code = main(
+                    [
+                        "validate-plugin",
+                        "-w",
+                        str(self.workspace),
+                        "--plugin-dir",
+                        tmpdir,
+                    ]
+                )
             self.assertEqual(exit_code, 1)
             self.assertIn("INVALID", stdout.getvalue().upper())
-
 
     def test_okf_validate_command(self) -> None:
         """Scenario CLI-OKF-VALIDATE: okf validate returns 0 for workspace documentation."""
@@ -416,19 +438,21 @@ class TestCliAcceptance(unittest.TestCase):
             test_file.write_text("# Test Document\nBody", encoding="utf-8")
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "okf",
-                    "stamp",
-                    str(test_file),
-                    "-w",
-                    tmpdir,
-                    "--type",
-                    "Task Package",
-                    "--status",
-                    "draft",
-                    "--generated-by",
-                    "antigravity/gemini-3.7-flash",
-                ])
+                exit_code = main(
+                    [
+                        "okf",
+                        "stamp",
+                        str(test_file),
+                        "-w",
+                        tmpdir,
+                        "--type",
+                        "Task Package",
+                        "--status",
+                        "draft",
+                        "--generated-by",
+                        "antigravity/gemini-3.7-flash",
+                    ]
+                )
             self.assertEqual(exit_code, 0)
             self.assertIn("Stamped OKF", stdout.getvalue())
             content = test_file.read_text(encoding="utf-8")
@@ -483,18 +507,20 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "check-attestation",
-                    "-w",
-                    str(ws),
-                    "-r",
-                    str(ws / "verification-report.json"),
-                    "-a",
-                    str(ws / "attestation.json"),
-                    "-p",
-                    str(ws / "trust-policy.json"),
-                    "--json",
-                ])
+                exit_code = main(
+                    [
+                        "check-attestation",
+                        "-w",
+                        str(ws),
+                        "-r",
+                        str(ws / "verification-report.json"),
+                        "-a",
+                        str(ws / "attestation.json"),
+                        "-p",
+                        str(ws / "trust-policy.json"),
+                        "--json",
+                    ]
+                )
             self.assertEqual(exit_code, 0)
             res = json.loads(stdout.getvalue())
             self.assertEqual(res["verification_result"], "PASSED")
@@ -539,16 +565,18 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "check-attestation",
-                    "-w",
-                    str(ws),
-                    "-r",
-                    str(ws / "verification-report.json"),
-                    "-a",
-                    str(ws / "attestation.json"),
-                    "--json",
-                ])
+                exit_code = main(
+                    [
+                        "check-attestation",
+                        "-w",
+                        str(ws),
+                        "-r",
+                        str(ws / "verification-report.json"),
+                        "-a",
+                        str(ws / "attestation.json"),
+                        "--json",
+                    ]
+                )
             self.assertEqual(exit_code, 1, "Failed verdict must reject release eligibility")
             res = json.loads(stdout.getvalue())
             self.assertEqual(res["verification_result"], "FAILED")
@@ -575,15 +603,19 @@ class TestCliAcceptance(unittest.TestCase):
 
             stderr = io.StringIO()
             with redirect_stderr(stderr):
-                exit_code = main([
-                    "check-attestation",
-                    "-w",
-                    str(ws),
-                    "-r",
-                    str(ws / "verification-report.json"),
-                    "--allow-unattested",
-                ])
-            self.assertEqual(exit_code, 1, "Drift must fail check-attestation even when unattested is allowed")
+                exit_code = main(
+                    [
+                        "check-attestation",
+                        "-w",
+                        str(ws),
+                        "-r",
+                        str(ws / "verification-report.json"),
+                        "--allow-unattested",
+                    ]
+                )
+            self.assertEqual(
+                exit_code, 1, "Drift must fail check-attestation even when unattested is allowed"
+            )
             self.assertIn("drift", stderr.getvalue().lower())
 
     def test_check_attestation_absent_attestation_fails_without_allow_flag(self) -> None:
@@ -609,14 +641,16 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "check-attestation",
-                    "-w",
-                    str(ws),
-                    "-r",
-                    str(ws / "verification-report.json"),
-                    "--json",
-                ])
+                exit_code = main(
+                    [
+                        "check-attestation",
+                        "-w",
+                        str(ws),
+                        "-r",
+                        str(ws / "verification-report.json"),
+                        "--json",
+                    ]
+                )
             self.assertEqual(exit_code, 1, "Must fail closed when attestation is absent")
             res = json.loads(stdout.getvalue())
             self.assertEqual(res["attestation_status"], "ABSENT")
@@ -645,20 +679,21 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "check-attestation",
-                    "-w",
-                    str(ws),
-                    "-r",
-                    str(ws / "verification-report.json"),
-                    "--allow-unattested",
-                    "--json",
-                ])
+                exit_code = main(
+                    [
+                        "check-attestation",
+                        "-w",
+                        str(ws),
+                        "-r",
+                        str(ws / "verification-report.json"),
+                        "--allow-unattested",
+                        "--json",
+                    ]
+                )
             self.assertEqual(exit_code, 1)
             res = json.loads(stdout.getvalue())
             self.assertEqual(res["verification_result"], "FAILED")
             self.assertFalse(res["release_eligible"])
-
 
     def test_verify_targeted_test_has_partial_verdict(self) -> None:
         """Scenario CLI-08: verify with --test-target produces PARTIAL verdict."""
@@ -674,16 +709,18 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "verify",
-                    "-w",
-                    str(ws),
-                    "--task-id",
-                    "001-bootstrap",
-                    "--test-target",
-                    "tests.test_dummy",
-                    "--json",
-                ])
+                exit_code = main(
+                    [
+                        "verify",
+                        "-w",
+                        str(ws),
+                        "--task-id",
+                        "001-bootstrap",
+                        "--test-target",
+                        "tests.test_dummy",
+                        "--json",
+                    ]
+                )
             self.assertEqual(exit_code, 0)
             data = json.loads(stdout.getvalue())
             self.assertEqual(data["verdict"], "PARTIAL")
@@ -716,15 +753,19 @@ class TestCliAcceptance(unittest.TestCase):
 
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main([
-                    "verify",
-                    "-w",
-                    str(ws),
-                    "--task-id",
-                    "001-open-task",
-                    "--json",
-                ])
-            self.assertEqual(exit_code, 1, "Unresolved criteria must cause verify to fail with exit code 1")
+                exit_code = main(
+                    [
+                        "verify",
+                        "-w",
+                        str(ws),
+                        "--task-id",
+                        "001-open-task",
+                        "--json",
+                    ]
+                )
+            self.assertEqual(
+                exit_code, 1, "Unresolved criteria must cause verify to fail with exit code 1"
+            )
             data = json.loads(stdout.getvalue())
             self.assertEqual(data["verdict"], "INCOMPLETE")
 
@@ -751,7 +792,9 @@ class TestCliAcceptance(unittest.TestCase):
 
             stderr = io.StringIO()
             with redirect_stderr(stderr):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)])
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)]
+                )
             self.assertEqual(exit_code, 1)
             self.assertIn("non-passed verdict", stderr.getvalue().lower())
 
@@ -780,7 +823,9 @@ class TestCliAcceptance(unittest.TestCase):
 
             stderr = io.StringIO()
             with redirect_stderr(stderr):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)])
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)]
+                )
             self.assertEqual(exit_code, 1)
             self.assertIn("failed check", stderr.getvalue().lower())
 
@@ -811,7 +856,9 @@ class TestCliAcceptance(unittest.TestCase):
 
             stderr = io.StringIO()
             with redirect_stderr(stderr):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)])
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)]
+                )
             self.assertEqual(exit_code, 1)
             self.assertIn("unresolved acceptance criteria", stderr.getvalue().lower())
 
@@ -821,7 +868,9 @@ class TestCliAcceptance(unittest.TestCase):
             ws = Path(tmpdir)
             stderr = io.StringIO()
             with redirect_stderr(stderr):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", "nonexistent.json"])
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", "nonexistent.json"]
+                )
             self.assertEqual(exit_code, 1)
             self.assertIn("does not exist", stderr.getvalue().lower())
 
@@ -833,7 +882,9 @@ class TestCliAcceptance(unittest.TestCase):
             bad_file.write_text("not json content", encoding="utf-8")
             stderr = io.StringIO()
             with redirect_stderr(stderr):
-                exit_code = main(["check-evidence", "-w", str(ws), "--evidence-file", str(bad_file)])
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(bad_file)]
+                )
             self.assertEqual(exit_code, 1)
             self.assertIn("failed to parse", stderr.getvalue().lower())
 
@@ -901,7 +952,3 @@ class TestCliAcceptance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-
-
-

@@ -55,7 +55,9 @@ class VerificationReportEngine:
             "execution_metadata": {
                 "started_at": report.execution_metadata.started_at,
                 "finished_at": report.execution_metadata.finished_at,
-                "total_duration_seconds": round(report.execution_metadata.total_duration_seconds, 3),
+                "total_duration_seconds": round(
+                    report.execution_metadata.total_duration_seconds, 3
+                ),
                 "environment": report.execution_metadata.environment,
             },
             "checks": [
@@ -177,14 +179,22 @@ class VerificationReportEngine:
             return "MALFORMED_PAYLOAD"
 
         if data.get("schema_version") == "2.0.0" or "workspace_state" in data:
-            return "LOCAL_UNATTESTED" if data.get("execution_origin") == "LOCAL" else "CI_UNPRIVILEGED"
+            return (
+                "LOCAL_UNATTESTED" if data.get("execution_origin") == "LOCAL" else "CI_UNPRIVILEGED"
+            )
         if "signature" in data or "source_tree_hash" in data:
             return "LEGACY_UNATTESTED"
 
         return "UNKNOWN_PAYLOAD"
 
-    def verify_workspace_state_match(self, report: VerificationReport, current_manifest_digest: str) -> bool:
-        """Verify that report post-execution manifest matches current workspace state."""
+    def verify_workspace_state_match(
+        self,
+        report: VerificationReport,
+        current_manifest_digest: str,
+        current_policy_digest: str = "",
+        current_config_digest: str = "",
+    ) -> bool:
+        """Verify that report post-execution manifest matches current workspace state, policy, and config."""
         report_digest = str(report.workspace_state.source_manifest_digest_post or "")
         cur_digest = str(current_manifest_digest or "")
         if not report_digest or not cur_digest:
@@ -193,7 +203,24 @@ class VerificationReportEngine:
             report_digest = report_digest[:16]
         elif len(report_digest) == 16 and len(cur_digest) > 16:
             cur_digest = cur_digest[:16]
-        return hmac.compare_digest(report_digest, cur_digest)
+        if not hmac.compare_digest(report_digest, cur_digest):
+            return False
+
+        # Verify policy digest match (e.g. .agents/, .github/, spec.md, CONTEXT.md)
+        if report.workspace_state.policy_digest and current_policy_digest:
+            rep_pol = report.workspace_state.policy_digest
+            cur_pol = current_policy_digest
+            if not hmac.compare_digest(rep_pol, cur_pol):
+                return False
+
+        # Verify config digest match (e.g. gauntlet.toml, pyproject.toml)
+        if report.workspace_state.config_digest and current_config_digest:
+            rep_cfg = report.workspace_state.config_digest
+            cur_cfg = current_config_digest
+            if not hmac.compare_digest(rep_cfg, cur_cfg):
+                return False
+
+        return True
 
     def generate_report_markdown(
         self,
@@ -227,7 +254,9 @@ class VerificationReportEngine:
         if report.task_contract.acceptance_criteria:
             lines.extend(["", "## Acceptance Criteria", ""])
             for crit in report.task_contract.acceptance_criteria:
-                status_icon = "[x]" if crit not in report.task_contract.unresolved_criteria else "[ ]"
+                status_icon = (
+                    "[x]" if crit not in report.task_contract.unresolved_criteria else "[ ]"
+                )
                 lines.append(f"- {status_icon} {crit}")
 
         lines.extend(
@@ -242,7 +271,9 @@ class VerificationReportEngine:
             ]
         )
         for c in report.checks:
-            lines.append(f"| `{c.name}` | `{c.status}` | `{c.exit_code}` | `{c.duration_seconds:.3f}s` |")
+            lines.append(
+                f"| `{c.name}` | `{c.status}` | `{c.exit_code}` | `{c.duration_seconds:.3f}s` |"
+            )
 
         lines.extend(["", "---", ""])
         return "\n".join(lines)

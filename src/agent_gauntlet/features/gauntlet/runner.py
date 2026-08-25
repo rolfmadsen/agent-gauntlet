@@ -117,4 +117,3 @@ def run_gauntlet(
         layers=results,
         total_duration_seconds=total_duration,
     )
-

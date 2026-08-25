@@ -33,7 +33,16 @@ def get_python_default_layers() -> list[LayerDefinition]:
         ),
         LayerDefinition(
             name="invariants",
-            command=[sys.executable, "-m", "unittest", "discover", "-s", "tests", "-p", "*propert*.py"],
+            command=[
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "*propert*.py",
+            ],
             optional=True,
             timeout_seconds=60.0,
         ),

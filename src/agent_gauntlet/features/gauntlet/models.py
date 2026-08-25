@@ -62,4 +62,3 @@ class GauntletReport:
     success: bool
     layers: list[LayerResult] = field(default_factory=list)
     total_duration_seconds: float = 0.0
-

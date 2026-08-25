@@ -79,10 +79,17 @@ class AntigravityAdapter:
                 payload=args,
             )
 
-        if tool_name in ("view_file", "list_dir", "grep_search", "read_url_content"):
+        if tool_name in (
+            "view_file",
+            "list_dir",
+            "grep_search",
+            "find_by_name",
+            "read_url_content",
+        ):
             target_res = str(
                 args.get("AbsolutePath")
                 or args.get("SearchPath")
+                or args.get("SearchDirectory")
                 or args.get("DirectoryPath")
                 or args.get("Url")
                 or ""

@@ -4,41 +4,43 @@
   "execution_origin": "LOCAL",
   "verdict": "PASSED",
   "task_contract": {
-    "task_id": "022-p0-security-and-trust-hardening-suite",
-    "task_title": "Task 022: P0 Security, Policy Engine and Attestation Hardening Suite",
-    "task_digest": "bf675e898fa330bc84e91e709c5df9e0dc72efeaa5821800b60d9fef5c73ed2f",
+    "task_id": "023-p0-audit-remediation-and-cryptographic-attestation",
+    "task_title": "Task 023: P0 Audit Remediation, Cryptographic Sigstore DSSE & Official Hook Schema",
+    "task_digest": "0e5c99721f25b9d9187a63030d96a1142450ee98a24ee6d53bd2dd8a4cc0ccbc",
     "acceptance_criteria": [
-      "Manifest formatering beskytter mod newline-injektion og hasher kun executable-bit (0 eller 1).",
-      "`.agents/hooks.json` og `.github/` filer inkluderes i canonical manifest / policy checks.",
-      "`PolicyEngine` afviser ukendte v\u00e6rkt\u00f8jer, ukendte commands, destruktiv git (`clean`, `reset --hard`) og shell-skrivninger til beskyttede stier.",
-      "`.agents/hooks.json` skema tilpasses officiel Google Antigravity `PreToolUse` kontrakt.",
-      "`verify` fejler hvis $Digest_{pre} \\ne Digest_{post}$, og fejlende checks markerer k\u00f8rslen `PARTIAL` eller `FAILED`.",
-      "`AttestationEngine` underst\u00f8tter Sigstore Bundle v0.2 med base64 DSSE in-toto payload.",
-      "`.github/workflows/ci.yml` `attest`-job fjerner checkout og downloader kun `verification-report` artifact.",
+      "`AttestationEngine` verificerer Sigstore Bundle v0.2 / v0.3 kryptografisk via ECDSA SHA-256 og RSA over DSSE PAE bytes, parser Fulcio x509 certifikater og OIDC extensions, og afviser opdigtede signaturer som `INVALID`.",
+      "`TrustPolicyEngine` afviser `LOCAL` rapporter n\u00e5r `minimum_origin = CI_PROTECTED` og h\u00e5ndh\u00e6ver `allowed_runner_environments`.",
+      "`.agents/hooks.json` og `plugins/agent-gauntlet/hooks.json` f\u00f8lger det officielle Google Antigravity schema (`{\"agent-gauntlet-gatekeeper\": {\"PreToolUse\": [...]}}`).",
+      "`AntigravityPluginValidator` validerer den komplette hooks-struktur mekanisk og fanger ulovlige hooks, manglende handlers og ugyldige felter.",
+      "`PolicyEngine` i `gatekeeper.py` blokerer `git -C . push`, `git clean -d -f`, `printf x >src/pwn.py`, og shell/python skrivninger til beskyttede mapper uden aktiv task.",
+      "`.github/workflows/ci.yml` pinner alle actions til 40-tegns commit-SHA'er og binder k\u00f8rslen til task 023.",
+      "`check-evidence` og `check-attestation` fejler hvis `.agents/hooks.json`, `.github/`, eller `gauntlet.toml` er \u00e6ndret (policy drift).",
+      "`cli.py` er refaktoreret til ren orkestrering (< 300 linjer) med `features/evidence/verifier.py` og `task_resolver.py`.",
+      "Resterende HMAC-referencer i `ROADMAP.md` og `plugins/agent-gauntlet/README.md` er fjernet.",
       "0 Pyright fejl, 0 Ruff fejl, 100% mutants killed, alle tests best\u00e5et."
     ],
     "unresolved_criteria": []
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "eece8d747bc8edbd542973bcc57385757dac363688234ab2c8a211cff099a6b9",
-    "source_manifest_digest_pre": "001896538bd9e29e9e62b1d69e9cb866855f57f959ddcaef362e10a9e8a79603",
-    "source_manifest_digest_post": "001896538bd9e29e9e62b1d69e9cb866855f57f959ddcaef362e10a9e8a79603",
+    "source_content_digest": "57044f7a20a4a23793a4e599570d3c9900494445de88a5e57640d6f52aff7f8a",
+    "source_manifest_digest_pre": "93088c0e26003bf7194dc4db3c2dd2e62477c293f2d3804c8d09e85af0bcd7f9",
+    "source_manifest_digest_post": "93088c0e26003bf7194dc4db3c2dd2e62477c293f2d3804c8d09e85af0bcd7f9",
     "config_digest": "26a2728e71f545b3962610cb27980d7578cbee5ad274585d04469da11b4a5181",
-    "policy_digest": "f975d380cb98a64f51f57056009f3252ed338b1bc0d94a1f6de9140dd874615e",
+    "policy_digest": "20b53017100a1be9e47e67eb8f6fe8dbf0604f8e87d81a1d944298d4bcab219c",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
-    "included_files_count": 80,
+    "included_files_count": 82,
     "vcs": {
       "type": "git",
-      "head": "6cc560b",
-      "commit": "6688684",
+      "head": "81d0751",
+      "commit": "81d0751",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-25T19:31:43Z",
-    "finished_at": "2026-08-25T19:32:08Z",
-    "total_duration_seconds": 25.2,
+    "started_at": "2026-08-25T20:27:01Z",
+    "finished_at": "2026-08-25T20:27:26Z",
+    "total_duration_seconds": 25.786,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -50,7 +52,7 @@
       "name": "lint",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.036,
+      "duration_seconds": 0.041,
       "optional": true,
       "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
     },
@@ -58,7 +60,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.187,
+      "duration_seconds": 1.264,
       "optional": true,
       "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
     },
@@ -66,23 +68,23 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.114,
+      "duration_seconds": 1.146,
       "optional": false,
-      "log_digest": "bdb0a05a8571c683bab3058b6092b14e32d843ee0cc7a8a4ce15465e7c9ccb7c"
+      "log_digest": "c0bdcd5ad486ffe5e84e391dc20789e9d7e72f7bfcf66c03975c36ebb963d64d"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.291,
+      "duration_seconds": 0.311,
       "optional": true,
-      "log_digest": "6f072cc3cb3d73ce47ef168ca96caf5e6924a90a035f777f7c6a7e02caf71816"
+      "log_digest": "1ec43b37a7f3865f9f12233dcfff3e2295df7c797ddaf4b53294e6c7bdb1bf45"
     },
     {
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 22.535,
+      "duration_seconds": 22.977,
       "optional": true,
       "log_digest": "2dd3a56b01138f567189d4446c9d487e49cd5b847d19e1424b221cce8a76b667"
     }

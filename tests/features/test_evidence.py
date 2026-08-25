@@ -44,11 +44,19 @@ class TestVerificationReportEngine(unittest.TestCase):
                 started_at="2026-08-25T15:27:37.100Z",
                 finished_at="2026-08-25T15:27:49.250Z",
                 total_duration_seconds=12.15,
-                environment={"python_version": "3.12.3", "platform": "linux-x86_64", "gauntlet_version": "0.2.0"},
+                environment={
+                    "python_version": "3.12.3",
+                    "platform": "linux-x86_64",
+                    "gauntlet_version": "0.2.0",
+                },
             ),
             checks=[
-                CheckSummary(name="unit-tests", status="PASSED", exit_code=0, duration_seconds=0.12),
-                CheckSummary(name="mutation-testing", status="PASSED", exit_code=0, duration_seconds=1.45),
+                CheckSummary(
+                    name="unit-tests", status="PASSED", exit_code=0, duration_seconds=0.12
+                ),
+                CheckSummary(
+                    name="mutation-testing", status="PASSED", exit_code=0, duration_seconds=1.45
+                ),
             ],
         )
 
@@ -83,7 +91,10 @@ class TestVerificationReportEngine(unittest.TestCase):
         self.assertEqual(loaded.schema_version, "2.0.0")
         self.assertEqual(loaded.verdict, "PASSED")
         self.assertEqual(loaded.task_contract.task_id, "016-cryptographic-cleanup")
-        self.assertEqual(loaded.workspace_state.source_manifest_digest_post, self.sample_report.workspace_state.source_manifest_digest_post)
+        self.assertEqual(
+            loaded.workspace_state.source_manifest_digest_post,
+            self.sample_report.workspace_state.source_manifest_digest_post,
+        )
         self.assertEqual(len(loaded.checks), 2)
         self.assertEqual(loaded.checks[0].name, "unit-tests")
 
@@ -103,7 +114,9 @@ class TestVerificationReportEngine(unittest.TestCase):
 
     def test_markdown_report_generation(self) -> None:
         """Scenario: Markdown rendering includes task contract, checks table, and manifest digests."""
-        md = self.engine.generate_report_markdown(self.sample_report, title="Local Verification Report")
+        md = self.engine.generate_report_markdown(
+            self.sample_report, title="Local Verification Report"
+        )
 
         self.assertIn("# Local Verification Report", md)
         self.assertIn("016-cryptographic-cleanup", md)
@@ -137,13 +150,15 @@ class TestVerificationReportEngine(unittest.TestCase):
 
     def test_legacy_evidence_classification(self) -> None:
         """Scenario: Legacy v1 evidence.json with HMAC signature is classified as LEGACY_UNATTESTED."""
-        legacy_json = json.dumps({
-            "task_id": "legacy-task-001",
-            "status": "PASSED",
-            "source_tree_hash": "a1b2c3d4e5f60011",
-            "signature": "e9b5f...legacy-hmac",
-            "checks": [{"name": "unit", "passed": True, "exit_code": 0}],
-        })
+        legacy_json = json.dumps(
+            {
+                "task_id": "legacy-task-001",
+                "status": "PASSED",
+                "source_tree_hash": "a1b2c3d4e5f60011",
+                "signature": "e9b5f...legacy-hmac",
+                "checks": [{"name": "unit", "passed": True, "exit_code": 0}],
+            }
+        )
         classification = self.engine.classify_evidence_payload(legacy_json)
         self.assertEqual(classification, "LEGACY_UNATTESTED")
 

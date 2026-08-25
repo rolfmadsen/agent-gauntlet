@@ -17,7 +17,9 @@ def extract_ruff_findings(output: str) -> list[DiagnosticFinding]:
 
     for match in pattern.finditer(output):
         file_path, line_str, col_str, code, msg = match.groups()
-        hint = f"Resolve Ruff rule {code}. Run 'ruff check --fix' or adjust code formatting/imports."
+        hint = (
+            f"Resolve Ruff rule {code}. Run 'ruff check --fix' or adjust code formatting/imports."
+        )
         if code.startswith("F401"):
             hint = "Unused import: Remove the unused import statement or use the symbol."
         elif code.startswith("E501"):
@@ -76,7 +78,13 @@ def extract_eslint_findings(output: str) -> list[DiagnosticFinding]:
     if not findings:
         current_file = ""
         for line in output.splitlines():
-            if line.startswith("/") or line.startswith("./") or line.endswith(".ts") or line.endswith(".tsx") or line.endswith(".js"):
+            if (
+                line.startswith("/")
+                or line.startswith("./")
+                or line.endswith(".ts")
+                or line.endswith(".tsx")
+                or line.endswith(".js")
+            ):
                 if not line.startswith(" "):
                     current_file = line.strip()
             m = pattern2.match(line)

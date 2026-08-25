@@ -23,6 +23,7 @@ TARGET_VALIDATOR = ROOT / "src/agent_gauntlet/features/adapters/antigravity/vali
 TARGET_OKF_VALIDATOR = ROOT / "src/agent_gauntlet/features/okf/validator.py"
 TARGET_OKF_STAMPER = ROOT / "src/agent_gauntlet/features/okf/stamper.py"
 TARGET_CLI = ROOT / "src/agent_gauntlet/cli.py"
+TARGET_VERIFIER = ROOT / "src/agent_gauntlet/features/evidence/verifier.py"
 
 
 def _clean_pycache() -> None:
@@ -72,7 +73,7 @@ MUTANTS = [
     (
         TARGET_RUNNER,
         "M1 drop empty layers validation",
-        "    if not layers:\n        raise ValueError(\"Gauntlet requires at least one verification layer\")\n",
+        '    if not layers:\n        raise ValueError("Gauntlet requires at least one verification layer")\n',
         "",
         CORE_TESTS,
     ),
@@ -143,14 +144,14 @@ MUTANTS = [
     (
         TARGET_AUTHORITY,
         "VR-M1 fail-open on drifted manifest match",
-        "        return hmac.compare_digest(report_digest, cur_digest)",
-        "        return True",
+        "        if not hmac.compare_digest(report_digest, cur_digest):",
+        "        if False and not hmac.compare_digest(report_digest, cur_digest):",
         CORE_TESTS,
     ),
     (
         TARGET_AUTHORITY,
         "VR-M2 always reject manifest match",
-        "        return hmac.compare_digest(report_digest, cur_digest)",
+        "        return True",
         "        return False",
         CORE_TESTS,
     ),
@@ -223,7 +224,7 @@ MUTANTS = [
     (
         TARGET_ATTESTATION,
         "ATT-M1 bypass subject digest comparison",
-        "        if not bundle.subject_digest or not hmac.compare_digest(bundle.subject_digest, expected_subject_digest):",
+        "        if not bundle.subject_digest or not hmac.compare_digest(\n            bundle.subject_digest, expected_subject_digest\n        ):",
         "        if False:",
         CORE_TESTS,
     ),
@@ -231,8 +232,8 @@ MUTANTS = [
     (
         TARGET_GATEKEEPER,
         "GK-M1 gatekeeper bypass active task check",
-        "                if not context.has_active_task:",
-        "                if False:",
+        "            if is_protected and not context.has_active_task:",
+        "            if False:",
         HOOK_TESTS,
     ),
     (
@@ -293,61 +294,61 @@ MUTANTS = [
         "                    if False:",
         ADAPTER_TESTS,
     ),
-    # --- cli mutants ---
+    # --- cli & verifier mutants ---
     (
-        TARGET_CLI,
+        TARGET_VERIFIER,
         "CLI-M1 check-evidence fail-open on legacy evidence",
-        '        if classification == "LEGACY_UNATTESTED":',
-        "        if False:",
+        '    if classification == "LEGACY_UNATTESTED":',
+        "    if False:",
         CLI_TESTS,
     ),
     (
-        TARGET_CLI,
+        TARGET_VERIFIER,
         "CLI-M2 check-evidence fail-open on drifted manifest match",
-        "        if not engine.verify_workspace_state_match(report_obj, current_manifest.source_manifest_digest):",
-        "        if False:",
+        "    if not engine.verify_workspace_state_match(\n        report_obj,\n        current_manifest.source_manifest_digest,\n        current_manifest.policy_digest,\n        current_manifest.config_digest,\n    ):",
+        "    if False:",
         CLI_TESTS,
     ),
     (
-        TARGET_CLI,
+        TARGET_VERIFIER,
         "CLI-M3 check-attestation ignore drift error",
-        "        if not report_engine.verify_workspace_state_match(report_obj, current_manifest.source_manifest_digest):",
-        "        if False:",
+        "    if not report_engine.verify_workspace_state_match(\n        report_obj,\n        current_manifest.source_manifest_digest,\n        current_manifest.policy_digest,\n        current_manifest.config_digest,\n    ):",
+        "    if False:",
         CLI_TESTS,
     ),
     (
-        TARGET_CLI,
+        TARGET_VERIFIER,
         "CLI-M4 check-attestation fail-open on failed verdict",
-        "        if args.allow_unattested and attestation_status_val == AttestationStatus.ABSENT.value:",
-        "        if True:",
+        "    if allow_unattested and attestation_status_val == AttestationStatus.ABSENT.value:",
+        "    if True:",
         CLI_TESTS,
     ),
     (
         TARGET_CLI,
         "CLI-M5 verify ignore unresolved criteria",
-        "        elif unresolved:\n            verdict = \"INCOMPLETE\"",
-        "        elif False:\n            verdict = \"INCOMPLETE\"",
+        '        elif unresolved:\n            verdict = "INCOMPLETE"',
+        '        elif False:\n            verdict = "INCOMPLETE"',
         CLI_TESTS,
     ),
     (
         TARGET_CLI,
         "CLI-M6 verify targeted test fail-open to PASSED",
-        "        elif args.test_target:\n            verdict = \"PARTIAL\"",
-        "        elif False:\n            verdict = \"PARTIAL\"",
+        '        elif args.test_target:\n            verdict = "PARTIAL"',
+        '        elif False:\n            verdict = "PARTIAL"',
         CLI_TESTS,
     ),
     (
-        TARGET_CLI,
+        TARGET_VERIFIER,
         "CLI-M7 check-evidence fail-open on unresolved criteria",
-        "        if report_obj.task_contract.unresolved_criteria:",
-        "        if False:",
+        "    if report_obj.task_contract.unresolved_criteria:",
+        "    if False:",
         CLI_TESTS,
     ),
     (
-        TARGET_CLI,
+        TARGET_VERIFIER,
         "CLI-M8 check-evidence fail-open on failed checks",
-        "        if failed_checks:",
-        "        if False:",
+        "    if failed_checks:",
+        "    if False:",
         CLI_TESTS,
     ),
     (
@@ -491,14 +492,15 @@ def main() -> int:
         TARGET_OKF_VALIDATOR: TARGET_OKF_VALIDATOR.read_text(),
         TARGET_OKF_STAMPER: TARGET_OKF_STAMPER.read_text(),
         TARGET_CLI: TARGET_CLI.read_text(),
+        TARGET_VERIFIER: TARGET_VERIFIER.read_text(),
     }
 
     try:
         for target_file, name, old, new, tests in MUTANTS:
             original = originals[target_file]
-            assert (
-                original.count(old) == 1
-            ), f"{name}: pattern '{old}' not unique (count={original.count(old)}) in {target_file.name}"
+            assert original.count(old) == 1, (
+                f"{name}: pattern '{old}' not unique (count={original.count(old)}) in {target_file.name}"
+            )
             returncode = run_mutant(target_file, original, old, new, tests)
             target_file.write_text(original)
 

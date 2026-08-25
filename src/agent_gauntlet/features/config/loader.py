@@ -116,23 +116,23 @@ def generate_default_config_toml(stack: str) -> str:
     """Generate default gauntlet.toml file content for a given stack."""
     layers = get_default_stack_profile(stack)
     lines = [
-        f'# agent-gauntlet configuration for {stack}',
+        f"# agent-gauntlet configuration for {stack}",
         f'stack = "{stack}"',
-        'save_evidence = true',
+        "save_evidence = true",
         'evidence_file = "evidence.json"',
         'evidence_markdown_file = "evidence.md"',
-        '',
+        "",
     ]
     for layer in layers:
-        lines.append('[[layers]]')
+        lines.append("[[layers]]")
         lines.append(f'name = "{layer.name}"')
         cmd_json = json.dumps(list(layer.command))
-        lines.append(f'command = {cmd_json}')
-        lines.append(f'optional = {"true" if layer.optional else "false"}')
-        lines.append(f'timeout_seconds = {layer.timeout_seconds}')
-        lines.append('')
+        lines.append(f"command = {cmd_json}")
+        lines.append(f"optional = {'true' if layer.optional else 'false'}")
+        lines.append(f"timeout_seconds = {layer.timeout_seconds}")
+        lines.append("")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def generate_default_config_json(stack: str) -> str:

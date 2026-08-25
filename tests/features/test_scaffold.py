@@ -65,7 +65,9 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
         context_file.write_text(custom_content, encoding="utf-8")
 
         # Re-run scaffold without force
-        second_result = self.scaffolder.scaffold(self.workspace, stack="python", config_format="toml", force=False)
+        second_result = self.scaffolder.scaffold(
+            self.workspace, stack="python", config_format="toml", force=False
+        )
 
         self.assertTrue(second_result.success)
         # Verify content was NOT overwritten
@@ -82,13 +84,17 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
         context_file = self.workspace / "CONTEXT.md"
         context_file.write_text("Old Modified Content", encoding="utf-8")
 
-        force_result = self.scaffolder.scaffold(self.workspace, stack="python", config_format="toml", force=True)
+        force_result = self.scaffolder.scaffold(
+            self.workspace, stack="python", config_format="toml", force=True
+        )
 
         self.assertTrue(force_result.success)
         # Content should be restored to default template
         self.assertIn("Aristotle", context_file.read_text(encoding="utf-8"))
 
-        overwritten_entries = [e for e in force_result.entries if e.status == ScaffoldStatus.OVERWRITTEN]
+        overwritten_entries = [
+            e for e in force_result.entries if e.status == ScaffoldStatus.OVERWRITTEN
+        ]
         self.assertGreater(len(overwritten_entries), 0)
 
 

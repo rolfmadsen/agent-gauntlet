@@ -248,11 +248,18 @@ DEFAULT_CLAUDE_MD = """# Claude Code Guidelines: agent-gauntlet
 
 
 DEFAULT_HOOKS_JSON = """{
-  "hooks": {
+  "agent-gauntlet-gatekeeper": {
+    "enabled": true,
     "PreToolUse": [
       {
         "matcher": ".*",
-        "command": "python3 -m agent_gauntlet.features.adapters.antigravity.hook"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m agent_gauntlet.features.adapters.antigravity.hook",
+            "timeout": 30
+          }
+        ]
       }
     ]
   }
@@ -311,8 +318,14 @@ class ProjectScaffolder:
             if force:
                 target_path.parent.mkdir(parents=True, exist_ok=True)
                 target_path.write_text(content, encoding="utf-8")
-                return ScaffoldEntry(path=rel_path, status=ScaffoldStatus.OVERWRITTEN, description=description)
-            return ScaffoldEntry(path=rel_path, status=ScaffoldStatus.SKIPPED, description=f"{description} (already exists)")
+                return ScaffoldEntry(
+                    path=rel_path, status=ScaffoldStatus.OVERWRITTEN, description=description
+                )
+            return ScaffoldEntry(
+                path=rel_path,
+                status=ScaffoldStatus.SKIPPED,
+                description=f"{description} (already exists)",
+            )
 
         target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.write_text(content, encoding="utf-8")
@@ -425,10 +438,22 @@ class ProjectScaffolder:
 
         # 6. Bundled skills in .agents/skills/
         skills_map = {
-            ".agents/skills/old-coder/SKILL.md": (SKILL_OLD_CODER, "Evidence-first development skill"),
-            ".agents/skills/grill-me/SKILL.md": (SKILL_GRILL_ME, "Socratic interview sparring skill"),
-            ".agents/skills/grill-with-docs/SKILL.md": (SKILL_GRILL_WITH_DOCS, "Domain model & ADR sparring skill"),
-            ".agents/skills/diagnose/SKILL.md": (SKILL_DIAGNOSE, "Disciplined diagnosis loop skill"),
+            ".agents/skills/old-coder/SKILL.md": (
+                SKILL_OLD_CODER,
+                "Evidence-first development skill",
+            ),
+            ".agents/skills/grill-me/SKILL.md": (
+                SKILL_GRILL_ME,
+                "Socratic interview sparring skill",
+            ),
+            ".agents/skills/grill-with-docs/SKILL.md": (
+                SKILL_GRILL_WITH_DOCS,
+                "Domain model & ADR sparring skill",
+            ),
+            ".agents/skills/diagnose/SKILL.md": (
+                SKILL_DIAGNOSE,
+                "Disciplined diagnosis loop skill",
+            ),
         }
 
         # If source skills directory is provided or exists in repo, copy them
@@ -444,7 +469,9 @@ class ProjectScaffolder:
             target_skill_file = workspace / skill_rel_path
             content_to_write = default_content
             if installed_skills_dir:
-                source_file = installed_skills_dir / Path(skill_rel_path).relative_to(".agents/skills")
+                source_file = installed_skills_dir / Path(skill_rel_path).relative_to(
+                    ".agents/skills"
+                )
                 if source_file.is_file():
                     try:
                         content_to_write = source_file.read_text(encoding="utf-8")

@@ -146,7 +146,11 @@ def compute_workspace_manifest(
         if not candidate.exists() and not candidate.is_symlink():
             continue
 
-        file_paths = [candidate] if (candidate.is_file() or candidate.is_symlink()) else list(candidate.rglob("*"))
+        file_paths = (
+            [candidate]
+            if (candidate.is_file() or candidate.is_symlink())
+            else list(candidate.rglob("*"))
+        )
 
         for path in file_paths:
             if not path.is_file() and not path.is_symlink():
@@ -210,7 +214,11 @@ def compute_workspace_manifest(
     source_content_digest = content_hasher.hexdigest()
 
     # Auxiliary digests
-    config_files = [target_root / "gauntlet.toml", target_root / "gauntlet.json", target_root / "pyproject.toml"]
+    config_files = [
+        target_root / "gauntlet.toml",
+        target_root / "gauntlet.json",
+        target_root / "pyproject.toml",
+    ]
     config_digest = _compute_digest_of_files(target_root, config_files)
 
     task_dir = target_root / "tasks"
@@ -240,7 +248,9 @@ def compute_workspace_manifest(
         head_res = _git(target_root, "rev-parse", "--short", "HEAD", check=False)
         if head_res.returncode == 0:
             head = os.fsdecode(head_res.stdout).strip()
-            commit_res = _git(target_root, "log", "-1", "--format=%h", "--", *target_scopes, check=False)
+            commit_res = _git(
+                target_root, "log", "-1", "--format=%h", "--", *target_scopes, check=False
+            )
             commit = os.fsdecode(commit_res.stdout).strip() if commit_res.returncode == 0 else head
             status_res = _git(target_root, "status", "--porcelain", check=False)
             is_dirty = bool(status_res.stdout.strip())

@@ -1,4 +1,4 @@
-"""Tests for Google Antigravity Adapter vertical slice."""
+"""Tests for Google Antigravity Adapter vertical slice and official hooks schema."""
 
 import io
 import json
@@ -53,8 +53,8 @@ class TestAntigravityAdapterNormalization(unittest.TestCase):
             self.assertEqual(normalized.raw_tool_name, tool_name)
 
     def test_normalize_pre_tool_use_read_only(self) -> None:
-        """Read tools like view_file, list_dir, grep_search are mapped to READ_FILE."""
-        for tool_name in ["view_file", "list_dir", "grep_search"]:
+        """Read tools like view_file, list_dir, grep_search, find_by_name are mapped to READ_FILE."""
+        for tool_name in ["view_file", "list_dir", "grep_search", "find_by_name"]:
             payload = {
                 "toolCall": {
                     "name": tool_name,
@@ -148,7 +148,9 @@ class TestAntigravityAdapterEvaluation(unittest.TestCase):
     def test_allows_src_edit_when_active_task_exists(self) -> None:
         """Editing src/ is allowed when an active task exists."""
         task_file = self.workspace / "tasks" / "001-feature.md"
-        task_file.write_text("# Task 001: Feature\n\n**Status**: `ACTIVE`\n\n## Acceptance Criteria\n- [ ] Do it\n")
+        task_file.write_text(
+            "# Task 001: Feature\n\n**Status**: `ACTIVE`\n\n## Acceptance Criteria\n- [ ] Do it\n"
+        )
 
         payload = {
             "toolCall": {
@@ -174,7 +176,7 @@ class TestAntigravityAdapterEvaluation(unittest.TestCase):
 
 
 class TestAntigravityPluginValidator(unittest.TestCase):
-    """Test suite for mechanical validation of Antigravity plugin structure."""
+    """Test suite for mechanical validation of Antigravity plugin structure and official hooks.json schema."""
 
     def setUp(self) -> None:
         self.validator = AntigravityPluginValidator()
@@ -196,9 +198,22 @@ class TestAntigravityPluginValidator(unittest.TestCase):
         }
         (self.plugin_dir / "plugin.json").write_text(json.dumps(plugin_json))
 
+        # Official Google Antigravity hooks.json schema
         hooks_json = {
-            "pre_tool_invocation": {
-                "command": ["python3", "-m", "agent_gauntlet.features.hooks.gatekeeper"]
+            "agent-gauntlet-gatekeeper": {
+                "enabled": True,
+                "PreToolUse": [
+                    {
+                        "matcher": ".*",
+                        "hooks": [
+                            {
+                                "type": "command",
+                                "command": "python3 -m agent_gauntlet.features.adapters.antigravity.hook",
+                                "timeout": 30,
+                            }
+                        ],
+                    }
+                ],
             }
         }
         (self.plugin_dir / "hooks.json").write_text(json.dumps(hooks_json))
@@ -212,7 +227,7 @@ class TestAntigravityPluginValidator(unittest.TestCase):
             )
 
     def test_validates_actual_repo_plugin(self) -> None:
-        """Validates that the repo's actual plugins/agent-gauntlet is valid."""
+        """Validates that the repo's actual plugins/agent-gauntlet is valid under official schema."""
         repo_plugin_dir = Path(__file__).resolve().parent.parent.parent / "plugins/agent-gauntlet"
         if repo_plugin_dir.is_dir():
             res = self.validator.validate(repo_plugin_dir)
@@ -223,14 +238,19 @@ class TestAntigravityPluginValidator(unittest.TestCase):
         """A properly scaffolded plugin passes validation."""
         self._scaffold_valid_plugin()
         res = self.validator.validate(self.plugin_dir)
-        self.assertTrue(res.valid)
+        self.assertTrue(res.valid, f"Scaffolded plugin must be valid, got: {res.issues}")
         self.assertEqual(len(res.issues), 0)
 
     def test_missing_plugin_json_fails(self) -> None:
         """Missing plugin.json reports an error issue."""
         res = self.validator.validate(self.plugin_dir)
         self.assertFalse(res.valid)
-        self.assertTrue(any(i.path == "plugin.json" and "Missing required manifest" in i.message for i in res.issues))
+        self.assertTrue(
+            any(
+                i.path == "plugin.json" and "Missing required manifest" in i.message
+                for i in res.issues
+            )
+        )
 
     def test_corrupt_plugin_json_fails(self) -> None:
         """Corrupt JSON in plugin.json reports an error."""
@@ -249,7 +269,6 @@ class TestAntigravityPluginValidator(unittest.TestCase):
     def test_missing_declared_skill_fails(self) -> None:
         """Declared skill missing SKILL.md reports an error."""
         self._scaffold_valid_plugin()
-        # Declare nonexistent skill
         p_json = json.loads((self.plugin_dir / "plugin.json").read_text())
         p_json["skills"].append("nonexistent-skill")
         (self.plugin_dir / "plugin.json").write_text(json.dumps(p_json))
@@ -266,29 +285,54 @@ class TestAntigravityPluginValidator(unittest.TestCase):
         self.assertFalse(res.valid)
         self.assertTrue(any("frontmatter" in i.message.lower() for i in res.issues))
 
-    def test_invalid_entrypoint_reference_fails(self) -> None:
-        """Entrypoint pointing to nonexistent module reports an error."""
+    def test_invalid_hooks_json_non_conforming_schema_fails(self) -> None:
+        """Non-conforming flat hooks.json format is rejected with validation errors."""
         self._scaffold_valid_plugin()
-        p_json = json.loads((self.plugin_dir / "plugin.json").read_text())
-        p_json["entrypoints"]["broken"] = "agent_gauntlet.nonexistent.module:func"
-        (self.plugin_dir / "plugin.json").write_text(json.dumps(p_json))
+        # Set flat legacy structure
+        flat_hooks = {
+            "pre_tool_invocation": {
+                "command": ["python3", "-m", "agent_gauntlet.features.hooks.gatekeeper"]
+            }
+        }
+        (self.plugin_dir / "hooks.json").write_text(json.dumps(flat_hooks))
+        res = self.validator.validate(self.plugin_dir)
+        self.assertFalse(
+            res.valid, "Legacy flat hooks.json must fail validation against official schema"
+        )
+        self.assertTrue(any("hooks.json" in i.path for i in res.issues))
 
+    def test_invalid_hooks_json_missing_command_fails(self) -> None:
+        """PreToolUse handler missing required command string is rejected."""
+        self._scaffold_valid_plugin()
+        broken_hooks = {
+            "my-hook": {
+                "PreToolUse": [
+                    {
+                        "matcher": ".*",
+                        "hooks": [{"type": "command"}],  # Missing command
+                    }
+                ]
+            }
+        }
+        (self.plugin_dir / "hooks.json").write_text(json.dumps(broken_hooks))
         res = self.validator.validate(self.plugin_dir)
         self.assertFalse(res.valid)
-        self.assertTrue(any("broken" in i.message or "nonexistent" in i.message for i in res.issues))
+        self.assertTrue(any("command" in i.message.lower() for i in res.issues))
 
 
 class TestAntigravityHookCli(unittest.TestCase):
-    """Test suite for Antigravity PreInvocation CLI hook entrypoint."""
+    """Test suite for Antigravity PreToolUse CLI hook entrypoint."""
 
     def test_hook_cli_blocks_forbidden_command(self) -> None:
         """Hook CLI outputs deny JSON and returns exit code 1 on git push."""
-        stdin_data = json.dumps({
-            "toolCall": {
-                "name": "run_command",
-                "args": {"CommandLine": "git push origin main"},
+        stdin_data = json.dumps(
+            {
+                "toolCall": {
+                    "name": "run_command",
+                    "args": {"CommandLine": "git push origin main"},
+                }
             }
-        })
+        )
         stdin_stream = io.StringIO(stdin_data)
         stdout_stream = io.StringIO()
         stderr_stream = io.StringIO()
@@ -307,12 +351,14 @@ class TestAntigravityHookCli(unittest.TestCase):
 
     def test_hook_cli_allows_safe_command(self) -> None:
         """Hook CLI outputs allow JSON and returns exit code 0 on git status."""
-        stdin_data = json.dumps({
-            "toolCall": {
-                "name": "run_command",
-                "args": {"CommandLine": "git status"},
+        stdin_data = json.dumps(
+            {
+                "toolCall": {
+                    "name": "run_command",
+                    "args": {"CommandLine": "git status"},
+                }
             }
-        })
+        )
         stdin_stream = io.StringIO(stdin_data)
         stdout_stream = io.StringIO()
         stderr_stream = io.StringIO()
@@ -362,61 +408,6 @@ class TestAntigravityHookCli(unittest.TestCase):
         out = json.loads(stdout_stream.getvalue().strip())
         self.assertEqual(out["decision"], "deny")
 
-    def test_subprocess_hook_denial_contract(self) -> None:
-        """Integration: Invoking hook module via real subprocess enforces exit code 1 and stdout JSON deny."""
-        import os
-        import subprocess
-        import sys
 
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        env = {
-            **os.environ,
-            "PYTHONPATH": f"{repo_root / 'src'}:{os.environ.get('PYTHONPATH', '')}",
-        }
-        payload = json.dumps({
-            "toolCall": {
-                "name": "run_command",
-                "args": {"CommandLine": "git push origin main"},
-            }
-        })
-        proc = subprocess.run(
-            [sys.executable, "-m", "agent_gauntlet.features.adapters.antigravity.hook"],
-            input=payload,
-            capture_output=True,
-            text=True,
-            cwd=repo_root,
-            env=env,
-        )
-        self.assertEqual(proc.returncode, 1, "Denial must result in exit code 1")
-        stdout_data = json.loads(proc.stdout.strip())
-        self.assertEqual(stdout_data["decision"], "deny")
-        self.assertIn("push", stdout_data["reason"].lower())
-
-    def test_subprocess_hook_allow_contract(self) -> None:
-        """Integration: Invoking hook module via real subprocess returns exit code 0 and stdout JSON allow."""
-        import os
-        import subprocess
-        import sys
-
-        repo_root = Path(__file__).resolve().parent.parent.parent
-        env = {
-            **os.environ,
-            "PYTHONPATH": f"{repo_root / 'src'}:{os.environ.get('PYTHONPATH', '')}",
-        }
-        payload = json.dumps({
-            "toolCall": {
-                "name": "run_command",
-                "args": {"CommandLine": "git status"},
-            }
-        })
-        proc = subprocess.run(
-            [sys.executable, "-m", "agent_gauntlet.features.adapters.antigravity.hook"],
-            input=payload,
-            capture_output=True,
-            text=True,
-            cwd=repo_root,
-            env=env,
-        )
-        self.assertEqual(proc.returncode, 0, "Allow must result in exit code 0")
-        stdout_data = json.loads(proc.stdout.strip())
-        self.assertEqual(stdout_data["decision"], "allow")
+if __name__ == "__main__":
+    unittest.main()

@@ -42,7 +42,13 @@ class CommandExecutionRequest(CapabilityRequest):
     command_line: str = ""
     bypass_sandbox: bool = False
 
-    def __init__(self, command_line: str, bypass_sandbox: bool = False, raw_tool_name: str = "run_command", payload: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        command_line: str,
+        bypass_sandbox: bool = False,
+        raw_tool_name: str = "run_command",
+        payload: dict[str, Any] | None = None,
+    ) -> None:
         object.__setattr__(self, "capability_type", CapabilityType.EXECUTE_COMMAND)
         object.__setattr__(self, "command_line", command_line)
         object.__setattr__(self, "bypass_sandbox", bypass_sandbox)
@@ -57,7 +63,13 @@ class FileWriteRequest(CapabilityRequest):
     target_file: Path = field(default_factory=Path)
     allow_multiple: bool = False
 
-    def __init__(self, target_file: Path | str, allow_multiple: bool = False, raw_tool_name: str = "write_to_file", payload: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        target_file: Path | str,
+        allow_multiple: bool = False,
+        raw_tool_name: str = "write_to_file",
+        payload: dict[str, Any] | None = None,
+    ) -> None:
         object.__setattr__(self, "capability_type", CapabilityType.WRITE_FILE)
         object.__setattr__(self, "target_file", Path(target_file))
         object.__setattr__(self, "allow_multiple", allow_multiple)
@@ -71,7 +83,12 @@ class FileReadRequest(CapabilityRequest):
 
     target_path: Path = field(default_factory=Path)
 
-    def __init__(self, target_path: Path | str, raw_tool_name: str = "view_file", payload: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        target_path: Path | str,
+        raw_tool_name: str = "view_file",
+        payload: dict[str, Any] | None = None,
+    ) -> None:
         object.__setattr__(self, "capability_type", CapabilityType.READ_FILE)
         object.__setattr__(self, "target_path", Path(target_path))
         object.__setattr__(self, "raw_tool_name", raw_tool_name)

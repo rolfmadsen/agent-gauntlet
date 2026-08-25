@@ -3,7 +3,7 @@
 High-assurance, evidence-first development plugin for Google Antigravity IDE and CLI.
 
 ## Overview
-`agent-gauntlet` provides multi-layer verification runners, HMAC-signed evidence ledgers, and mutation testing gauntlets ensuring line-by-line code review becomes optional through verifiable constraints.
+`agent-gauntlet` provides multi-layer verification runners, canonical workspace state manifests, Sigstore DSSE attestations, and mutation testing gauntlets ensuring line-by-line code review becomes optional through verifiable constraints.
 
 ## Bundled Skills
 - `old-coder`: Evidence-first development methodology (SPEC -> RED -> GREEN -> REFACTOR -> GAUNTLET -> EVIDENCE).

@@ -16,7 +16,9 @@ class TestConfigSchemaAndLoader(unittest.TestCase):
     """Tests for configuration schema validation, TOML/JSON loading and fallback."""
 
     def test_layer_config_to_layer_definition(self) -> None:
-        cfg = LayerConfig(name="test-layer", command=["pytest", "-v"], optional=True, timeout_seconds=45.0)
+        cfg = LayerConfig(
+            name="test-layer", command=["pytest", "-v"], optional=True, timeout_seconds=45.0
+        )
         defn = cfg.to_layer_definition()
         self.assertEqual(defn.name, "test-layer")
         self.assertEqual(list(defn.command), ["pytest", "-v"])

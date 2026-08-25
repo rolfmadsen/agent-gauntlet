@@ -61,7 +61,9 @@ class TestRunGauntletAcceptance(unittest.TestCase):
         report = run_gauntlet(layers)
 
         self.assertIsInstance(report, GauntletReport)
-        self.assertFalse(report.success, "Gauntlet must report failure when a mandatory layer fails")
+        self.assertFalse(
+            report.success, "Gauntlet must report failure when a mandatory layer fails"
+        )
         self.assertEqual(
             len(report.layers),
             2,
@@ -77,7 +79,11 @@ class TestRunGauntletAcceptance(unittest.TestCase):
         layers = [
             LayerDefinition(
                 name="opt-advisory-layer",
-                command=[sys.executable, "-c", "import sys; print('advisory warning'); sys.exit(2)"],
+                command=[
+                    sys.executable,
+                    "-c",
+                    "import sys; print('advisory warning'); sys.exit(2)",
+                ],
                 optional=True,
             ),
             LayerDefinition(
@@ -157,4 +163,3 @@ class TestRunGauntletAcceptance(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

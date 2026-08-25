@@ -224,9 +224,7 @@ class TestOkfValidationRules(unittest.TestCase):
                 }
             ],
         }
-        findings_invalid = validate_okf_metadata(
-            meta_invalid, file_path="task.md", now=self.now
-        )
+        findings_invalid = validate_okf_metadata(meta_invalid, file_path="task.md", now=self.now)
         self.assertTrue(any(f.rule == "SOURCE_MISSING_RESOURCE" for f in findings_invalid))
 
 

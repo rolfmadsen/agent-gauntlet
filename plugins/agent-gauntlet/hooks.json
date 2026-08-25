@@ -1,5 +1,17 @@
 {
-  "pre_tool_invocation": {
-    "command": ["python3", "-m", "agent_gauntlet.features.adapters.antigravity.hook"]
+  "agent-gauntlet-gatekeeper": {
+    "enabled": true,
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 -m agent_gauntlet.features.adapters.antigravity.hook",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
   }
 }

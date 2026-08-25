@@ -14,7 +14,7 @@ Dette dokument samler og prioriterer udvidelser og modenheds-features for `agent
 │  (100% uafhængig verifikationsmotor, CLI og kryptografisk evidens)     │
 │                                                                        │
 │  ├── features/gauntlet/     (Procesafvikling, fail-closed, timeouts)   │
-│  ├── features/evidence/     (SHA-256 tree-hash, HMAC-SHA256 evidens)  │
+│  ├── features/evidence/     (Source manifest, Verification reports, Sigstore DSSE attestation) │
 │  ├── features/diagnostics/  (Strukturerede LLM-remediations & AST)     │
 │  ├── features/stacks/       (Python, TypeScript, Rust autodetektion)   │
 │  └── features/config/       (gauntlet.toml / gauntlet.json)            │

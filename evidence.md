@@ -1,23 +1,25 @@
 # Verification Report
 
-**Task ID**: `022-p0-security-and-trust-hardening-suite`  
-**Task Title**: Task 022: P0 Security, Policy Engine and Attestation Hardening Suite  
+**Task ID**: `023-p0-audit-remediation-and-cryptographic-attestation`  
+**Task Title**: Task 023: P0 Audit Remediation, Cryptographic Sigstore DSSE & Official Hook Schema  
 **Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `001896538bd9e29e9e62b1d69e9cb866855f57f959ddcaef362e10a9e8a79603`  
-**Timestamp**: `2026-08-25T19:32:08Z`  
-**Head**: `6cc560b`  
-**Commit**: `6688684`  
+**Source Manifest Digest**: `93088c0e26003bf7194dc4db3c2dd2e62477c293f2d3804c8d09e85af0bcd7f9`  
+**Timestamp**: `2026-08-25T20:27:26Z`  
+**Head**: `81d0751`  
+**Commit**: `81d0751`  
 
 ## Acceptance Criteria
 
-- [x] Manifest formatering beskytter mod newline-injektion og hasher kun executable-bit (0 eller 1).
-- [x] `.agents/hooks.json` og `.github/` filer inkluderes i canonical manifest / policy checks.
-- [x] `PolicyEngine` afviser ukendte værktøjer, ukendte commands, destruktiv git (`clean`, `reset --hard`) og shell-skrivninger til beskyttede stier.
-- [x] `.agents/hooks.json` skema tilpasses officiel Google Antigravity `PreToolUse` kontrakt.
-- [x] `verify` fejler hvis $Digest_{pre} \ne Digest_{post}$, og fejlende checks markerer kørslen `PARTIAL` eller `FAILED`.
-- [x] `AttestationEngine` understøtter Sigstore Bundle v0.2 med base64 DSSE in-toto payload.
-- [x] `.github/workflows/ci.yml` `attest`-job fjerner checkout og downloader kun `verification-report` artifact.
+- [x] `AttestationEngine` verificerer Sigstore Bundle v0.2 / v0.3 kryptografisk via ECDSA SHA-256 og RSA over DSSE PAE bytes, parser Fulcio x509 certifikater og OIDC extensions, og afviser opdigtede signaturer som `INVALID`.
+- [x] `TrustPolicyEngine` afviser `LOCAL` rapporter når `minimum_origin = CI_PROTECTED` og håndhæver `allowed_runner_environments`.
+- [x] `.agents/hooks.json` og `plugins/agent-gauntlet/hooks.json` følger det officielle Google Antigravity schema (`{"agent-gauntlet-gatekeeper": {"PreToolUse": [...]}}`).
+- [x] `AntigravityPluginValidator` validerer den komplette hooks-struktur mekanisk og fanger ulovlige hooks, manglende handlers og ugyldige felter.
+- [x] `PolicyEngine` i `gatekeeper.py` blokerer `git -C . push`, `git clean -d -f`, `printf x >src/pwn.py`, og shell/python skrivninger til beskyttede mapper uden aktiv task.
+- [x] `.github/workflows/ci.yml` pinner alle actions til 40-tegns commit-SHA'er og binder kørslen til task 023.
+- [x] `check-evidence` og `check-attestation` fejler hvis `.agents/hooks.json`, `.github/`, eller `gauntlet.toml` er ændret (policy drift).
+- [x] `cli.py` er refaktoreret til ren orkestrering (< 300 linjer) med `features/evidence/verifier.py` og `task_resolver.py`.
+- [x] Resterende HMAC-referencer i `ROADMAP.md` og `plugins/agent-gauntlet/README.md` er fjernet.
 - [x] 0 Pyright fejl, 0 Ruff fejl, 100% mutants killed, alle tests bestået.
 
 ---
@@ -26,10 +28,10 @@
 
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
-| `lint` | `PASSED` | `0` | `0.036s` |
-| `types` | `PASSED` | `0` | `1.187s` |
-| `unit` | `PASSED` | `0` | `1.114s` |
-| `invariants` | `PASSED` | `0` | `0.291s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `22.535s` |
+| `lint` | `PASSED` | `0` | `0.041s` |
+| `types` | `PASSED` | `0` | `1.264s` |
+| `unit` | `PASSED` | `0` | `1.146s` |
+| `invariants` | `PASSED` | `0` | `0.311s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `22.977s` |
 
 ---

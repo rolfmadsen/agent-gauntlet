@@ -51,7 +51,11 @@ def parse_frontmatter(content: str) -> Tuple[Optional[Dict[str, Any]], str, Opti
         if data is None:
             data = {}
         elif not isinstance(data, dict):
-            return None, body, f"Frontmatter must parse to a mapping/dictionary, got: {type(data).__name__}"
+            return (
+                None,
+                body,
+                f"Frontmatter must parse to a mapping/dictionary, got: {type(data).__name__}",
+            )
         return data, body, None
     except Exception as exc:
         return None, body, f"Invalid YAML frontmatter: {exc}"
@@ -69,7 +73,10 @@ def validate_iso_timestamp(timestamp_val: Any) -> Tuple[Optional[datetime], Opti
 
     val_str = timestamp_val.strip()
     if not ISO8601_REGEX.match(val_str):
-        return None, f"Timestamp {val_str!r} does not match strict ISO 8601 UTC format (YYYY-MM-DDTHH:MM:SSZ)"
+        return (
+            None,
+            f"Timestamp {val_str!r} does not match strict ISO 8601 UTC format (YYYY-MM-DDTHH:MM:SSZ)",
+        )
 
     try:
         # Standardize Z to +00:00 for fromisoformat
@@ -187,7 +194,7 @@ def validate_okf_metadata(
                     OkfValidationFinding(
                         file_path=file_path,
                         rule="INVALID_VERIFIED_ENTRY",
-                        message=f"'verified' entry #{idx+1} must be a dictionary with 'by' and 'at'.",
+                        message=f"'verified' entry #{idx + 1} must be a dictionary with 'by' and 'at'.",
                         remediation_hint="Format as '{ by: <actor>, at: <ISO-timestamp> }'.",
                     )
                 )

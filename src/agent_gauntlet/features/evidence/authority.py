@@ -124,7 +124,9 @@ class EvidenceAuthority:
             ]
         )
         for c in record.checks:
-            lines.append(f"| `{c.name}` | `{c.status}` | `{c.exit_code}` | `{c.duration_seconds:.3f}s` |")
+            lines.append(
+                f"| `{c.name}` | `{c.status}` | `{c.exit_code}` | `{c.duration_seconds:.3f}s` |"
+            )
 
         lines.extend(["", "---", ""])
         return "\n".join(lines)
