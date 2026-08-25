@@ -95,3 +95,4 @@ jobs:
         with:
           subject-path: verification-report.json
           predicate-type: https://agent-gauntlet.dev/attestation/v1
+          predicate-path: verification-report.json
