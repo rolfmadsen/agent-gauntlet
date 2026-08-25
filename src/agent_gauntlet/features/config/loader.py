@@ -3,16 +3,17 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
-try:
+if sys.version_info >= (3, 11):
     import tomllib
-except ModuleNotFoundError:
+else:
     try:
-        import tomli as tomllib  # type: ignore[no-redef]
+        import tomli as tomllib  # pyright: ignore[reportMissingImports]
     except ModuleNotFoundError:
-        tomllib = None  # type: ignore[assignment]
+        tomllib = None
 
 from agent_gauntlet.features.config.schema import GauntletConfig, LayerConfig
 from agent_gauntlet.features.stacks.detector import detect_stack
