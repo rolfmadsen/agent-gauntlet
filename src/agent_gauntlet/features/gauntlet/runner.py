@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -23,10 +24,17 @@ def _execute_layer(
     """Execute a single layer command and capture output, exit code and duration."""
     start_time = time.perf_counter()
     req = layer.requirement
+    env = dict(os.environ)
+    src_dir = Path(cwd or ".").resolve() / "src"
+    if src_dir.is_dir():
+        existing_pp = env.get("PYTHONPATH", "")
+        env["PYTHONPATH"] = f"{src_dir}:{existing_pp}" if existing_pp else str(src_dir)
+
     try:
         proc = subprocess.run(
             list(layer.command),
             cwd=cwd,
+            env=env,
             capture_output=True,
             text=True,
             timeout=layer.timeout_seconds,

@@ -21,24 +21,24 @@
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "72e4020b8e34fa4269b625811c2be378b866b723f5cabab596316500e8402aa4",
-    "source_manifest_digest_pre": "b723b644bec26824abda390866dd408c223a32bc0f8b4d252e7a56c33765af6d",
-    "source_manifest_digest_post": "b723b644bec26824abda390866dd408c223a32bc0f8b4d252e7a56c33765af6d",
-    "config_digest": "8689b77cb260a1f9221206c0ff625a5501fce23a0454948511d902287bc3eb8d",
+    "source_content_digest": "56aaf944961465461160693cda1db0b675e4af2eeb8b30bc569d8a1110f83933",
+    "source_manifest_digest_pre": "b7e49a64af557226cb98334e1e37559b2b07bae8ecd5a15a84f8120ece0a18ad",
+    "source_manifest_digest_post": "b7e49a64af557226cb98334e1e37559b2b07bae8ecd5a15a84f8120ece0a18ad",
+    "config_digest": "f38f4a0fecd572a649c8779e7171408d4c5332fa66628f4ed6721c2d98cd18c7",
     "policy_digest": "abdbb4d77034547b7f69ebbdd2a70131bcb1207323227f9c3592e01e5962a2ba",
     "check_definitions_digest": "",
     "included_files_count": 80,
     "vcs": {
       "type": "git",
-      "head": "6c84c2b",
-      "commit": "6c84c2b",
+      "head": "252a538",
+      "commit": "252a538",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-25T18:35:55Z",
-    "finished_at": "2026-08-25T18:36:18Z",
-    "total_duration_seconds": 23.312,
+    "started_at": "2026-08-25T18:39:08Z",
+    "finished_at": "2026-08-25T18:39:31Z",
+    "total_duration_seconds": 23.372,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -50,7 +50,7 @@
       "name": "lint",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.025,
+      "duration_seconds": 0.038,
       "optional": true,
       "log_digest": ""
     },
@@ -58,7 +58,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.115,
+      "duration_seconds": 1.132,
       "optional": true,
       "log_digest": ""
     },
@@ -66,7 +66,7 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.12,
+      "duration_seconds": 1.115,
       "optional": false,
       "log_digest": ""
     },
@@ -74,7 +74,7 @@
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.284,
+      "duration_seconds": 0.293,
       "optional": true,
       "log_digest": ""
     },
@@ -82,7 +82,7 @@
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 20.734,
+      "duration_seconds": 20.756,
       "optional": true,
       "log_digest": ""
     }

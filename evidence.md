@@ -4,10 +4,10 @@
 **Task Title**: Task 013: Type & Static Analysis Quality Gate (Pyright & Ruff Integration)  
 **Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `b723b644bec26824abda390866dd408c223a32bc0f8b4d252e7a56c33765af6d`  
-**Timestamp**: `2026-08-25T18:36:18Z`  
-**Head**: `6c84c2b`  
-**Commit**: `6c84c2b`  
+**Source Manifest Digest**: `b7e49a64af557226cb98334e1e37559b2b07bae8ecd5a15a84f8120ece0a18ad`  
+**Timestamp**: `2026-08-25T18:39:31Z`  
+**Head**: `252a538`  
+**Commit**: `252a538`  
 
 ## Acceptance Criteria
 
@@ -26,10 +26,10 @@
 
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
-| `lint` | `PASSED` | `0` | `0.025s` |
-| `types` | `PASSED` | `0` | `1.115s` |
-| `unit` | `PASSED` | `0` | `1.120s` |
-| `invariants` | `PASSED` | `0` | `0.284s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `20.734s` |
+| `lint` | `PASSED` | `0` | `0.038s` |
+| `types` | `PASSED` | `0` | `1.132s` |
+| `unit` | `PASSED` | `0` | `1.115s` |
+| `invariants` | `PASSED` | `0` | `0.293s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `20.756s` |
 
 ---
