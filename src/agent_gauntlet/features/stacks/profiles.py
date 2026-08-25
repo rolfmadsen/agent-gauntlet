@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 
 from agent_gauntlet.features.gauntlet.models import LayerDefinition
 
@@ -15,13 +15,13 @@ def get_python_default_layers() -> list[LayerDefinition]:
     return [
         LayerDefinition(
             name="lint",
-            command=["ruff", "check", "."],
+            command=[sys.executable, "-m", "ruff", "check", "."],
             optional=True,
             timeout_seconds=30.0,
         ),
         LayerDefinition(
             name="types",
-            command=["pyright"],
+            command=[sys.executable, "-m", "pyright", "src", "tests", "tools"],
             optional=True,
             timeout_seconds=60.0,
         ),
@@ -118,7 +118,7 @@ def get_rust_default_layers() -> list[LayerDefinition]:
     ]
 
 
-STACK_PROFILE_GENERATORS: Mapping[str, callable] = {
+STACK_PROFILE_GENERATORS: Mapping[str, Callable[[], list[LayerDefinition]]] = {
     "python": get_python_default_layers,
     "typescript": get_typescript_default_layers,
     "rust": get_rust_default_layers,

@@ -42,21 +42,15 @@ The agent has direct access to bundled skills located in [.agents/skills/](.agen
 
 ## 🗂️ Task Management Protocol (`tasks/`)
 1. **Curated Scope:** Every non-trivial work item is tracked as a concise markdown file in `tasks/<number>-<title>.md`.
-2. **OKF v0.2 Frontmatter Governance:**
-   * **In SPEC phase:** Agent creates task with `generated: { by: <harness>/<model>, at: <iso> }` and `status: draft`.
-   * **In DONE phase:** `agent-gauntlet verify` automatically stamps `verified: { by: process:agent-gauntlet-verify, at: <iso> }` and `status: stable`.
-   * **Manual Human Review:** If manually verified by a human, stamp `verified: { by: human:maintainer, at: <iso> }`.
-   * **Zero Fake Signoffs:** An agent must NEVER stamp `by: human:...` on code it wrote and tested itself; automated testing is always attributed honestly to `process:agent-gauntlet-verify`.
-3. **Standard Task Structure:**
+2. **Standard Task Structure:**
    * `# Task <number>: <Title>` (Header with `Status: ACTIVE | DONE`, `Intent: 🚀 NEW FEATURE | 🐛 BUG FIX | 🔄 REFACTOR`)
    * `## 🎯 Formål`: Konkret målsætning og afgrænsning.
    * `## 📋 Acceptance Criteria`: Eksekverbare `- [ ]` punkter med klare forventede inputs og outputs.
    * `## 🚫 Must NOT`: Negative begrænsninger og arkitektur-invarianter, der under ingen omstændigheder må brydes.
    * `## 📝 Revisions`: Append-only ændringslog for mid-task ændringer og afviste forslag (hvad brugeren sagde nej til).
    * `## 🧪 Verifikation`: Konkrete kommandoer til afprøvning og validering.
-4. **Clean Session Handoffs:** A new chat session starts by reading the designated `tasks/<task>.md` and `CONTEXT.md`.
-5. **No Memory Rot:** Completed tasks are marked `DONE` and remain frozen; persistent domain knowledge is distilled into `CONTEXT.md` and `docs/adr/`.
-
+3. **Clean Session Handoffs:** A new chat session starts by reading the designated `tasks/<task>.md` and `CONTEXT.md`.
+4. **No Memory Rot:** Completed tasks are marked `DONE` and remain frozen; persistent domain knowledge is distilled into `CONTEXT.md` and `docs/adr/`.
 
 ---
 
@@ -92,7 +86,7 @@ SPEC / GRILL → (Human Approval) → RED → GREEN → REFACTOR → GAUNTLET �
    - Mutation Testing Gauntlet (`mutants.py`)
    - Source-State Tree Digest
 6. **EVIDENCE**: Persist cryptographically signed evidence ledger in `evidence.json` and `evidence.md`.
-7. **SESSION HANDOFF**: Display the clean `🏁 SESSION HANDOFF` card (Variant A) with the copy-paste starter prompt in the final user-facing response:
+7. **SESSION HANDOFF**: Display the clean `🏁 SESSION HANDOFF` card with the copy-paste starter prompt in the final user-facing response:
    > ### 🏁 SESSION HANDOFF • `<task_id>`
    > **Status**: `TASK: DONE` | **Evidens**: `FORSEGLET (HMAC-SHA256)` | **Context**: `Fresh Session Recommended`
    > 💡 *Start venligst en frisk chat-session for at bevare et skarpt kontekstvindue uden context rot.*

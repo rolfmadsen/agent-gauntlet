@@ -1,9 +1,10 @@
 """Strict validator for Open Knowledge Format (OKF v0.2) compliance."""
 
 import re
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
 import yaml
 
 from agent_gauntlet.features.okf.models import (
@@ -141,7 +142,7 @@ def validate_okf_metadata(
             )
         else:
             by_val = generated.get("by")
-            actor, actor_err = validate_actor(by_val)
+            _, actor_err = validate_actor(by_val)
             if actor_err:
                 findings.append(
                     OkfValidationFinding(
@@ -166,7 +167,7 @@ def validate_okf_metadata(
                     )
                 else:
                     generated_dt = dt
-                    if dt > future_tolerance:
+                    if dt is not None and dt > future_tolerance:
                         findings.append(
                             OkfValidationFinding(
                                 file_path=file_path,
@@ -226,7 +227,7 @@ def validate_okf_metadata(
                         )
                     )
                 else:
-                    if dt > future_tolerance:
+                    if dt is not None and dt > future_tolerance:
                         findings.append(
                             OkfValidationFinding(
                                 file_path=file_path,
@@ -235,12 +236,13 @@ def validate_okf_metadata(
                                 remediation_hint="Use current UTC time for verification timestamp.",
                             )
                         )
-                    if generated_dt and dt < generated_dt:
+                    if generated_dt is not None and dt is not None and dt < generated_dt:
+                        gen_at_val = generated.get("at") if isinstance(generated, dict) else ""
                         findings.append(
                             OkfValidationFinding(
                                 file_path=file_path,
                                 rule="CHRONOLOGICAL_INVERSION",
-                                message=f"'verified[{idx}].at' ({at_val}) precedes 'generated.at' ({generated.get('at')}).",
+                                message=f"'verified[{idx}].at' ({at_val}) precedes 'generated.at' ({gen_at_val}).",
                                 remediation_hint="Verification cannot occur prior to document generation.",
                             )
                         )

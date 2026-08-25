@@ -1,27 +1,17 @@
 """Tests for OKF (Open Knowledge Format v0.2) parsing, validation, and stamping."""
 
-import os
 import tempfile
 import unittest
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from agent_gauntlet.features.okf.models import (
-    Actor,
-    OkfMetadata,
-    OkfValidationFinding,
-    OkfValidationReport,
-    StatusEnum,
-)
+from agent_gauntlet.features.okf.models import Actor
+from agent_gauntlet.features.okf.stamper import stamp_okf_content
 from agent_gauntlet.features.okf.validator import (
     parse_frontmatter,
-    validate_actor,
-    validate_iso_timestamp,
     validate_okf_metadata,
-    validate_okf_file,
     validate_okf_workspace,
 )
-from agent_gauntlet.features.okf.stamper import stamp_okf_content, stamp_okf_file
 
 
 class TestOkfModels(unittest.TestCase):
@@ -66,6 +56,7 @@ Some text here.
         meta, body, error = parse_frontmatter(content)
         self.assertIsNone(error)
         self.assertIsNotNone(meta)
+        assert meta is not None
         self.assertEqual(meta["type"], "Task Package")
         self.assertEqual(meta["title"], "My Task")
         self.assertEqual(meta["status"], "draft")
@@ -80,13 +71,13 @@ Some text here.
 
     def test_parse_unclosed_frontmatter(self):
         content = "---\ntype: Task\ntitle: Broken"
-        meta, body, error = parse_frontmatter(content)
+        meta, _body, error = parse_frontmatter(content)
         self.assertIsNone(meta)
         self.assertIn("Unclosed", str(error))
 
     def test_parse_invalid_yaml(self):
         content = "---\ntype: [invalid: yaml: : : : \n---\nBody"
-        meta, body, error = parse_frontmatter(content)
+        meta, _body, error = parse_frontmatter(content)
         self.assertIsNone(meta)
         self.assertIsNotNone(error)
 
@@ -253,6 +244,7 @@ class TestOkfStamper(unittest.TestCase):
         )
         meta, body, err = parse_frontmatter(stamped)
         self.assertIsNone(err)
+        assert meta is not None
         self.assertEqual(meta["type"], "Task Package")
         self.assertEqual(meta["status"], "draft")
         self.assertEqual(meta["generated"]["by"], "antigravity/gemini-3.7-flash")
@@ -277,6 +269,7 @@ Preserved exactly.
         )
         meta, body, err = parse_frontmatter(stamped)
         self.assertIsNone(err)
+        assert meta is not None
         self.assertEqual(meta["status"], "stable")
         self.assertEqual(meta["title"], "Existing Task")
         self.assertEqual(meta["tags"], ["core", "cli"])

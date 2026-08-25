@@ -54,21 +54,21 @@ class TestStackProfiles(unittest.TestCase):
 
     def test_python_default_profile(self) -> None:
         layers = get_default_stack_profile("python")
-        names = [l.name for l in layers]
+        names = [layer.name for layer in layers]
         self.assertIn("lint", names)
         self.assertIn("types", names)
         self.assertIn("unit", names)
 
     def test_typescript_default_profile(self) -> None:
         layers = get_default_stack_profile("typescript")
-        names = [l.name for l in layers]
+        names = [layer.name for layer in layers]
         self.assertIn("lint", names)
         self.assertIn("types", names)
         self.assertIn("unit", names)
 
     def test_rust_default_profile(self) -> None:
         layers = get_default_stack_profile("rust")
-        names = [l.name for l in layers]
+        names = [layer.name for layer in layers]
         self.assertIn("lint", names)
         self.assertIn("types", names)
         self.assertIn("unit", names)

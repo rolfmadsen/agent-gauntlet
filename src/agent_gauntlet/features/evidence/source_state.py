@@ -1,4 +1,4 @@
-"""Produce a deterministic, fail-closed binding for the agent-gauntlet source tree."""
+"""Deterministic, fail-closed canonical workspace manifest and state binding."""
 
 from __future__ import annotations
 
@@ -6,9 +6,14 @@ import hashlib
 import os
 import subprocess
 import sys
+import unicodedata
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Sequence
 
-SCOPES = (
+from agent_gauntlet.features.evidence.models import VcsMetadata
+
+DEFAULT_SCOPES = (
     "src",
     "tests",
     "tools",
@@ -17,22 +22,55 @@ SCOPES = (
     "README.md",
     "pyproject.toml",
 )
+
 EXCLUDED_DIRS = {
+    ".git",
     ".hypothesis",
+    ".idea",
     ".mypy_cache",
     ".pytest_cache",
     ".ruff_cache",
     ".venv",
+    ".vscode",
     "__pycache__",
 }
-EXCLUDED_FILES = {".coverage", ".DS_Store", "coverage.xml"}
+
+EXCLUDED_FILES = {
+    ".DS_Store",
+    ".coverage",
+    "attestation.bundle",
+    "coverage.xml",
+    "evidence.json",
+    "evidence.md",
+    "verification-report.json",
+}
+
 NO_GIT = "(no git)"
-SHALLOW = "(unavailable: shallow history)"
 
 
-def _git(
-    root: Path, *args: str, check: bool = True
-) -> subprocess.CompletedProcess[bytes]:
+class WorkspaceEscapeError(Exception):
+    """Raised when a symlink or path traversal resolves outside the canonical workspace root."""
+
+
+class UnicodePathError(Exception):
+    """Raised when a workspace file path contains invalid or non-UTF-8 characters."""
+
+
+@dataclass(frozen=True)
+class CanonicalWorkspaceManifest:
+    """Canonical representation of workspace source files, modes, and digests."""
+
+    files: list[str] = field(default_factory=list)
+    included_files_count: int = 0
+    source_content_digest: str = ""
+    source_manifest_digest: str = ""
+    config_digest: str = ""
+    task_digest: str = ""
+    policy_digest: str = ""
+    vcs: VcsMetadata | None = None
+
+
+def _git(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:
     return subprocess.run(
         ["git", *args],
         cwd=root,
@@ -42,89 +80,195 @@ def _git(
     )
 
 
-def _is_shallow(root: Path) -> bool:
-    probe = _git(root, "rev-parse", "--is-shallow-repository", check=False)
-    if probe.returncode != 0:
+def _is_excluded(rel_path: Path) -> bool:
+    """Check if relative path matches exclusion rules."""
+    parts = rel_path.parts
+    if any(part in EXCLUDED_DIRS or part.endswith(".egg-info") for part in parts):
         return True
-    return os.fsdecode(probe.stdout).strip() == "true"
+    if rel_path.name in EXCLUDED_FILES or rel_path.suffix == ".pyc":
+        return True
+    return False
 
 
-def _is_generated(relative: Path) -> bool:
-    return (
-        any(
-            part in EXCLUDED_DIRS or part.endswith(".egg-info")
-            for part in relative.parts
-        )
-        or relative.name in EXCLUDED_FILES
-        or relative.suffix == ".pyc"
+def _hash_file_content(path: Path) -> str:
+    try:
+        data = path.read_bytes()
+        return hashlib.sha256(data).hexdigest()
+    except OSError as err:
+        raise RuntimeError(f"Cannot read source file '{path}': {err}") from err
+
+
+def _get_file_mode(path: Path, is_symlink: bool) -> str:
+    if is_symlink:
+        return "120000"
+    try:
+        st_mode = path.stat().st_mode
+        mode_octal = st_mode & 0o777
+        # On POSIX, use actual mode; if non-POSIX fallback, standard permissions
+        if os.name != "nt":
+            return f"{mode_octal:03o}"
+        # Portable Windows fallback
+        is_exec = (st_mode & 0o111) != 0 or path.suffix.lower() in (".sh", ".py", ".bat", ".cmd", ".exe")
+        return "755" if is_exec else "644"
+    except OSError:
+        return "644"
+
+
+def _compute_digest_of_files(root: Path, files: Sequence[Path]) -> str:
+    """Compute a single digest over a sequence of files."""
+    digest = hashlib.sha256()
+    for f in sorted(files):
+        if f.is_file() and not _is_excluded(f.relative_to(root)):
+            try:
+                rel = f.relative_to(root).as_posix().encode("utf-8")
+                content = f.read_bytes()
+                digest.update(len(rel).to_bytes(8, "big"))
+                digest.update(rel)
+                digest.update(len(content).to_bytes(8, "big"))
+                digest.update(content)
+            except OSError:
+                continue
+    return digest.hexdigest()
+
+
+def compute_workspace_manifest(
+    root: Path | None = None,
+    scopes: Sequence[str] | None = None,
+) -> CanonicalWorkspaceManifest:
+    """
+    Computes a deterministic, platform-independent canonical workspace manifest.
+    Detects symlink workspace escapes and tracks content and POSIX mode digests.
+    """
+    target_root = (root or Path.cwd()).resolve()
+    target_scopes = tuple(scopes) if scopes else DEFAULT_SCOPES
+
+    items: list[tuple[str, str, str]] = []  # (normalized_rel_path, content_hash, mode_str)
+
+    for scope in target_scopes:
+        candidate = target_root / scope
+        if not candidate.exists() and not candidate.is_symlink():
+            continue
+
+        file_paths = [candidate] if (candidate.is_file() or candidate.is_symlink()) else list(candidate.rglob("*"))
+
+        for path in file_paths:
+            if not path.is_file() and not path.is_symlink():
+                continue
+
+            try:
+                rel_path = path.relative_to(target_root)
+                rel_str = rel_path.as_posix()
+            except ValueError:
+                continue
+
+            # Validate UTF-8 and normalize
+            try:
+                normalized_rel = unicodedata.normalize("NFC", rel_str)
+            except Exception as err:
+                raise UnicodePathError(f"Path contains invalid characters: '{rel_str}'") from err
+
+            if _is_excluded(rel_path):
+                continue
+
+            if path.is_symlink():
+                target_str = os.readlink(path)
+                resolved = path.resolve()
+                try:
+                    # Check workspace escape: resolved target must be within target_root
+                    resolved.relative_to(target_root)
+                except ValueError as err:
+                    raise WorkspaceEscapeError(
+                        f"Symlink '{rel_str}' resolves outside workspace root: target='{target_str}', resolved='{resolved}'"
+                    ) from err
+
+                content_hash = hashlib.sha256(target_str.encode("utf-8")).hexdigest()
+                mode_str = _get_file_mode(path, is_symlink=True)
+            else:
+                content_hash = _hash_file_content(path)
+                mode_str = _get_file_mode(path, is_symlink=False)
+
+            items.append((normalized_rel, content_hash, mode_str))
+
+    # Sort lexicographically by relative path bytes
+    sorted_items = sorted(items, key=lambda x: x[0].encode("utf-8"))
+    file_list = [item[0] for item in sorted_items]
+
+    # Generate canonical manifest lines (<hash> <mode> <path>\n)
+    manifest_lines = "".join(f"{h} {m} {p}\n" for p, h, m in sorted_items)
+    source_manifest_digest = hashlib.sha256(manifest_lines.encode("utf-8")).hexdigest()
+
+    # Generate portable content lines (<hash> <path>\n)
+    content_lines = "".join(f"{h} {p}\n" for p, h, _ in sorted_items)
+    source_content_digest = hashlib.sha256(content_lines.encode("utf-8")).hexdigest()
+
+    # Auxiliary digests
+    config_files = [target_root / "gauntlet.toml", target_root / "gauntlet.json"]
+    config_digest = _compute_digest_of_files(target_root, config_files)
+
+    task_dir = target_root / "tasks"
+    task_files = list(task_dir.glob("*.md")) if task_dir.is_dir() else []
+    task_digest = _compute_digest_of_files(target_root, task_files)
+
+    policy_files = [target_root / "spec.md", target_root / "CONTEXT.md"]
+    adr_dir = target_root / "docs" / "adr"
+    if adr_dir.is_dir():
+        policy_files.extend(adr_dir.glob("*.md"))
+    policy_digest = _compute_digest_of_files(target_root, policy_files)
+
+    # Git metadata probe
+    vcs_obj: VcsMetadata | None = None
+    git_dir = target_root / ".git"
+    if git_dir.exists():
+        head_res = _git(target_root, "rev-parse", "--short", "HEAD", check=False)
+        if head_res.returncode == 0:
+            head = os.fsdecode(head_res.stdout).strip()
+            commit_res = _git(target_root, "log", "-1", "--format=%h", "--", *target_scopes, check=False)
+            commit = os.fsdecode(commit_res.stdout).strip() if commit_res.returncode == 0 else head
+            status_res = _git(target_root, "status", "--porcelain", check=False)
+            is_dirty = bool(status_res.stdout.strip())
+            vcs_obj = VcsMetadata(type="git", head=head, commit=commit, is_dirty=is_dirty)
+
+    return CanonicalWorkspaceManifest(
+        files=file_list,
+        included_files_count=len(file_list),
+        source_content_digest=source_content_digest,
+        source_manifest_digest=source_manifest_digest,
+        config_digest=config_digest,
+        task_digest=task_digest,
+        policy_digest=policy_digest,
+        vcs=vcs_obj,
     )
 
 
-def _manifest(root: Path) -> list[str]:
-    files: list[str] = []
-    for scope in SCOPES:
-        candidate = root / scope
-        if not candidate.exists():
-            continue
-        inputs = [candidate] if candidate.is_file() else candidate.rglob("*")
-        scoped_files = [
-            path
-            for path in inputs
-            if (path.is_file() or path.is_symlink())
-            and not _is_generated(path.relative_to(root))
-        ]
-        files.extend(path.relative_to(root).as_posix() for path in scoped_files)
-    return sorted(files)
-
-
-def _read_input(path: Path) -> bytes:
-    if path.is_symlink():
-        return os.fsencode(os.readlink(path))
-    if not path.is_file():
-        raise RuntimeError(f"source input is not a regular file: {path}")
-    try:
-        return path.read_bytes()
-    except OSError as error:
-        raise RuntimeError(f"cannot read source input {path}: {error}") from error
-
-
-def _tree_hash(root: Path, files: list[str]) -> str:
-    digest = hashlib.sha256()
-    for relative in files:
-        path_bytes = relative.encode("utf-8")
-        content = _read_input(root / relative)
-        digest.update(len(path_bytes).to_bytes(8, "big"))
-        digest.update(path_bytes)
-        digest.update(len(content).to_bytes(8, "big"))
-        digest.update(content)
-    return digest.hexdigest()[:16]
-
-
 def compute_source_state(root: Path | None = None) -> tuple[str, str, str]:
-    target_root = root or Path.cwd()
-    files = _manifest(target_root)
-    tree = _tree_hash(target_root, files)
+    """
+    Backward-compatible entry point returning (head, commit, tree_digest).
+    """
+    target_root = (root or Path.cwd()).resolve()
+    manifest = compute_workspace_manifest(target_root)
 
-    head_res = _git(target_root, "rev-parse", "--short", "HEAD", check=False)
-    head = os.fsdecode(head_res.stdout).strip() if head_res.returncode == 0 else NO_GIT
+    head = manifest.vcs.head if manifest.vcs else NO_GIT
+    commit = manifest.vcs.commit if manifest.vcs else NO_GIT
+    tree_digest = manifest.source_manifest_digest[:16]
 
-    commit_res = _git(target_root, "log", "-1", "--format=%h", "--", *SCOPES, check=False)
-    commit = os.fsdecode(commit_res.stdout).strip() if commit_res.returncode == 0 else NO_GIT
-
-    return head, commit, tree
+    return head, commit, tree_digest
 
 
 def main(root: Path | None = None) -> int:
-    target_root = root or Path.cwd()
+    target_root = (root or Path.cwd()).resolve()
     try:
-        head, source_commit, tree = compute_source_state(target_root)
+        manifest = compute_workspace_manifest(target_root)
     except Exception as error:
         print(f"source-state error: {error}", file=sys.stderr)
         return 2
 
-    print(f"head:          {head}")
-    print(f"source commit: {source_commit}")
-    print(f"tree:          {tree}")
+    head = manifest.vcs.head if manifest.vcs else NO_GIT
+    commit = manifest.vcs.commit if manifest.vcs else NO_GIT
+    print(f"head:            {head}")
+    print(f"source commit:   {commit}")
+    print(f"manifest digest: {manifest.source_manifest_digest[:16]}")
+    print(f"content digest:  {manifest.source_content_digest[:16]}")
+    print(f"files count:     {manifest.included_files_count}")
     return 0
 
 

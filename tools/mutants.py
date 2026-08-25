@@ -12,7 +12,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TARGET_RUNNER = ROOT / "src/agent_gauntlet/features/gauntlet/runner.py"
-TARGET_AUTHORITY = ROOT / "src/agent_gauntlet/features/evidence/authority.py"
+TARGET_AUTHORITY = ROOT / "src/agent_gauntlet/features/evidence/report.py"
+TARGET_MANIFEST = ROOT / "src/agent_gauntlet/features/evidence/source_state.py"
+TARGET_TRUST = ROOT / "src/agent_gauntlet/features/evidence/trust_policy.py"
+TARGET_ATTESTATION = ROOT / "src/agent_gauntlet/features/evidence/attestation.py"
 TARGET_GATEKEEPER = ROOT / "src/agent_gauntlet/features/hooks/gatekeeper.py"
 TARGET_SCAFFOLDER = ROOT / "src/agent_gauntlet/features/scaffold/scaffolder.py"
 TARGET_ADAPTER = ROOT / "src/agent_gauntlet/features/adapters/antigravity/adapter.py"
@@ -38,6 +41,8 @@ CORE_TESTS = [
     "tests.features.test_gauntlet",
     "tests.features.test_gauntlet_properties",
     "tests.features.test_evidence",
+    "tests.features.test_manifest",
+    "tests.features.test_attestation",
 ]
 
 HOOK_TESTS = [
@@ -58,10 +63,7 @@ SCAFFOLD_TESTS = [
 ]
 
 CLI_TESTS = [
-    "tests.test_cli.TestCliAcceptance.test_tree_hash_command",
-    "tests.test_cli.TestCliAcceptance.test_check_evidence_valid",
-    "tests.test_cli.TestCliAcceptance.test_check_evidence_tampered_fails",
-    "tests.test_cli.TestCliAcceptance.test_check_evidence_drifted_fails",
+    "tests.test_cli",
 ]
 
 
@@ -77,8 +79,8 @@ MUTANTS = [
     (
         TARGET_RUNNER,
         "M2 invert passed returncode comparison",
-        "passed=proc.returncode == 0,",
-        "passed=proc.returncode != 0,",
+        "passed = proc.returncode == 0",
+        "passed = proc.returncode != 0",
         CORE_TESTS,
     ),
     (
@@ -91,15 +93,15 @@ MUTANTS = [
     (
         TARGET_RUNNER,
         "M4 ignore optional flag on failure (abort on optional)",
-        "            if not layer.optional:\n                success = False\n                break",
+        "            if layer.requirement == LayerRequirement.REQUIRED and not layer.optional:\n                success = False\n                break",
         "            if True:\n                success = False\n                break",
         CORE_TESTS,
     ),
     (
         TARGET_RUNNER,
         "M5 ignore mandatory failures (never set success to False)",
-        "            if not layer.optional:\n                success = False\n                break",
-        "            if not layer.optional:\n                pass",
+        "            if layer.requirement == LayerRequirement.REQUIRED and not layer.optional:\n                success = False\n                break",
+        "            if layer.requirement == LayerRequirement.REQUIRED and not layer.optional:\n                pass",
         CORE_TESTS,
     ),
     (
@@ -137,62 +139,100 @@ MUTANTS = [
         "        pass",
         CORE_TESTS,
     ),
-    # --- evidence_authority mutants ---
+    # --- verification_report mutants ---
     (
         TARGET_AUTHORITY,
-        "EA-M1 fail-open on missing signature",
-        "        if not record.signature or not isinstance(record.signature, str):\n            return False",
-        "        if not record.signature or not isinstance(record.signature, str):\n            return True",
-        CORE_TESTS,
-    ),
-    (
-        TARGET_AUTHORITY,
-        "EA-M2 always accept signature (bypass verify)",
-        "        return hmac.compare_digest(record.signature, expected_signature)",
+        "VR-M1 fail-open on drifted manifest match",
+        "        return hmac.compare_digest(report_digest, cur_digest)",
         "        return True",
         CORE_TESTS,
     ),
     (
         TARGET_AUTHORITY,
-        "EA-M3 always reject signature",
-        "        return hmac.compare_digest(record.signature, expected_signature)",
+        "VR-M2 always reject manifest match",
+        "        return hmac.compare_digest(report_digest, cur_digest)",
         "        return False",
         CORE_TESTS,
     ),
     (
         TARGET_AUTHORITY,
-        "EA-M4 bypass record verification in tree match check",
-        "        if not self.verify_record(record):\n            return False",
-        "        pass",
+        "VR-M3 fail-open on empty report digest",
+        "        if not report_digest or not cur_digest:\n            return False",
+        "        if not report_digest or not cur_digest:\n            return True",
         CORE_TESTS,
     ),
     (
         TARGET_AUTHORITY,
-        "EA-M5 bypass tree hash comparison in tree match check",
-        "        return hmac.compare_digest(record.source_tree_hash, str(current_tree_hash))",
-        "        return True",
+        "VR-M4 classify_evidence_payload invert legacy check",
+        '        if "signature" in data or "source_tree_hash" in data:\n            return "LEGACY_UNATTESTED"',
+        '        if "signature" in data or "source_tree_hash" in data:\n            return "LOCAL_UNATTESTED"',
         CORE_TESTS,
     ),
     (
         TARGET_AUTHORITY,
-        "EA-M6 drop signature generation",
-        "        signature = hmac.new(self._key, payload, hashlib.sha256).hexdigest()",
-        "        signature = \"\"",
+        "VR-M5 load_report_json drop verdict parsing",
+        '                verdict=str(data.get("verdict", "PASSED")),',
+        '                verdict="PASSED",',
+        CORE_TESTS,
+    ),
+    # --- workspace_manifest mutants ---
+    (
+        TARGET_MANIFEST,
+        "MNF-M1 symlink escape check bypass",
+        "                try:\n                    # Check workspace escape: resolved target must be within target_root\n                    resolved.relative_to(target_root)\n                except ValueError as err:\n                    raise WorkspaceEscapeError(",
+        "                try:\n                    pass\n                except ValueError as err:\n                    raise WorkspaceEscapeError(",
         CORE_TESTS,
     ),
     (
-        TARGET_AUTHORITY,
-        "EA-M7 drop criteria from canonical payload",
-        '            "acceptance_criteria": sorted(list(record.acceptance_criteria)),',
-        '            "acceptance_criteria": [],',
+        TARGET_MANIFEST,
+        "MNF-M2 ignore file mode bit in manifest lines",
+        '    manifest_lines = "".join(f"{h} {m} {p}\\n" for p, h, m in sorted_items)',
+        '    manifest_lines = "".join(f"{h} 644 {p}\\n" for p, h, m in sorted_items)',
+        CORE_TESTS,
+    ),
+    (
+        TARGET_MANIFEST,
+        "MNF-M3 ignore excluded files in manifest",
+        "            if _is_excluded(rel_path):\n                continue",
+        "            if False:\n                continue",
+        CORE_TESTS,
+    ),
+    # --- trust_policy mutants ---
+    (
+        TARGET_TRUST,
+        "TRP-M1 fail-open on unauthorized issuer",
+        "            if identity.issuer not in policy.allowed_oidc_issuers:",
+        "            if False:",
+        CORE_TESTS,
+    ),
+    (
+        TARGET_TRUST,
+        "TRP-M2 fail-open on failed verdict in release_eligible",
+        '            and report.verdict == "PASSED"',
+        "            and True",
+        CORE_TESTS,
+    ),
+    (
+        TARGET_TRUST,
+        "TRP-M3 fail-open on invalid attestation status",
+        "            elif attestation.status != AttestationStatus.VALID:",
+        "            elif False:",
+        CORE_TESTS,
+    ),
+    # --- attestation mutants ---
+    (
+        TARGET_ATTESTATION,
+        "ATT-M1 bypass subject digest comparison",
+        "        if not bundle.subject_digest or not hmac.compare_digest(bundle.subject_digest, expected_subject_digest):",
+        "        if False:",
         CORE_TESTS,
     ),
     # --- gatekeeper mutants ---
     (
         TARGET_GATEKEEPER,
         "GK-M1 gatekeeper bypass active task check",
-        "            if not has_active_task(workspace):",
-        "            if False:",
+        "                if not context.has_active_task:",
+        "                if False:",
         HOOK_TESTS,
     ),
     (
@@ -228,14 +268,14 @@ MUTANTS = [
     (
         TARGET_ADAPTER,
         "AD-M2 evaluate_invocation fail-open decision",
-        '            decision="allow" if hook_res.allowed else "deny",',
+        "            decision=decision.decision,",
         '            decision="allow",',
         ADAPTER_TESTS,
     ),
     (
         TARGET_ADAPTER,
         "AD-M3 evaluate_invocation fail-open allowed flag",
-        "            allowed=hook_res.allowed,",
+        "            allowed=decision.allowed,",
         "            allowed=True,",
         ADAPTER_TESTS,
     ),
@@ -256,17 +296,73 @@ MUTANTS = [
     # --- cli mutants ---
     (
         TARGET_CLI,
-        "CLI-M1 check-evidence fail-open on invalid signature",
-        "        if not authority.verify_record(record):",
+        "CLI-M1 check-evidence fail-open on legacy evidence",
+        '        if classification == "LEGACY_UNATTESTED":',
         "        if False:",
         CLI_TESTS,
     ),
     (
         TARGET_CLI,
-        "CLI-M2 check-evidence fail-open on drifted tree hash",
-        "        if not authority.verify_source_state_match(record, current_tree):",
+        "CLI-M2 check-evidence fail-open on drifted manifest match",
+        "        if not engine.verify_workspace_state_match(report_obj, current_manifest.source_manifest_digest):",
         "        if False:",
         CLI_TESTS,
+    ),
+    (
+        TARGET_CLI,
+        "CLI-M3 check-attestation ignore drift error",
+        "        if not report_engine.verify_workspace_state_match(report_obj, current_manifest.source_manifest_digest):",
+        "        if False:",
+        CLI_TESTS,
+    ),
+    (
+        TARGET_CLI,
+        "CLI-M4 check-attestation fail-open on failed verdict",
+        "        if args.allow_unattested and attestation_status_val == AttestationStatus.ABSENT.value:",
+        "        if True:",
+        CLI_TESTS,
+    ),
+    (
+        TARGET_CLI,
+        "CLI-M5 verify ignore unresolved criteria",
+        "            elif unresolved:\n                verdict = \"INCOMPLETE\"",
+        "            elif False:\n                verdict = \"INCOMPLETE\"",
+        CLI_TESTS,
+    ),
+    (
+        TARGET_CLI,
+        "CLI-M6 verify targeted test fail-open to PASSED",
+        "            if args.test_target:\n                verdict = \"PARTIAL\"",
+        "            if False:\n                verdict = \"PARTIAL\"",
+        CLI_TESTS,
+    ),
+    (
+        TARGET_CLI,
+        "CLI-M7 check-evidence fail-open on unresolved criteria",
+        "        if report_obj.task_contract.unresolved_criteria:",
+        "        if False:",
+        CLI_TESTS,
+    ),
+    (
+        TARGET_CLI,
+        "CLI-M8 check-evidence fail-open on failed checks",
+        "        if failed_checks:",
+        "        if False:",
+        CLI_TESTS,
+    ),
+    (
+        TARGET_RUNNER,
+        "INV-M1 mask OSError as PASSED status",
+        "            status=LayerExecutionStatus.UNAVAILABLE,",
+        "            status=LayerExecutionStatus.PASSED,",
+        CORE_TESTS,
+    ),
+    (
+        TARGET_RUNNER,
+        "INV-M2 mask Timeout as PASSED status",
+        "            status=LayerExecutionStatus.TIMED_OUT,",
+        "            status=LayerExecutionStatus.PASSED,",
+        CORE_TESTS,
     ),
     # --- OKF validator & stamper mutants ---
     (
@@ -279,14 +375,14 @@ MUTANTS = [
     (
         TARGET_OKF_VALIDATOR,
         "M_OKF2 ignore future timestamp check in generated",
-        "                    generated_dt = dt\n                    if dt > future_tolerance:",
+        "                    generated_dt = dt\n                    if dt is not None and dt > future_tolerance:",
         "                    generated_dt = dt\n                    if False:",
         OKF_TESTS,
     ),
     (
         TARGET_OKF_VALIDATOR,
         "M_OKF3 ignore chronological inversion check",
-        "                    if generated_dt and dt < generated_dt:",
+        "                    if generated_dt is not None and dt is not None and dt < generated_dt:",
         "                    if False:",
         OKF_TESTS,
     ),
@@ -311,8 +407,8 @@ CONTROL = [
     (
         TARGET_RUNNER,
         "C1 killer (control)",
-        "passed=proc.returncode == 0,",
-        "passed=True,",
+        "passed = proc.returncode == 0",
+        "passed = True",
         CORE_TESTS,
     ),
     (
@@ -385,6 +481,9 @@ def main() -> int:
     originals: dict[Path, str] = {
         TARGET_RUNNER: TARGET_RUNNER.read_text(),
         TARGET_AUTHORITY: TARGET_AUTHORITY.read_text(),
+        TARGET_MANIFEST: TARGET_MANIFEST.read_text(),
+        TARGET_TRUST: TARGET_TRUST.read_text(),
+        TARGET_ATTESTATION: TARGET_ATTESTATION.read_text(),
         TARGET_GATEKEEPER: TARGET_GATEKEEPER.read_text(),
         TARGET_SCAFFOLDER: TARGET_SCAFFOLDER.read_text(),
         TARGET_ADAPTER: TARGET_ADAPTER.read_text(),

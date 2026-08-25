@@ -15,7 +15,7 @@ verified:
 
 # 2. Cryptographic Evidence Authority & Source State Binding
 
-**Status**: `accepted`  
+**Status**: `superseded` (by ADR 0005)  
 **Date**: `2026-08-22`  
 
 ## Context

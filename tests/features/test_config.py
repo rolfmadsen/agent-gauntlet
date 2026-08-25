@@ -9,7 +9,7 @@ from agent_gauntlet.features.config.loader import (
     generate_default_config_toml,
     load_config,
 )
-from agent_gauntlet.features.config.schema import GauntletConfig, LayerConfig
+from agent_gauntlet.features.config.schema import LayerConfig
 
 
 class TestConfigSchemaAndLoader(unittest.TestCase):

@@ -11,7 +11,6 @@ from agent_gauntlet.features.adapters.antigravity.hook import main_hook_entrypoi
 from agent_gauntlet.features.adapters.antigravity.validator import AntigravityPluginValidator
 from agent_gauntlet.features.adapters.models import (
     ToolActionType,
-    ValidationSeverity,
 )
 
 
@@ -283,7 +282,7 @@ class TestAntigravityHookCli(unittest.TestCase):
     """Test suite for Antigravity PreInvocation CLI hook entrypoint."""
 
     def test_hook_cli_blocks_forbidden_command(self) -> None:
-        """Hook CLI outputs deny and returns exit code 1 on git push."""
+        """Hook CLI outputs deny JSON and returns exit code 1 on git push."""
         stdin_data = json.dumps({
             "toolCall": {
                 "name": "run_command",
@@ -302,10 +301,12 @@ class TestAntigravityHookCli(unittest.TestCase):
             workspace=Path("/tmp"),
         )
         self.assertEqual(code, 1)
-        self.assertIn("push", stderr_stream.getvalue().lower())
+        out = json.loads(stdout_stream.getvalue().strip())
+        self.assertEqual(out["decision"], "deny")
+        self.assertIn("push", out["reason"].lower())
 
     def test_hook_cli_allows_safe_command(self) -> None:
-        """Hook CLI outputs allow and returns exit code 0 on git status."""
+        """Hook CLI outputs allow JSON and returns exit code 0 on git status."""
         stdin_data = json.dumps({
             "toolCall": {
                 "name": "run_command",
@@ -324,9 +325,11 @@ class TestAntigravityHookCli(unittest.TestCase):
             workspace=Path("/tmp"),
         )
         self.assertEqual(code, 0)
+        out = json.loads(stdout_stream.getvalue().strip())
+        self.assertEqual(out["decision"], "allow")
 
-    def test_hook_cli_fails_open_on_empty_input(self) -> None:
-        """Hook CLI fails open (exit code 0) on non-json stdin."""
+    def test_hook_cli_fails_closed_on_empty_input(self) -> None:
+        """Hook CLI fails closed (exit code 1, decision: deny) on empty stdin."""
         stdin_stream = io.StringIO("")
         stdout_stream = io.StringIO()
         stderr_stream = io.StringIO()
@@ -338,4 +341,82 @@ class TestAntigravityHookCli(unittest.TestCase):
             stderr=stderr_stream,
             workspace=Path("/tmp"),
         )
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 1)
+        out = json.loads(stdout_stream.getvalue().strip())
+        self.assertEqual(out["decision"], "deny")
+
+    def test_hook_cli_fails_closed_on_corrupt_json(self) -> None:
+        """Hook CLI fails closed (exit code 1, decision: deny) on corrupted JSON."""
+        stdin_stream = io.StringIO("{broken json")
+        stdout_stream = io.StringIO()
+        stderr_stream = io.StringIO()
+
+        code = main_hook_entrypoint(
+            argv=[],
+            stdin=stdin_stream,
+            stdout=stdout_stream,
+            stderr=stderr_stream,
+            workspace=Path("/tmp"),
+        )
+        self.assertEqual(code, 1)
+        out = json.loads(stdout_stream.getvalue().strip())
+        self.assertEqual(out["decision"], "deny")
+
+    def test_subprocess_hook_denial_contract(self) -> None:
+        """Integration: Invoking hook module via real subprocess enforces exit code 1 and stdout JSON deny."""
+        import os
+        import subprocess
+        import sys
+
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        env = {
+            **os.environ,
+            "PYTHONPATH": f"{repo_root / 'src'}:{os.environ.get('PYTHONPATH', '')}",
+        }
+        payload = json.dumps({
+            "toolCall": {
+                "name": "run_command",
+                "args": {"CommandLine": "git push origin main"},
+            }
+        })
+        proc = subprocess.run(
+            [sys.executable, "-m", "agent_gauntlet.features.adapters.antigravity.hook"],
+            input=payload,
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+            env=env,
+        )
+        self.assertEqual(proc.returncode, 1, "Denial must result in exit code 1")
+        stdout_data = json.loads(proc.stdout.strip())
+        self.assertEqual(stdout_data["decision"], "deny")
+        self.assertIn("push", stdout_data["reason"].lower())
+
+    def test_subprocess_hook_allow_contract(self) -> None:
+        """Integration: Invoking hook module via real subprocess returns exit code 0 and stdout JSON allow."""
+        import os
+        import subprocess
+        import sys
+
+        repo_root = Path(__file__).resolve().parent.parent.parent
+        env = {
+            **os.environ,
+            "PYTHONPATH": f"{repo_root / 'src'}:{os.environ.get('PYTHONPATH', '')}",
+        }
+        payload = json.dumps({
+            "toolCall": {
+                "name": "run_command",
+                "args": {"CommandLine": "git status"},
+            }
+        })
+        proc = subprocess.run(
+            [sys.executable, "-m", "agent_gauntlet.features.adapters.antigravity.hook"],
+            input=payload,
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+            env=env,
+        )
+        self.assertEqual(proc.returncode, 0, "Allow must result in exit code 0")
+        stdout_data = json.loads(proc.stdout.strip())
+        self.assertEqual(stdout_data["decision"], "allow")

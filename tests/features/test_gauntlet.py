@@ -2,12 +2,10 @@
 
 import sys
 import unittest
-from pathlib import Path
 
 from agent_gauntlet.features.gauntlet import (
     GauntletReport,
     LayerDefinition,
-    LayerResult,
     run_gauntlet,
 )
 
@@ -112,8 +110,51 @@ class TestRunGauntletAcceptance(unittest.TestCase):
         self.assertFalse(report.success)
         self.assertEqual(len(report.layers), 1)
         self.assertFalse(report.layers[0].passed)
-        self.assertNotEqual(report.layers[0].exit_code, 0)
+        self.assertEqual(report.layers[0].exit_code, 127)
+        self.assertEqual(report.layers[0].status.value, "UNAVAILABLE")
+
+    def test_run_gauntlet_timeout_status(self) -> None:
+        """Scenario: Timed out layer records TIMED_OUT status and exit code 124."""
+        layers = [
+            LayerDefinition(
+                name="slow-command",
+                command=[sys.executable, "-c", "import time; time.sleep(2)"],
+                timeout_seconds=0.1,
+            )
+        ]
+        report = run_gauntlet(layers)
+
+        self.assertFalse(report.success)
+        self.assertEqual(len(report.layers), 1)
+        self.assertFalse(report.layers[0].passed)
+        self.assertEqual(report.layers[0].exit_code, 124)
+        self.assertEqual(report.layers[0].status.value, "TIMED_OUT")
+
+    def test_run_gauntlet_optional_layer_unavailable_continues(self) -> None:
+        """Scenario: Optional layer with nonexistent binary records UNAVAILABLE but does not fail gauntlet."""
+        layers = [
+            LayerDefinition(
+                name="opt-missing-tool",
+                command=["/nonexistent/tool/for/optional/check"],
+                optional=True,
+            ),
+            LayerDefinition(
+                name="mandatory-pass",
+                command=[sys.executable, "-c", "import sys; sys.exit(0)"],
+                optional=False,
+            ),
+        ]
+        report = run_gauntlet(layers)
+
+        self.assertTrue(report.success)
+        self.assertEqual(len(report.layers), 2)
+        self.assertFalse(report.layers[0].passed)
+        self.assertEqual(report.layers[0].status.value, "UNAVAILABLE")
+        self.assertEqual(report.layers[0].exit_code, 127)
+        self.assertTrue(report.layers[1].passed)
+        self.assertEqual(report.layers[1].status.value, "PASSED")
 
 
 if __name__ == "__main__":
     unittest.main()
+

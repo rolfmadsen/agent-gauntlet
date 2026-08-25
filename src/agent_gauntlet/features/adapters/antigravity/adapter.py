@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +13,15 @@ from agent_gauntlet.features.adapters.models import (
     NormalizedToolCall,
     ToolActionType,
 )
-from agent_gauntlet.features.hooks.gatekeeper import evaluate_tool_invocation
+from agent_gauntlet.features.hooks.gatekeeper import PolicyEngine, has_active_task
+from agent_gauntlet.features.hooks.models import (
+    CapabilityRequest,
+    CommandExecutionRequest,
+    FileReadRequest,
+    FileWriteRequest,
+    OtherCapabilityRequest,
+    TrustedEnforcementContext,
+)
 
 
 class AntigravityAdapter:
@@ -24,6 +31,7 @@ class AntigravityAdapter:
 
     def __init__(self) -> None:
         self.validator = AntigravityPluginValidator()
+        self.policy_engine = PolicyEngine()
 
     def normalize_tool_call(self, payload: dict[str, Any] | str) -> NormalizedToolCall:
         """Translates raw Antigravity payloads into a NormalizedToolCall."""
@@ -93,22 +101,49 @@ class AntigravityAdapter:
             payload=args,
         )
 
+    def to_capability_request(self, payload: dict[str, Any] | str) -> CapabilityRequest:
+        """Translates an Antigravity tool payload into a typed CapabilityRequest."""
+        normalized = self.normalize_tool_call(payload)
+        if normalized.action_type == ToolActionType.EXECUTE_COMMAND:
+            return CommandExecutionRequest(
+                command_line=normalized.target_resource,
+                raw_tool_name=normalized.raw_tool_name,
+                payload=normalized.payload,
+            )
+        if normalized.action_type == ToolActionType.WRITE_FILE:
+            return FileWriteRequest(
+                target_file=normalized.target_resource,
+                raw_tool_name=normalized.raw_tool_name,
+                payload=normalized.payload,
+            )
+        if normalized.action_type == ToolActionType.READ_FILE:
+            return FileReadRequest(
+                target_path=normalized.target_resource,
+                raw_tool_name=normalized.raw_tool_name,
+                payload=normalized.payload,
+            )
+        return OtherCapabilityRequest(
+            tool_name=normalized.raw_tool_name,
+            payload=normalized.payload,
+        )
+
     def evaluate_invocation(
         self,
         workspace: Path,
         payload: dict[str, Any] | str,
     ) -> AdapterHookVerdict:
-        """Evaluates an Antigravity tool invocation payload against gatekeeper safety rules."""
-        normalized = self.normalize_tool_call(payload)
-        hook_res = evaluate_tool_invocation(
-            workspace=workspace,
-            tool_name=normalized.raw_tool_name,
-            tool_input=normalized.payload,
+        """Evaluates an Antigravity tool invocation payload against PolicyEngine invariants."""
+        request = self.to_capability_request(payload)
+        context = TrustedEnforcementContext(
+            workspace_root=workspace,
+            has_active_task=has_active_task(workspace),
+            harness_origin="antigravity",
         )
+        decision = self.policy_engine.evaluate(request, context)
         return AdapterHookVerdict(
-            allowed=hook_res.allowed,
-            decision="allow" if hook_res.allowed else "deny",
-            reason=hook_res.reason,
+            allowed=decision.allowed,
+            decision=decision.decision,
+            reason=decision.reason,
         )
 
     def validate_plugin(self, plugin_dir: Path) -> AdapterValidationResult:

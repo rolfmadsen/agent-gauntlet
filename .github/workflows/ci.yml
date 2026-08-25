@@ -1,15 +1,22 @@
-name: CI
+name: CI & Attestation Pipeline
 
 on:
   push:
     branches: [ main, master ]
+    tags: [ 'v*.*.*' ]
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
 jobs:
-  gauntlet:
-    name: Gauntlet (Python ${{ matrix.python-version }})
+  verify:
+    name: Verify Gauntlet (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: none
     strategy:
       fail-fast: false
       matrix:
@@ -24,15 +31,67 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install agent-gauntlet
+      - name: Install agent-gauntlet with dev dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
+          pip install -e ".[dev]"
 
       - name: Run Multi-Layer Gauntlet
         run: |
           sh tools/gauntlet.sh
 
-      - name: Verify Evidence & Drift Authority
+      - name: Verify Clean Workspace (No Test Mutation Artifacts)
         run: |
-          agent-gauntlet check-evidence
+          git diff --exit-code
+
+      - name: Generate Unsigned Verification Report
+        run: |
+          agent-gauntlet verify --task-id ci-verification
+
+      - name: Upload Verification Report
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-report
+          path: verification-report.json
+          retention-days: 7
+
+  attest:
+    name: Attest Verification Report (Sigstore OIDC)
+    needs: [verify]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Verification Report
+        uses: actions/download-artifact@v4
+        with:
+          name: verification-report
+
+      - name: Validate Report Integrity
+        run: |
+          python3 -c "
+          import json, sys
+          with open('verification-report.json', 'r', encoding='utf-8') as f:
+              data = json.load(f)
+          if data.get('verdict') != 'PASSED':
+              print(f'Error: Verdict is {data.get(\"verdict\")}', file=sys.stderr)
+              sys.exit(1)
+          if data.get('schema_version') != '2.0.0':
+              print(f'Error: Schema version {data.get(\"schema_version\")}', file=sys.stderr)
+              sys.exit(1)
+          print('Verification report schema and verdict validated successfully.')
+          "
+
+      - name: Attest Verification Report
+        uses: actions/attest@v2
+        with:
+          subject-path: verification-report.json
+          predicate-type: https://agent-gauntlet.dev/attestation/v1

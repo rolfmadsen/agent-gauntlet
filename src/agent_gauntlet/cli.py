@@ -11,26 +11,39 @@ from pathlib import Path
 
 from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES, get_adapter
 from agent_gauntlet.features.config.loader import (
-    generate_default_config_json,
-    generate_default_config_toml,
     load_config,
 )
 from agent_gauntlet.features.diagnostics.parser import DiagnosticParser
-from agent_gauntlet.features.evidence.authority import EvidenceAuthority
-from agent_gauntlet.features.evidence.models import CheckSummary, EvidenceRecord
-from agent_gauntlet.features.gauntlet.models import LayerDefinition
+from agent_gauntlet.features.evidence.attestation import (
+    AttestationBundle,
+    AttestationEngine,
+)
+from agent_gauntlet.features.evidence.models import (
+    AttestationStatus,
+    CheckSummary,
+    ExecutionMetadata,
+    TaskContract,
+    VerificationReport,
+    WorkspaceState,
+)
+from agent_gauntlet.features.evidence.report import VerificationReportEngine
+from agent_gauntlet.features.evidence.source_state import (
+    compute_source_state,
+    compute_workspace_manifest,
+)
+from agent_gauntlet.features.evidence.trust_policy import (
+    TrustPolicy,
+    TrustPolicyEngine,
+)
+from agent_gauntlet.features.gauntlet.models import LayerDefinition, LayerRequirement
 from agent_gauntlet.features.gauntlet.runner import run_gauntlet
-from agent_gauntlet.features.scaffold.scaffolder import ProjectScaffolder
-from agent_gauntlet.features.stacks.detector import detect_stack
-from agent_gauntlet.features.stacks.profiles import SUPPORTED_STACKS
-from agent_gauntlet.features.evidence.source_state import compute_source_state
 from agent_gauntlet.features.hooks.gatekeeper import is_task_active
-from agent_gauntlet.features.okf.models import OkfValidationFinding, OkfValidationReport
 from agent_gauntlet.features.okf.stamper import stamp_okf_file
 from agent_gauntlet.features.okf.validator import (
-    validate_okf_file,
     validate_okf_workspace,
 )
+from agent_gauntlet.features.scaffold.scaffolder import ProjectScaffolder
+from agent_gauntlet.features.stacks.profiles import SUPPORTED_STACKS
 
 
 def _resolve_task_contract(
@@ -204,19 +217,24 @@ def main(argv: list[str] | None = None) -> int:
     # 4. check-evidence
     check_parser = subparsers.add_parser(
         "check-evidence",
-        help="Verify HMAC signature and tree-hash match of evidence ledger",
+        help="Verify workspace source manifest against verification report and check status",
         parents=[common_parser],
     )
     check_parser.add_argument(
         "--evidence-file",
-        default="evidence.json",
-        help="Path to evidence JSON file (default: evidence.json)",
+        default="",
+        help="Path to verification report or evidence JSON file (default: verification-report.json or evidence.json)",
+    )
+    check_parser.add_argument(
+        "--legacy-advisory",
+        action="store_true",
+        help="Allow inspection of legacy v1 evidence records in advisory mode",
     )
 
-    # 4. verify
+    # 5. verify
     verify_parser = subparsers.add_parser(
         "verify",
-        help="Execute complete verification gauntlet and generate signed evidence",
+        help="Execute complete verification gauntlet and generate unsigned verification report",
         parents=[common_parser],
     )
     verify_parser.add_argument(
@@ -299,13 +317,44 @@ def main(argv: list[str] | None = None) -> int:
     )
     okf_stamp_parser.add_argument("--title", default=None, help="Display title")
 
+    # 6. check-attestation
+    attest_parser = subparsers.add_parser(
+        "check-attestation",
+        help="Verify detached cryptographic attestation and evaluate deny-by-default TrustPolicy",
+        parents=[common_parser],
+    )
+    attest_parser.add_argument(
+        "--report",
+        "-r",
+        default="verification-report.json",
+        help="Path to verification report JSON (default: verification-report.json)",
+    )
+    attest_parser.add_argument(
+        "--attestation",
+        "-a",
+        default="",
+        help="Path to Sigstore / GitHub attestation bundle JSON",
+    )
+    attest_parser.add_argument(
+        "--trust-policy",
+        "-p",
+        default="",
+        help="Path to TrustPolicy JSON configuration (default: .agent-gauntlet/trust-policy.json or built-in strict policy)",
+    )
+    attest_parser.add_argument(
+        "--allow-unattested",
+        action="store_true",
+        help="Permit unattested local reports in advisory mode (ineligible for release/stabilization)",
+    )
+
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:
-        return exc.code
+        if isinstance(exc.code, int):
+            return exc.code
+        return 0 if exc.code is None else 1
 
     workspace = Path(args.workspace).resolve()
-    authority = EvidenceAuthority()
 
     # --- Command: init ---
     if args.command == "init":
@@ -380,34 +429,185 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- Command: check-evidence ---
     if args.command == "check-evidence":
-        evidence_path = workspace / args.evidence_file
+        engine = VerificationReportEngine()
+        target_file = args.evidence_file
+        if not target_file:
+            if (workspace / "verification-report.json").is_file():
+                target_file = "verification-report.json"
+            elif (workspace / "evidence.json").is_file():
+                target_file = "evidence.json"
+            else:
+                target_file = "verification-report.json"
+
+        evidence_path = workspace / target_file if not Path(target_file).is_absolute() else Path(target_file)
         if not evidence_path.is_file():
             print(f"FAILED: Evidence file '{evidence_path}' does not exist.", file=sys.stderr)
             return 1
 
         try:
-            record = authority.load_evidence_json(evidence_path.read_text(encoding="utf-8"))
+            raw_content = evidence_path.read_text(encoding="utf-8")
         except Exception as exc:
             print(f"FAILED: Failed to parse evidence file '{evidence_path}': {exc}", file=sys.stderr)
             return 1
 
-        if not authority.verify_record(record):
-            print("FAILED: Evidence signature is invalid or has been tampered with.", file=sys.stderr)
+        classification = engine.classify_evidence_payload(raw_content)
+        if classification == "LEGACY_UNATTESTED":
+            if not args.legacy_advisory:
+                print(
+                    "FAILED: Legacy v1 HMAC evidence detected. Legacy evidence cannot satisfy authoritative verification gates. "
+                    "Re-run 'agent-gauntlet verify' to produce an unsigned v2 verification report, or pass --legacy-advisory for local advisory inspection.",
+                    file=sys.stderr,
+                )
+                return 1
+            else:
+                print(f"[LEGACY_UNATTESTED] Legacy evidence in '{evidence_path}' inspected in advisory mode.")
+                return 0
+
+        try:
+            report_obj = engine.load_report_json(raw_content)
+        except Exception as exc:
+            print(f"FAILED: Failed to parse verification report '{evidence_path}': {exc}", file=sys.stderr)
             return 1
 
-        head, commit, current_tree = compute_source_state(workspace)
-        if not authority.verify_source_state_match(record, current_tree):
+        if report_obj.verdict != "PASSED":
+            print(f"FAILED: Verification report records non-passed verdict: '{report_obj.verdict}'.", file=sys.stderr)
+            return 1
+
+        if report_obj.task_contract.unresolved_criteria:
             print(
-                f"FAILED: Source tree drift detected! Evidence bound to '{record.source_tree_hash}', but current workspace is '{current_tree}'.",
+                f"FAILED: Verification report has {len(report_obj.task_contract.unresolved_criteria)} unresolved acceptance criteria.",
+                file=sys.stderr,
+            )
+            return 1
+
+        failed_checks = [
+            c for c in report_obj.checks
+            if not c.optional and (not c.passed or c.exit_code != 0 or c.status == "FAILED")
+        ]
+        if failed_checks:
+            print(
+                f"FAILED: Verification report contains {len(failed_checks)} failed check(s): {[c.name for c in failed_checks]}.",
+                file=sys.stderr,
+            )
+            return 1
+
+        current_manifest = compute_workspace_manifest(workspace)
+        if not engine.verify_workspace_state_match(report_obj, current_manifest.source_manifest_digest):
+            report_digest = report_obj.workspace_state.source_manifest_digest_post or "(none)"
+            print(
+                f"FAILED: Source manifest drift detected! Report bound to '{report_digest}', but current workspace is '{current_manifest.source_manifest_digest}'.",
                 file=sys.stderr,
             )
             return 1
 
         if args.json:
-            print(json.dumps({"status": "VALID", "record": json.loads(authority.generate_evidence_json(record))}, indent=2))
+            print(json.dumps({"status": "VALID", "report": json.loads(engine.generate_report_json(report_obj))}, indent=2))
         else:
-            print(f"[VALID] Evidence signature verified ({record.signature[:16]}...) and matches current source tree ({current_tree}).")
+            print(f"[VALID] Source manifest verified ({current_manifest.source_manifest_digest[:16]}) [origin: {report_obj.execution_origin}, attestation: ABSENT].")
         return 0
+
+    # --- Command: check-attestation ---
+    if args.command == "check-attestation":
+        report_path = Path(args.report)
+        if not report_path.is_absolute():
+            report_path = (workspace / report_path).resolve()
+
+        if not report_path.is_file():
+            print(f"FAILED: Verification report '{report_path}' not found.", file=sys.stderr)
+            return 1
+
+        raw_report = report_path.read_text(encoding="utf-8")
+        report_engine = VerificationReportEngine()
+        try:
+            report_obj = report_engine.load_report_json(raw_report)
+        except Exception as exc:
+            print(f"FAILED: Failed to parse verification report '{report_path}': {exc}", file=sys.stderr)
+            return 1
+
+        current_manifest = compute_workspace_manifest(workspace)
+        if not report_engine.verify_workspace_state_match(report_obj, current_manifest.source_manifest_digest):
+            report_digest = report_obj.workspace_state.source_manifest_digest_post or "(none)"
+            print(
+                f"FAILED: Source manifest drift detected! Report bound to '{report_digest}', but current workspace is '{current_manifest.source_manifest_digest}'.",
+                file=sys.stderr,
+            )
+            return 1
+
+        # Load Attestation bundle if provided / present
+        attestation_bundle: AttestationBundle | None = None
+        attestation_engine = AttestationEngine()
+        attestation_path_str = args.attestation
+        if not attestation_path_str and (workspace / "attestation.json").is_file():
+            attestation_path_str = str(workspace / "attestation.json")
+
+        if attestation_path_str:
+            att_path = Path(attestation_path_str)
+            if not att_path.is_absolute():
+                att_path = (workspace / att_path).resolve()
+            if att_path.is_file():
+                raw_bundle = att_path.read_text(encoding="utf-8")
+                bundle = attestation_engine.load_bundle(raw_bundle)
+                status = attestation_engine.verify_bundle_against_report(bundle, raw_report)
+                if status != AttestationStatus.VALID:
+                    attestation_bundle = AttestationBundle(
+                        bundle_version=bundle.bundle_version,
+                        status=AttestationStatus.INVALID,
+                        identity=bundle.identity,
+                        subject_digest=bundle.subject_digest,
+                    )
+                else:
+                    attestation_bundle = bundle
+
+        # Load TrustPolicy
+        trust_engine = TrustPolicyEngine()
+        policy_path_str = args.trust_policy
+        if not policy_path_str and (workspace / ".agent-gauntlet/trust-policy.json").is_file():
+            policy_path_str = str(workspace / ".agent-gauntlet/trust-policy.json")
+
+        trust_policy = trust_engine.load_policy(policy_path_str) if policy_path_str else TrustPolicy()
+
+        # Evaluate orthogonal dimensions
+        eval_result = trust_engine.evaluate(
+            report=report_obj,
+            attestation=attestation_bundle,
+            policy=trust_policy,
+        )
+
+        attestation_status_val = (
+            attestation_bundle.status.value if attestation_bundle else AttestationStatus.ABSENT.value
+        )
+        verification_result_val = report_obj.verdict
+        trust_decision_val = eval_result.trust_decision.value
+        release_eligible = eval_result.release_eligible
+
+        if args.allow_unattested and attestation_status_val == AttestationStatus.ABSENT.value:
+            is_success = report_obj.verdict == "PASSED" and not report_obj.task_contract.unresolved_criteria
+        else:
+            is_success = release_eligible
+
+        if args.json:
+            out_data = {
+                "verification_result": verification_result_val,
+                "attestation_status": attestation_status_val,
+                "trust_decision": trust_decision_val,
+                "release_eligible": release_eligible,
+                "reasons": eval_result.reasons,
+                "subject_digest": eval_result.evaluated_subject,
+                "issuer": eval_result.evaluated_issuer,
+            }
+            print(json.dumps(out_data, indent=2))
+        else:
+            print("\nAttestation & Trust Evaluation:")
+            print(f"  Verification Result:  {verification_result_val}")
+            print(f"  Attestation Status:   {attestation_status_val}")
+            print(f"  Trust Decision:       {trust_decision_val}")
+            print(f"  Release Eligible:     {'YES' if release_eligible else 'NO'}")
+            if eval_result.reasons:
+                print("\nEvaluation Details / Reasons:")
+                for r in eval_result.reasons:
+                    print(f"  [!] {r}")
+
+        return 0 if is_success else 1
 
     # --- Command: okf ---
     if args.command == "okf":
@@ -484,7 +684,9 @@ def main(argv: list[str] | None = None) -> int:
 
     # --- Command: verify ---
     if args.command == "verify":
-        head, commit, tree = compute_source_state(workspace)
+        start_time = time.time()
+        started_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        manifest_pre = compute_workspace_manifest(workspace)
         config = load_config(workspace, explicit_stack=args.stack)
 
         task_id, task_title, criteria, unresolved = _resolve_task_contract(workspace, args.task_id)
@@ -510,7 +712,6 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"  ... and {len(okf_report.findings) - 5} more defect(s). Run 'agent-gauntlet okf validate' for full report.")
                 return 1
 
-
         layers: list[LayerDefinition] = []
         if args.test_target:
             layers.append(
@@ -524,6 +725,10 @@ def main(argv: list[str] | None = None) -> int:
             layers = config.to_layer_definitions()
 
         report = run_gauntlet(layers, cwd=workspace)
+        finished_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        total_duration = time.time() - start_time
+        manifest_post = compute_workspace_manifest(workspace)
+
         diagnostic_parser = DiagnosticParser()
         diagnostic_reports = [
             diagnostic_parser.parse_layer_output(
@@ -537,78 +742,115 @@ def main(argv: list[str] | None = None) -> int:
 
         checks = [
             CheckSummary(
-                name=l.name,
-                passed=l.passed,
-                exit_code=l.exit_code,
-                duration_seconds=l.duration_seconds,
+                name=layer.name,
+                status="PASSED" if layer.passed else "FAILED",
+                passed=layer.passed,
+                exit_code=layer.exit_code,
+                duration_seconds=layer.duration_seconds,
+                optional=(layer.requirement == LayerRequirement.OPTIONAL),
             )
-            for l in report.layers
+            for layer in report.layers
         ]
 
-        record = EvidenceRecord(
+        task_contract = TaskContract(
             task_id=task_id,
             task_title=task_title,
+            task_digest=manifest_post.task_digest,
             acceptance_criteria=criteria,
             unresolved_criteria=unresolved,
-            status="PASSED" if report.success else "FAILED",
-            source_tree_hash=tree,
-            checks=checks,
-            timestamp=time.time(),
         )
-        signed_record = authority.sign_record(record)
 
+        workspace_state = WorkspaceState(
+            manifest_version="1.0",
+            source_content_digest=manifest_post.source_content_digest,
+            source_manifest_digest_pre=manifest_pre.source_manifest_digest,
+            source_manifest_digest_post=manifest_post.source_manifest_digest,
+            config_digest=manifest_post.config_digest,
+            task_digest=manifest_post.task_digest,
+            policy_digest=manifest_post.policy_digest,
+            included_files_count=manifest_post.included_files_count,
+            vcs=manifest_post.vcs,
+        )
+
+        exec_metadata = ExecutionMetadata(
+            started_at=started_iso,
+            finished_at=finished_iso,
+            total_duration_seconds=total_duration,
+            environment={
+                "python_version": sys.version.split()[0],
+                "platform": sys.platform,
+                "gauntlet_version": "0.2.0",
+            },
+        )
+
+        if report.success:
+            if args.test_target:
+                verdict = "PARTIAL"
+            elif unresolved:
+                verdict = "INCOMPLETE"
+            else:
+                verdict = "PASSED"
+        else:
+            verdict = "FAILED"
+
+        report_obj = VerificationReport(
+            schema_version="2.0.0",
+            execution_origin="LOCAL",
+            verdict=verdict,
+            task_contract=task_contract,
+            workspace_state=workspace_state,
+            execution_metadata=exec_metadata,
+            checks=checks,
+        )
+
+        engine = VerificationReportEngine()
         if args.save:
-            (workspace / config.evidence_file).write_text(authority.generate_evidence_json(signed_record))
+            report_json_str = engine.generate_report_json(report_obj)
+            (workspace / "verification-report.json").write_text(report_json_str, encoding="utf-8")
+            (workspace / config.evidence_file).write_text(report_json_str, encoding="utf-8")
             (workspace / config.evidence_markdown_file).write_text(
-                authority.generate_evidence_markdown(signed_record, head=head, source_commit=commit)
+                engine.generate_report_markdown(report_obj), encoding="utf-8"
             )
-            if report.success and task_id and task_id not in ("default-run", "gauntlet-run"):
-                tasks_dir = workspace / "tasks"
-                if tasks_dir.is_dir():
-                    for candidate in sorted(tasks_dir.glob("*.md")):
-                        if (
-                            candidate.stem == task_id
-                            or candidate.name == task_id
-                            or candidate.name.startswith(f"{task_id}-")
-                            or candidate.stem.startswith(task_id)
-                        ):
-                            now_utc = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-                            stamp_okf_file(
-                                file_path=candidate,
-                                status="stable",
-                                verified_by="process:agent-gauntlet-verify",
-                                verified_at=now_utc,
-                            )
-                            break
+            # ZERO SELF-MUTATION: Do NOT mutate tasks/*.md during verify
 
         handoff_prompt = (
-            _generate_session_handoff_prompt(workspace, signed_record.task_id, signed_record.task_title)
-            if report.success
+            _generate_session_handoff_prompt(
+                workspace,
+                report_obj.task_contract.task_id,
+                report_obj.task_contract.task_title,
+            )
+            if verdict == "PASSED"
             else ""
         )
 
+        tree_digest = manifest_post.source_manifest_digest[:16]
+        is_verify_success = verdict == "PASSED" or (verdict == "PARTIAL" and report.success)
+
         if args.diagnostics_json:
             output_payload = {
-                "verdict": "PASSED" if report.success else "FAILED",
-                "source_tree_hash": tree,
-                "signature": signed_record.signature,
+                "verdict": verdict,
+                "source_tree_hash": tree_digest,
+                "execution_origin": "LOCAL",
                 "diagnostic_reports": [r.to_dict() for r in diagnostic_reports],
                 "handoff_prompt": handoff_prompt,
             }
             print(json.dumps(output_payload, indent=2))
         elif args.json:
-            print(authority.generate_evidence_json(signed_record))
+            print(engine.generate_report_json(report_obj))
         else:
-            verdict = "PASSED" if report.success else "FAILED"
             print(f"\nVerification Result: {verdict}")
-            if signed_record.task_id and signed_record.task_id != "default-run":
-                task_label = f"{signed_record.task_id} ({signed_record.task_title})" if signed_record.task_title else signed_record.task_id
+            if report_obj.task_contract.task_id and report_obj.task_contract.task_id != "default-run":
+                task_label = (
+                    f"{report_obj.task_contract.task_id} ({report_obj.task_contract.task_title})"
+                    if report_obj.task_contract.task_title
+                    else report_obj.task_contract.task_id
+                )
                 print(f"Bound Task:          {task_label}")
             print(f"Stack Profile:       {config.stack}")
-            print(f"Source Tree Hash:    {tree}")
-            print(f"Signature:           {signed_record.signature}")
+            print(f"Source Tree Hash:    {tree_digest}")
+            print("Execution Origin:    LOCAL (Unsigned report)")
             print("\nVerification Layers:")
-            for c in signed_record.checks:
+            for c in report_obj.checks:
                 tag = "[+]" if c.passed else "[-]"
                 print(f"  {tag} {c.name} (exit {c.exit_code}) in {c.duration_seconds:.3f}s")
 
@@ -622,11 +864,11 @@ def main(argv: list[str] | None = None) -> int:
                     if f.remediation_hint:
                         print(f"      Hint:    {f.remediation_hint}")
 
-            if report.success and handoff_prompt:
+            if verdict == "PASSED" and handoff_prompt:
                 import textwrap
 
                 print("\n" + "╭" + "─" * 76 + "╮")
-                print(f"│ 🏁 SESSION HANDOFF: {signed_record.task_id:<53} │")
+                print(f"│ 🏁 SESSION HANDOFF: {report_obj.task_contract.task_id:<53} │")
                 print("│" + " " * 76 + "│")
                 print("│ 💡 Start venligst en frisk chat-session for at undgå context rot.          │")
                 print("│ 📋 Kopiér og indsæt følgende starter-prompt i en ny chat:                  │")
@@ -635,9 +877,10 @@ def main(argv: list[str] | None = None) -> int:
                     print(f"│ {wrapped_line:<74} │")
                 print("╰" + "─" * 76 + "╯")
 
-        return 0 if report.success else 1
+        return 0 if is_verify_success else 1
 
     return 2
+
 
 
 if __name__ == "__main__":

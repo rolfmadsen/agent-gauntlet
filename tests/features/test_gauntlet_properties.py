@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 
 from agent_gauntlet.features.gauntlet import (
-    GauntletReport,
     LayerDefinition,
     run_gauntlet,
 )

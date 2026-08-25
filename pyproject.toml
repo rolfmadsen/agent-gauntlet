@@ -14,8 +14,35 @@ dependencies = [
 ]
 
 
+[project.optional-dependencies]
+dev = [
+    "pyright>=1.1.300",
+    "ruff>=0.4.0",
+]
+
 [project.scripts]
 agent-gauntlet = "agent_gauntlet.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+]
+ignore = [
+    "E501",
+]
+
+[tool.pyright]
+include = ["src", "tests", "tools"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+

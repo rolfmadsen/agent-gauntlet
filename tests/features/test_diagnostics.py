@@ -2,33 +2,31 @@
 
 import unittest
 
-from agent_gauntlet.features.diagnostics.models import (
-    DiagnosticFinding,
-    FindingType,
+from agent_gauntlet.features.diagnostics.extractors.invariants import (
+    extract_hypothesis_findings,
 )
-from agent_gauntlet.features.diagnostics.parser import DiagnosticParser
 from agent_gauntlet.features.diagnostics.extractors.linters import (
     extract_clippy_findings,
     extract_eslint_findings,
     extract_ruff_findings,
 )
-from agent_gauntlet.features.diagnostics.extractors.types import (
-    extract_mypy_findings,
-    extract_pyright_findings,
-    extract_tsc_findings,
+from agent_gauntlet.features.diagnostics.extractors.mutants import (
+    extract_mutants_py_findings,
 )
 from agent_gauntlet.features.diagnostics.extractors.tests import (
     extract_pytest_findings,
     extract_unittest_findings,
     extract_vitest_findings,
 )
-from agent_gauntlet.features.diagnostics.extractors.invariants import (
-    extract_hypothesis_findings,
-    extract_proptest_findings,
+from agent_gauntlet.features.diagnostics.extractors.types import (
+    extract_mypy_findings,
+    extract_pyright_findings,
+    extract_tsc_findings,
 )
-from agent_gauntlet.features.diagnostics.extractors.mutants import (
-    extract_mutants_py_findings,
+from agent_gauntlet.features.diagnostics.models import (
+    FindingType,
 )
+from agent_gauntlet.features.diagnostics.parser import DiagnosticParser
 
 
 class TestLinterExtractors(unittest.TestCase):

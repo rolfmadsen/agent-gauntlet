@@ -43,12 +43,12 @@ def _parse_dict_config(data: dict[str, Any], fallback_stack: str = "python") -> 
         default_layers = get_default_stack_profile(stack)
         layers = [
             LayerConfig(
-                name=l.name,
-                command=l.command,
-                optional=l.optional,
-                timeout_seconds=l.timeout_seconds,
+                name=layer.name,
+                command=layer.command,
+                optional=layer.optional,
+                timeout_seconds=layer.timeout_seconds,
             )
-            for l in default_layers
+            for layer in default_layers
         ]
 
     return GauntletConfig(
@@ -78,6 +78,8 @@ def load_config(
     detected_or_fallback = explicit_stack or detect_stack(root) or "python"
 
     if toml_path.exists():
+        if tomllib is None:
+            raise RuntimeError("TOML parser not available. Please install tomli for Python < 3.11")
         with open(toml_path, "rb") as f:
             data = tomllib.load(f)
             return _parse_dict_config(data, fallback_stack=detected_or_fallback)
@@ -92,12 +94,12 @@ def load_config(
     default_layers = get_default_stack_profile(stack)
     layers = [
         LayerConfig(
-            name=l.name,
-            command=l.command,
-            optional=l.optional,
-            timeout_seconds=l.timeout_seconds,
+            name=layer.name,
+            command=layer.command,
+            optional=layer.optional,
+            timeout_seconds=layer.timeout_seconds,
         )
-        for l in default_layers
+        for layer in default_layers
     ]
 
     return GauntletConfig(
@@ -142,12 +144,12 @@ def generate_default_config_json(stack: str) -> str:
         "evidence_markdown_file": "evidence.md",
         "layers": [
             {
-                "name": l.name,
-                "command": list(l.command),
-                "optional": l.optional,
-                "timeout_seconds": l.timeout_seconds,
+                "name": layer.name,
+                "command": list(layer.command),
+                "optional": layer.optional,
+                "timeout_seconds": layer.timeout_seconds,
             }
-            for l in layers
+            for layer in layers
         ],
     }
     return json.dumps(data, indent=2)

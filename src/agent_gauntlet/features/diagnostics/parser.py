@@ -51,7 +51,6 @@ class DiagnosticParser:
         """Parse raw output of a verification layer into a structured DiagnosticReport."""
         passed = exit_code == 0
         cmd_str = " ".join(command).lower()
-        name_lower = layer_name.lower()
         findings: list[DiagnosticFinding] = []
 
         if not passed:

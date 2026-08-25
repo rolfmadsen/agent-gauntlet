@@ -1,6 +1,8 @@
 """Unit tests for the base adapter abstractions and models."""
 
 import unittest
+
+from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES, get_adapter
 from agent_gauntlet.features.adapters.models import (
     AdapterValidationResult,
     NormalizedToolCall,
@@ -8,7 +10,6 @@ from agent_gauntlet.features.adapters.models import (
     ValidationIssue,
     ValidationSeverity,
 )
-from agent_gauntlet.features.adapters import get_adapter, SUPPORTED_HARNESSES
 
 
 class TestAdaptersBase(unittest.TestCase):

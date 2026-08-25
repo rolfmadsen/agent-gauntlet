@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import importlib
 import json
-import re
 from pathlib import Path
 
 from agent_gauntlet.features.adapters.models import (

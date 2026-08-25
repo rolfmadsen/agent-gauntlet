@@ -1,13 +1,18 @@
 """Tests for the surgical pre-invocation gatekeeper hook."""
 
-import json
 import tempfile
 import unittest
 from pathlib import Path
 
 from agent_gauntlet.features.hooks.gatekeeper import (
     GatekeeperVerdict,
+    PolicyEngine,
     evaluate_tool_invocation,
+)
+from agent_gauntlet.features.hooks.models import (
+    CommandExecutionRequest,
+    FileWriteRequest,
+    TrustedEnforcementContext,
 )
 
 
@@ -109,3 +114,38 @@ class TestGatekeeperHook(unittest.TestCase):
             tool_input={"CommandLine": "git status"},
         )
         self.assertTrue(verdict.allowed)
+
+
+class TestPolicyEngineDirect(unittest.TestCase):
+    """Direct tests for PolicyEngine and CapabilityRequest types."""
+
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.workspace = Path(self.temp_dir.name)
+        self.engine = PolicyEngine()
+
+    def tearDown(self) -> None:
+        self.temp_dir.cleanup()
+
+    def test_policy_engine_denies_remote_publication(self) -> None:
+        """PolicyEngine denies git push and gh pr create requests."""
+        context = TrustedEnforcementContext(workspace_root=self.workspace, has_active_task=True)
+        req = CommandExecutionRequest(command_line="git push origin main")
+        decision = self.engine.evaluate(req, context)
+        self.assertFalse(decision.allowed)
+        self.assertEqual(decision.decision, "deny")
+        self.assertEqual(decision.rule_id, "NO_REMOTE_PUBLICATION")
+
+    def test_policy_engine_enforces_active_task_for_src_writes(self) -> None:
+        """PolicyEngine denies writes to src/ when has_active_task=False."""
+        context_inactive = TrustedEnforcementContext(workspace_root=self.workspace, has_active_task=False)
+        req = FileWriteRequest(target_file=self.workspace / "src" / "feature.py")
+        decision_denied = self.engine.evaluate(req, context_inactive)
+        self.assertFalse(decision_denied.allowed)
+        self.assertEqual(decision_denied.decision, "deny")
+        self.assertEqual(decision_denied.rule_id, "ACTIVE_TASK_REQUIRED")
+
+        context_active = TrustedEnforcementContext(workspace_root=self.workspace, has_active_task=True)
+        decision_allowed = self.engine.evaluate(req, context_active)
+        self.assertTrue(decision_allowed.allowed)
+        self.assertEqual(decision_allowed.decision, "allow")

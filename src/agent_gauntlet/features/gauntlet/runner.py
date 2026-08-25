@@ -10,6 +10,8 @@ from typing import Sequence
 from agent_gauntlet.features.gauntlet.models import (
     GauntletReport,
     LayerDefinition,
+    LayerExecutionStatus,
+    LayerRequirement,
     LayerResult,
 )
 
@@ -20,6 +22,7 @@ def _execute_layer(
 ) -> LayerResult:
     """Execute a single layer command and capture output, exit code and duration."""
     start_time = time.perf_counter()
+    req = layer.requirement
     try:
         proc = subprocess.run(
             list(layer.command),
@@ -30,12 +33,16 @@ def _execute_layer(
         )
         duration = time.perf_counter() - start_time
         output = (proc.stdout or "") + (proc.stderr or "")
+        passed = proc.returncode == 0
+        status = LayerExecutionStatus.PASSED if passed else LayerExecutionStatus.FAILED
         return LayerResult(
             name=layer.name,
             exit_code=proc.returncode,
-            passed=proc.returncode == 0,
+            passed=passed,
             output=output,
+            status=status,
             duration_seconds=duration,
+            requirement=req,
         )
     except subprocess.TimeoutExpired as exc:
         duration = time.perf_counter() - start_time
@@ -45,7 +52,9 @@ def _execute_layer(
             exit_code=124,
             passed=False,
             output=output,
+            status=LayerExecutionStatus.TIMED_OUT,
             duration_seconds=duration,
+            requirement=req,
         )
     except OSError as exc:
         duration = time.perf_counter() - start_time
@@ -55,7 +64,9 @@ def _execute_layer(
             exit_code=127,
             passed=False,
             output=output,
+            status=LayerExecutionStatus.UNAVAILABLE,
             duration_seconds=duration,
+            requirement=req,
         )
     except Exception as exc:
         duration = time.perf_counter() - start_time
@@ -65,7 +76,9 @@ def _execute_layer(
             exit_code=1,
             passed=False,
             output=output,
+            status=LayerExecutionStatus.ERROR,
             duration_seconds=duration,
+            requirement=req,
         )
 
 
@@ -86,7 +99,7 @@ def run_gauntlet(
         results.append(result)
 
         if not result.passed:
-            if not layer.optional:
+            if layer.requirement == LayerRequirement.REQUIRED and not layer.optional:
                 success = False
                 break
 
@@ -96,3 +109,4 @@ def run_gauntlet(
         layers=results,
         total_duration_seconds=total_duration,
     )
+

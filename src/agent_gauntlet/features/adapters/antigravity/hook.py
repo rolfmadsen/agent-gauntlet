@@ -24,11 +24,16 @@ def main_hook_entrypoint(
     try:
         content = stdin.read().strip()
         if not content:
-            return 0
+            output_payload = {"decision": "deny", "reason": "Empty payload received on stdin."}
+            stdout.write(json.dumps(output_payload) + "\n")
+            stderr.write("\n🛑 Gatekeeper: Empty payload received on stdin.\n")
+            return 1
         payload = json.loads(content)
-    except Exception:
-        # Fail open on corrupted/empty stdin
-        return 0
+    except Exception as exc:
+        output_payload = {"decision": "deny", "reason": f"Corrupt JSON payload on stdin: {exc}"}
+        stdout.write(json.dumps(output_payload) + "\n")
+        stderr.write(f"\n🛑 Gatekeeper: Corrupt JSON payload on stdin: {exc}\n")
+        return 1
 
     adapter = AntigravityAdapter()
     verdict = adapter.evaluate_invocation(workspace=active_workspace, payload=payload)

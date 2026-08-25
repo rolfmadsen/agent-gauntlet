@@ -14,9 +14,11 @@ tags: [specification, architecture, gauntlet, okf, verification]
    - Strict Red -> Green -> Refactor cycle.
    - Transformation Priority Premise (TPP).
    - Single Responsibility Principle (SRP), Package-by-Feature (Screaming Architecture).
-2. **Deterministic Cryptographic Evidence:**
-   - Deterministic SHA-256 tree hashing.
-   - HMAC-SHA256 signed evidence ledger (`evidence.json` and `evidence.md`).
+2. **Two-Tier Evidence & Trust Boundary Model:**
+   - Deterministic canonical workspace manifest and SHA-256 tree hashing with symlink workspace-escape prevention.
+   - Unsigned verification reports (`verification-report.json`) for local fast feedback, drift detection, and cooperative Stop/Go gating.
+   - Detached, keyless OIDC CI attestations (`attestation.bundle` / Sigstore / in-toto) produced strictly in privileged post-merge/release workflows.
+   - Orthogonal evaluation dimensions (`verification_result`, `attestation_status`, `trust_decision`).
 3. **Actionable Diagnostics Engine:**
    - Structured parsing for Linters (Ruff, ESLint, Clippy), Type Checkers (Pyright, Mypy, tsc, cargo-check), Test Runners (pytest, unittest, vitest, cargo-test), Invariants (Hypothesis, fast-check, proptest), and Mutation Testing (mutants.py, Stryker, cargo-mutants).
    - Rich LLM remediation hints and location reporting.
@@ -33,7 +35,7 @@ src/agent_gauntlet/
 ├── cli.py
 └── features/
     ├── gauntlet/                 # Afvikling af lag, timing, fail-fast / fail-closed
-    ├── evidence/                 # HMAC-SHA256, tree-hash, evidence.json / evidence.md
+    ├── evidence/                 # Canonical manifest, verification report, attestation & trust policy
     ├── stacks/                   # Stack-detektion & standardprofiler (Python, TS, Rust)
     ├── diagnostics/              # Actionable LLM feedback engine & extractors
     ├── config/                   # gauntlet.toml / gauntlet.json indlæsning

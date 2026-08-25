@@ -39,13 +39,17 @@ _Avoid_: Test result, summary log.
 A preconfigured collection of verification layers, that matches the conventions and toolchains of a specific programming language.
 _Avoid_: Environment, runtime config.
 
-**Source Tree Hash**:
-A deterministic SHA-256 digest, that captures the exact content state of all tracked source files in a workspace.
+**Canonical Workspace Manifest**:
+A deterministic SHA-256 digest, that captures normalized file contents, executable modes, and verified symlink boundaries across in-scope workspace paths.
 _Avoid_: Git commit, workspace hash, checksum.
 
-**Evidence Record**:
-An immutable cryptographic ledger, that binds a task's verification outcome to the workspace's source tree hash via HMAC-SHA256.
+**Verification Report**:
+An unsigned data record, that binds verification layer outcomes, diagnostic findings, and task contracts to the workspace manifest digests.
 _Avoid_: Proof report, receipt, certification.
+
+**Attestation Bundle**:
+A detached cryptographic statement, that binds an authenticated, independent CI identity to verification reports and source digests via keyless OIDC and DSSE/in-toto envelopes.
+_Avoid_: Local signature, HMAC receipt, inline certificate.
 
 **Architecture Decision Record (ADR)**:
 An immutable decision record, that captures an architectural choice, its context, and consequences.
@@ -59,9 +63,13 @@ _Avoid_: Code drift, stale build, dirty working tree.
 An autonomous vertical feature slice, that translates platform-specific agent events, tool calls, and manifests into canonical gauntlet operations.
 _Avoid_: Plugin bridge, wrapper script, foreign hook.
 
-**Normalized Tool Call**:
-A canonical representation of an agent action, that categorizes tool executions into deterministic operations (file edit, shell execution, read-only).
+**Capability Request**:
+A strongly-typed operation descriptor, that represents an agent action before policy evaluation.
 _Avoid_: Raw tool payload, json argument, command invocation.
+
+**Trusted Enforcement Context**:
+An immutable runtime descriptor, that defines workspace boundaries, active task authority, and security policies independently of caller input.
+_Avoid_: Hook arguments, ambient context, caller state.
 
 **Plugin Manifest**:
 A declarative metadata ledger, that defines an adapter plugin's exposed skills, hooks, and verified entrypoints.

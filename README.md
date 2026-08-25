@@ -2,13 +2,13 @@
 
 [![CI](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml)
 [![Mutants Killed](https://img.shields.io/badge/mutants%20killed-100%25-brightgreen.svg)](tools/mutants.py)
-[![Evidence Authority](https://img.shields.io/badge/evidence-HMAC--SHA256%20sealed-blue.svg)](evidence.md)
+[![Evidence Model](https://img.shields.io/badge/evidence-Two--Tier%20Attestation-blue.svg)](docs/adr/0005-two-tier-verification-and-attestation-model.md)
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](pyproject.toml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **agent-gauntlet** er en universel multi-stack verifikations- og actionable diagnostics motor bygget på **Uncle Bobs (Robert C. Martin) TDD- og Clean Craftsmanship-filosofi**.
 
-Den omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Linters, Type-checkere, Unit tests, Property- og Invariant-tests, Mutationsafprøvning og HMAC-signerede evidensregistre) og oversætter rå fejludskrifter til **Actionable Diagnostics**, som AI-agenter kan handle direkte på.
+Den omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Linters, Type-checkere, Unit tests, Property- og Invariant-tests, Mutationsafprøvning og To-Tier evidens & attestering jf. [ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md)) og oversætter rå fejludskrifter til **Actionable Diagnostics**, som AI-agenter kan handle direkte på.
 
 ---
 
@@ -17,15 +17,15 @@ Den omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Lint
 1. **Uncle Bob Clean Architecture & TDD:**
    * Forankret i de 3 Love for TDD, Transformation Priority Premise (TPP) og Single Responsibility Principle (SRP).
 2. **Package-by-Feature Struktur (Screaming Architecture):**
-   * Hver komponent er isoleret i en feature-underpakke med høj sammenhørighed og lav kobling.
+   * Hver komponent er isoleret i en feature-underpakke med høj sammenhørighed og lav kobling ([ADR 0001](docs/adr/0001-package-by-feature-architecture.md)).
 3. **Multi-Stack Support (Tier-1):**
    * 🐍 **Python**: `ruff`, `pyright`/`mypy`, `pytest`/`unittest`, `hypothesis`, `mutants.py`/`mutmut`.
    * 🌐 **TypeScript / Node**: `eslint`/`biome`, `tsc --noEmit`, `vitest`/`jest`, `fast-check`, `stryker`.
    * 🦀 **Rust**: `cargo clippy`, `cargo check`, `cargo test`, `proptest`, `cargo-mutants`.
 4. **Actionable Diagnostics Engine:**
    * Omsætter rå fejludskrifter til strukturerede diagnoser med filstier, linjenumre og præcise udbedringsforslag (`remediation_hint`).
-5. **Kryptografisk Evidens & Drift-kontrol:**
-   * Deterministisk SHA-256 tree hashing og HMAC-SHA256 signering forhindrer efterfølgende kildedrift.
+5. **Two-Tier Evidens & Tillidsmodel ([ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md)):**
+   * Deterministisk `CanonicalWorkspaceManifest` med symlink-flugtbeskyttelse og usignerede `verification-report.json` rapporter til lokal drift-kontrol kombineret med uafhængig, kryptografisk Sigstore OIDC attestering i CI.
 
 ---
 
@@ -53,7 +53,7 @@ flowchart TD
         Layer4 --> Layer5["🧬 Lag 5: Mutations Gauntlet (mutants.py)"]
     end
 
-    subgraph 4. Feedback & Forsegling
+    subgraph 4. Feedback & Two-Tier Evidens
         Layer1 -. Fejl .-> Diag["⚙️ Actionable Diagnostics Engine\n(Parser fil, linje og udbedringsforslag)"]
         Layer2 -. Fejl .-> Diag
         Layer3 -. Fejl .-> Diag
@@ -62,8 +62,9 @@ flowchart TD
         Diag --> FixLoop["🔄 Autonomt Fixer-Loop\n(Fokuseret intervention)"]
         FixLoop --> Red
 
-        Layer5 -->|Alle lag PASSED| Seal["🔏 6. Kryptografisk Evidens\n(SHA-256 Tree Digest + HMAC-SHA256)"]
-        Seal --> Ledger["📄 evidence.json & evidence.md"]
+        Layer5 -->|Alle lag PASSED| Report["📋 6. Lokal Verifikationsrapport\n(Canonical Workspace Digest + Unsigned Report)"]
+        Report --> Ledger["📄 verification-report.json & evidence.md"]
+        Ledger -. CI Push / Release .-> Attest["🔏 7. Sigstore OIDC Attestation\n(actions/attest keyless DSSE bundle)"]
     end
 ```
 
@@ -71,7 +72,7 @@ flowchart TD
 1. **SPEC & Intent Afklaring:** Formålet fastlægges entydigt i `spec.md` forankret i domænets sprog (`CONTEXT.md`).
 2. **TDD Disciplin (Red $\to$ Green $\to$ Refactor):** Ingen kode skrives uden en forudgående, verificeret rød test.
 3. **Kompromisløst Gauntlet:** Koden skal overleve 5 uafhængige kontrol-lag inkl. syntetiske mutanter og tilfældige kanttilfælde.
-4. **Actionable Diagnostics & Kryptografisk Forsegling:** Hvis et lag fejler, modtager agenten præcise maskinlæsbare udbedringsforslag. Når alt er grønt, forsegles kildetræet kryptografisk, så kildedrift opdages øjeblikkeligt.
+4. **Actionable Diagnostics & Two-Tier Evidens:** Hvis et lag fejler, modtager agenten præcise maskinlæsbare udbedringsforslag. Når alt er grønt, udregnes et deterministisk kildemanifest til lokal drift-kontrol, og der genereres en uafhængig Sigstore OIDC attestering i CI.
 
 ---
 
@@ -87,13 +88,15 @@ agent-gauntlet/
 ├── plugins/agent-gauntlet/       # Antigravity IDE plugin & skills (grill-me, diagnose)
 ├── src/agent_gauntlet/
 │   ├── __init__.py
-│   ├── cli.py                    # Udvidet CLI (init, verify, check-evidence, tree-hash)
+│   ├── cli.py                    # Udvidet CLI (init, verify, check-evidence, check-attestation, okf)
 │   └── features/
+│       ├── adapters/             # Vertikale feature-slices for AI-harnesses (Antigravity mv.)
 │       ├── config/               # gauntlet.toml / gauntlet.json loader & schema
 │       ├── diagnostics/          # Actionable LLM feedback engine & extractors
-│       ├── evidence/             # HMAC-SHA256 authority & drift check
+│       ├── evidence/             # Canonical manifest, verification report, attestation & trust policy
 │       ├── gauntlet/             # Multi-layer runner & timeout kontrol
-│       ├── hooks/                # Pre-invocation hook gatekeeper
+│       ├── hooks/                # Pre-invocation policy engine gatekeeper
+│       ├── okf/                  # OKF v0.2 metadata parsing, validering & stempling
 │       ├── scaffold/             # Ikke-destruktiv bootstrap motor
 │       └── stacks/               # Auto-detektor & standardprofiler (Python, TS, Rust)
 └── tests/features/               # 1:1 testsymmetri mod features
@@ -176,48 +179,55 @@ agent-gauntlet init --force
 ```
 
 ### 2. Kør Verifikations-Gauntlet (`verify`)
-Kør alle konfigurerede lag, udtræk actionable diagnostics og generer signeret evidens (`evidence.json` og `evidence.md`):
+Kør alle konfigurerede lag, udtræk actionable diagnostics og generer en usigneret verifikationsrapport (`verification-report.json` v2.0 og `evidence.md`):
 
 ```bash
-# Standard kørsel mod konfigureret gauntlet.toml
-agent-gauntlet verify
+# Standard kørsel bundet til en opgave
+agent-gauntlet verify --task-id 001-bootstrap
 
 # Returner struktureret JSON med actionable diagnostics til LLM / AI-agenter
 agent-gauntlet verify --diagnostics-json
 
-# Kør mod en specifik testfil / mål
+# Kør mod en specifik testfil / mål (markerer kørslen PARTIAL for at forhindre for tidlig stabilisering)
 agent-gauntlet verify --test-target tests.features.test_gauntlet
 ```
 
-Når gauntlettet passerer, udregner `agent-gauntlet` automatisk et deterministisk SHA-256 tree hash af kildetræet, genererer `evidence.json` og opdaterer `evidence.md` med en kryptografisk HMAC-SHA256 signatur.
+Når gauntlettet passerer, beregner `agent-gauntlet` automatisk et deterministisk `CanonicalWorkspaceManifest` (pre og post testkørsel), genererer `verification-report.json` og opdaterer `evidence.md`.
 
 ### 3. Validering af Evidens & Drift-kontrol (`check-evidence`)
-Validerer HMAC-signaturen og verificerer, at kildekoden matcher det verificerede tree hash:
+Verificerer at det aktuelle kildetræ matcher den lokale verifikationsrapport, og at alle påkrævede tjek bestod:
 
 ```bash
 agent-gauntlet check-evidence
 ```
 
 **Output eksempler:**
-* **Gyldig evidens:**
+* **Gyldig kildetilstand:**
   ```text
-  [VALID] Evidence signature verified (8789572742c236cf...) and matches current source tree (677c82929622ca2a).
+  [VALID] Source manifest verified (46970990edf43304) [origin: LOCAL, attestation: ABSENT].
   ```
 * **Kildekode ændret efter verifikation (Drift):**
   ```text
-  FAILED: Source tree drift detected! Evidence bound to '677c82929622ca2a', but current workspace is '7c12f00a...'.
-  ```
-* **Manipuleret status i rapporten:**
-  ```text
-  FAILED: Evidence signature is invalid or has been tampered with.
+  FAILED: Source manifest drift detected! Report bound to '46970990edf43304', but current workspace is '7c12f00a...'.
   ```
 
-### 4. Beregn Workspace Tree Hash (`tree-hash`)
-Beregn et deterministisk, fail-closed SHA-256 digest over alle sporede kildefiler i arbejdsområdet:
+### 4. Attesteringsvalidering & Release Gate (`check-attestation`)
+Validerer uafhængige, detached Sigstore / GitHub OIDC attestationsbundter mod en defineret tillidspolitik ([ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md)):
 
 ```bash
-agent-gauntlet tree-hash
-# Returnerer f.eks.: 677c82929622ca2a
+# Valider rapport og attestering
+agent-gauntlet check-attestation --attestation attestation.bundle --trust-policy .agent-gauntlet/trust-policy.json
+
+# Advisory-mode for lokale uattesterede kendsgerninger
+agent-gauntlet check-attestation --allow-unattested
+```
+
+### 5. OKF Metadata Validering (`okf validate`)
+Validerer Open Knowledge Format (OKF v0.2) overensstemmelse for Markdown-dokumenter:
+
+```bash
+agent-gauntlet okf validate
+# Validerer frontmatter-skemaer, aktører og temporale invarianter (t_verified >= t_generated)
 ```
 
 ---
@@ -227,40 +237,38 @@ agent-gauntlet tree-hash
 Du kan også integrere `agent-gauntlet` direkte i dine egne Python test-runners eller agent-workflows:
 
 ```python
-from agent_gauntlet.features.gauntlet import LayerDefinition, run_gauntlet
-from agent_gauntlet.features.evidence import EvidenceAuthority, EvidenceRecord, CheckSummary
-from agent_gauntlet.features.diagnostics import DiagnosticParser
+from agent_gauntlet.features.gauntlet import run_gauntlet
 from agent_gauntlet.features.config import load_config
+from agent_gauntlet.features.evidence import (
+    CanonicalWorkspaceManifest,
+    VerificationReportEngine,
+    TrustPolicy,
+    evaluate_trust_policy,
+)
 
-# 1. Indlæs konfiguration eller definer lag
+# 1. Indlæs konfiguration og kør gauntlet
 config = load_config(".")
 layers = config.to_layer_definitions()
-
-# 2. Kør gauntlet
 report = run_gauntlet(layers)
 
-# 3. Udtræk strukturerede diagnoser
-parser = DiagnosticParser()
-for layer_res in report.layers:
-    diag = parser.parse_layer_output(layer_res.name, ["command"], layer_res.exit_code, layer_res.output)
-    for finding in diag.findings:
-        print(f"[{finding.finding_type.value}] {finding.file_path}:{finding.line_number} -> {finding.message}")
-        print(f"  Hint: {finding.remediation_hint}")
+# 2. Beregn deterministisk kildemanifest
+manifest = CanonicalWorkspaceManifest.compute(".")
 
-# 4. Signer evidens
-authority = EvidenceAuthority()
-checks = [
-    CheckSummary(name=l.name, passed=l.passed, exit_code=l.exit_code, duration_seconds=l.duration_seconds)
-    for l in report.layers
-]
-record = EvidenceRecord(
+# 3. Opret usigneret verifikationsrapport
+engine = VerificationReportEngine()
+verification_report = engine.create_report(
     task_id="task-001",
-    status="PASSED" if report.success else "FAILED",
-    source_tree_hash="677c82929622ca2a",
-    checks=checks,
+    task_title="Bootstrap",
+    verdict="PASSED" if report.success else "FAILED",
+    manifest_pre=manifest,
+    manifest_post=manifest,
+    layers=report.layers,
 )
-signed_record = authority.sign_record(record)
-print(authority.generate_evidence_markdown(signed_record))
+
+# 4. Evaluer tillidspolitik
+policy = TrustPolicy.strict()
+decision = evaluate_trust_policy(verification_report, attestation=None, policy=policy)
+print(f"Release eligible: {decision.release_eligible}")
 ```
 
 ---

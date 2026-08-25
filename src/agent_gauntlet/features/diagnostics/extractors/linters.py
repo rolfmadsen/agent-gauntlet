@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+
 from agent_gauntlet.features.diagnostics.models import DiagnosticFinding, FindingType
 
 

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import json
-import shutil
 from pathlib import Path
 
 from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES
@@ -54,7 +52,7 @@ tags: [specification, architecture, invariants]
 
 ## 🎯 Philosophy & Core Principles
 - **Uncle Bob Clean Architecture & TDD**: Strict Red -> Green -> Refactor discipline.
-- **Deterministic Cryptographic Evidence**: Multi-layer verification sealed with HMAC-SHA256.
+- **Deterministic Cryptographic Evidence**: Multi-layer verification sealed with canonical workspace manifest and detached CI attestations.
 
 ---
 
@@ -106,7 +104,16 @@ Etablere den initiale projektstruktur og køre den første grønne verifikations
 - `agent-gauntlet verify`
 """
 
-DEFAULT_ADR_README = """# Architecture Decision Records (ADRs)
+DEFAULT_ADR_README = """---
+type: Architecture Documentation Index
+title: "Architecture Decision Records (ADRs)"
+description: "Oversigt over projektets arkitekturbeslutninger og ADR-governance"
+status: stable
+generated: { by: process:agent-gauntlet-init, at: "2026-08-23T12:00:00Z" }
+tags: [adr, architecture, index, okf]
+---
+
+# Architecture Decision Records (ADRs)
 
 This directory contains lightweight Architecture Decision Records for the project.
 

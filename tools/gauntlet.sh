@@ -7,19 +7,35 @@ cd "$(dirname "$0")/.."
 
 PYTHON_BIN="$(which python3 || which python)"
 
-echo "=== Layer 1: Unit & Acceptance Tests ==="
-PYTHONPATH=src $PYTHON_BIN -m unittest discover tests
+if [ -d ".venv/.venv/lib/python3.14/site-packages" ]; then
+    export PYTHONPATH="src:.venv/.venv/lib/python3.14/site-packages:$PYTHONPATH"
+else
+    export PYTHONPATH="src:$PYTHONPATH"
+fi
 
-echo "=== Layer 2: Property & Invariant Tests ==="
-PYTHONPATH=src $PYTHON_BIN -m unittest tests/features/test_gauntlet_properties.py
+if [ -d ".venv/.venv/bin" ]; then
+    export PATH=".venv/.venv/bin:$PATH"
+fi
 
-echo "=== Layer 3: Mutation Testing Negative Control ==="
+echo "=== Layer 1: Code Formatting & Static Analysis (Ruff) ==="
+$PYTHON_BIN -m ruff check .
+
+echo "=== Layer 2: Strict Type Checking (Pyright) ==="
+$PYTHON_BIN -m pyright src tests tools
+
+echo "=== Layer 3: Unit & Acceptance Tests ==="
+$PYTHON_BIN -m unittest discover tests
+
+echo "=== Layer 4: Property & Invariant Tests ==="
+$PYTHON_BIN -m unittest tests/features/test_gauntlet_properties.py
+
+echo "=== Layer 5: Mutation Testing Negative Control ==="
 $PYTHON_BIN tools/mutants.py --negative-control
 
-echo "=== Layer 4: Mutation Testing Gauntlet ==="
+echo "=== Layer 6: Mutation Testing Gauntlet ==="
 $PYTHON_BIN tools/mutants.py
 
-echo "=== Layer 5: Source State Tree Binding ==="
+echo "=== Layer 7: Source State Tree Binding ==="
 $PYTHON_BIN tools/source_state.py
 
 echo ""

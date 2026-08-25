@@ -1,225 +1,151 @@
-"""Black-box acceptance tests for features/evidence_authority."""
+"""Black-box acceptance tests for features/evidence (VerificationReportEngine & Schema v2)."""
 
-import time
+import json
 import unittest
+from pathlib import Path
 
 from agent_gauntlet.features.evidence import (
     CheckSummary,
-    EvidenceAuthority,
-    EvidenceRecord,
+    ExecutionMetadata,
+    TaskContract,
+    VerificationReport,
+    VerificationReportEngine,
+    WorkspaceState,
 )
 
 
-class TestEvidenceAuthorityAcceptance(unittest.TestCase):
-    """Acceptance tests for EvidenceAuthority."""
+class TestVerificationReportEngine(unittest.TestCase):
+    """Acceptance and invariant tests for VerificationReportEngine."""
 
     def setUp(self) -> None:
-        self.authority = EvidenceAuthority(secret_key=b"test-secret-key-12345")
-        self.sample_record = EvidenceRecord(
-            task_id="task-test-001",
-            status="PASSED",
-            source_tree_hash="a1b2c3d4e5f60011",
+        self.engine = VerificationReportEngine()
+        self.sample_report = VerificationReport(
+            schema_version="2.0.0",
+            execution_origin="LOCAL",
+            verdict="PASSED",
+            task_contract=TaskContract(
+                task_id="016-cryptographic-cleanup",
+                task_title="Cryptographic Cleanup & Unsigned Report Engine",
+                task_digest="4c8996fb92427ae41e4649b934ca495991b7852b855e3b0c44298fc1c149afbf",
+                acceptance_criteria=["Delete DEFAULT_KEY", "Implement Schema v2"],
+                unresolved_criteria=[],
+            ),
+            workspace_state=WorkspaceState(
+                manifest_version="1.0",
+                source_content_digest="a1b2c3d4e5f60011a1b2c3d4e5f60011a1b2c3d4e5f60011a1b2c3d4e5f60011",
+                source_manifest_digest_pre="7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                source_manifest_digest_post="7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069",
+                config_digest="4a5cb81e4a5cb81e4a5cb81e4a5cb81e4a5cb81e4a5cb81e4a5cb81e4a5cb81e",
+                policy_digest="9d12c34a9d12c34a9d12c34a9d12c34a9d12c34a9d12c34a9d12c34a9d12c34a",
+                check_definitions_digest="f1e2d3c4b5a60718f1e2d3c4b5a60718f1e2d3c4b5a60718f1e2d3c4b5a60718",
+                included_files_count=48,
+            ),
+            execution_metadata=ExecutionMetadata(
+                started_at="2026-08-25T15:27:37.100Z",
+                finished_at="2026-08-25T15:27:49.250Z",
+                total_duration_seconds=12.15,
+                environment={"python_version": "3.12.3", "platform": "linux-x86_64", "gauntlet_version": "0.2.0"},
+            ),
             checks=[
-                CheckSummary(name="unit-tests", passed=True, exit_code=0, duration_seconds=0.12),
-                CheckSummary(name="mutation-testing", passed=True, exit_code=0, duration_seconds=1.45),
+                CheckSummary(name="unit-tests", status="PASSED", exit_code=0, duration_seconds=0.12),
+                CheckSummary(name="mutation-testing", status="PASSED", exit_code=0, duration_seconds=1.45),
             ],
-            timestamp=1700000000.0,
         )
 
-    def test_signing_and_verification_happy_path(self) -> None:
-        """Scenario EA-01: Sign a valid record and verify HMAC signature."""
-        signed = self.authority.sign_record(self.sample_record)
-
-        self.assertIsNotNone(signed.signature)
-        self.assertIsInstance(signed.signature, str)
-        self.assertGreater(len(signed.signature or ""), 16)
-        self.assertTrue(self.authority.verify_record(signed))
-
-    def test_tamper_status_fails_verification(self) -> None:
-        """Scenario EA-02a: Tampering with status invalidates signature."""
-        failed_record = EvidenceRecord(
-            task_id="task-test-001",
-            status="FAILED",
-            source_tree_hash="a1b2c3d4e5f60011",
-            checks=[CheckSummary(name="unit-tests", passed=False, exit_code=1)],
-            timestamp=1700000000.0,
-        )
-        signed = self.authority.sign_record(failed_record)
-
-        tampered = EvidenceRecord(
-            task_id=signed.task_id,
-            status="PASSED",  # Maliciously altered
-            source_tree_hash=signed.source_tree_hash,
-            checks=signed.checks,
-            timestamp=signed.timestamp,
-            signature=signed.signature,
-        )
-        self.assertFalse(self.authority.verify_record(tampered))
-
-    def test_tamper_checks_fails_verification(self) -> None:
-        """Scenario EA-02b: Tampering with check details invalidates signature."""
-        signed = self.authority.sign_record(self.sample_record)
-
-        tampered_checks = [
-            CheckSummary(name="unit-tests", passed=True, exit_code=0, duration_seconds=0.12),
-            CheckSummary(name="mutation-testing", passed=False, exit_code=1, duration_seconds=1.45),
+    def test_zero_local_secrets_invariant(self) -> None:
+        """Invariant: No DEFAULT_KEY, signing key, or HMAC fallback secret exists in source code."""
+        src_root = Path(__file__).resolve().parent.parent.parent / "src"
+        forbidden_tokens = [
+            b"DEFAULT_KEY",
+            b"agent-gauntlet-default-authority-key",
+            b"secret_key",
         ]
-        tampered = EvidenceRecord(
-            task_id=signed.task_id,
-            status=signed.status,
-            source_tree_hash=signed.source_tree_hash,
-            checks=tampered_checks,
-            timestamp=signed.timestamp,
-            signature=signed.signature,
-        )
-        self.assertFalse(self.authority.verify_record(tampered))
+        for py_file in src_root.rglob("*.py"):
+            content = py_file.read_bytes()
+            for token in forbidden_tokens:
+                self.assertNotIn(
+                    token,
+                    content,
+                    f"Forbidden secret token '{token.decode()}' found in {py_file}",
+                )
 
-    def test_tamper_tree_hash_fails_verification(self) -> None:
-        """Scenario EA-02c: Tampering with tree hash invalidates signature."""
-        signed = self.authority.sign_record(self.sample_record)
+    def test_report_json_roundtrip(self) -> None:
+        """Scenario: Verification report serializes to Schema v2 JSON and deserializes cleanly."""
+        json_str = self.engine.generate_report_json(self.sample_report)
+        data = json.loads(json_str)
 
-        tampered = EvidenceRecord(
-            task_id=signed.task_id,
-            status=signed.status,
-            source_tree_hash="deadbeef00000000",
-            checks=signed.checks,
-            timestamp=signed.timestamp,
-            signature=signed.signature,
-        )
-        self.assertFalse(self.authority.verify_record(tampered))
+        self.assertEqual(data["schema_version"], "2.0.0")
+        self.assertEqual(data["verdict"], "PASSED")
+        self.assertEqual(data["execution_origin"], "LOCAL")
+        self.assertNotIn("signature", data)
 
-    def test_unsigned_record_fails_verification(self) -> None:
-        """Scenario EA-05: Unsigned record returns False without crashing."""
-        self.assertFalse(self.authority.verify_record(self.sample_record))
+        loaded = self.engine.load_report_json(json_str)
+        self.assertEqual(loaded.schema_version, "2.0.0")
+        self.assertEqual(loaded.verdict, "PASSED")
+        self.assertEqual(loaded.task_contract.task_id, "016-cryptographic-cleanup")
+        self.assertEqual(loaded.workspace_state.source_manifest_digest_post, self.sample_report.workspace_state.source_manifest_digest_post)
+        self.assertEqual(len(loaded.checks), 2)
+        self.assertEqual(loaded.checks[0].name, "unit-tests")
 
-    def test_source_state_match_and_drift(self) -> None:
-        """Scenario EA-03: Verify source tree hash match and drift detection."""
-        signed = self.authority.sign_record(self.sample_record)
+    def test_source_manifest_drift_detection(self) -> None:
+        """Scenario: Verify matching source manifest passes and drifted manifest is detected."""
+        matching_digest = "7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069"
+        drifted_digest = "0000000000000000000000000000000000000000000000000000000000000000"
 
         self.assertTrue(
-            self.authority.verify_source_state_match(signed, "a1b2c3d4e5f60011"),
-            "Matching tree hash must pass verification",
+            self.engine.verify_workspace_state_match(self.sample_report, matching_digest),
+            "Matching manifest digest must pass state verification",
         )
         self.assertFalse(
-            self.authority.verify_source_state_match(signed, "ffffffffffffffff"),
-            "Drifted tree hash must fail verification",
+            self.engine.verify_workspace_state_match(self.sample_report, drifted_digest),
+            "Drifted manifest digest must fail state verification",
         )
 
-    def test_source_state_match_fails_on_tampered_signature(self) -> None:
-        """Scenario EA-03b: Matching tree hash fails if record signature is tampered."""
-        signed = self.authority.sign_record(self.sample_record)
-        tampered = EvidenceRecord(
-            task_id=signed.task_id,
-            status="FAILED",  # Tampered
-            source_tree_hash=signed.source_tree_hash,
-            checks=signed.checks,
-            timestamp=signed.timestamp,
-            signature=signed.signature,
-        )
-        self.assertFalse(
-            self.authority.verify_source_state_match(tampered, signed.source_tree_hash),
-            "Tampered record must fail source state verification even if tree hash matches",
-        )
+    def test_markdown_report_generation(self) -> None:
+        """Scenario: Markdown rendering includes task contract, checks table, and manifest digests."""
+        md = self.engine.generate_report_markdown(self.sample_report, title="Local Verification Report")
 
-    def test_json_roundtrip(self) -> None:
-        """Scenario EA-04a: JSON serialization and deserialization roundtrip."""
-        signed = self.authority.sign_record(self.sample_record)
-        json_str = self.authority.generate_evidence_json(signed)
-
-        loaded = EvidenceAuthority.load_evidence_json(json_str)
-        self.assertEqual(loaded.task_id, signed.task_id)
-        self.assertEqual(loaded.status, signed.status)
-        self.assertEqual(loaded.source_tree_hash, signed.source_tree_hash)
-        self.assertEqual(loaded.signature, signed.signature)
-        self.assertEqual(len(loaded.checks), len(signed.checks))
-        self.assertTrue(self.authority.verify_record(loaded))
-
-    def test_markdown_generation(self) -> None:
-        """Scenario EA-04b: Markdown rendering contains required metadata and table."""
-        signed = self.authority.sign_record(self.sample_record)
-        md = self.authority.generate_evidence_markdown(
-            signed,
-            head="31211f4",
-            source_commit="31211f4",
-            title="Bootstrap Evidence",
-        )
-
-        self.assertIn("# Bootstrap Evidence", md)
-        self.assertIn("task-test-001", md)
+        self.assertIn("# Local Verification Report", md)
+        self.assertIn("016-cryptographic-cleanup", md)
         self.assertIn("PASSED", md)
-        self.assertIn("a1b2c3d4e5f60011", md)
-        self.assertIn(signed.signature or "", md)
+        self.assertIn("7f83b1657ff1fc53b92dc18148a1d65dfc2d4b1fa3d677284addd200126d9069", md)
         self.assertIn("unit-tests", md)
         self.assertIn("mutation-testing", md)
+        self.assertIn("- [x] Delete DEFAULT_KEY", md)
 
-    def test_task_bound_evidence_tampering_fails(self) -> None:
-        """Scenario EA-05: Tampering with task_title or acceptance_criteria invalidates signature."""
-        task_record = EvidenceRecord(
-            task_id="task-004",
-            task_title="Surgical Hook",
-            acceptance_criteria=["Criterion 1", "Criterion 2"],
-            unresolved_criteria=["Criterion 2"],
-            status="PASSED",
-            source_tree_hash="a1b2c3d4e5f60011",
-            checks=[CheckSummary(name="unit", passed=True, exit_code=0, duration_seconds=0.1)],
-            timestamp=1700000000.0,
+    def test_empty_report_digest_fails_verification(self) -> None:
+        """Scenario: Empty report digest returns False without crashing."""
+        empty_report = VerificationReport(
+            schema_version="2.0.0",
+            execution_origin="LOCAL",
+            verdict="PASSED",
+            workspace_state=WorkspaceState(source_manifest_digest_post=""),
         )
-        signed = self.authority.sign_record(task_record)
-        self.assertTrue(self.authority.verify_record(signed))
+        self.assertFalse(self.engine.verify_workspace_state_match(empty_report, "7f83b1657ff1fc53"))
 
-        # Tamper with task title
-        tampered_title = EvidenceRecord(
-            task_id=signed.task_id,
-            task_title="Fake Title",
-            acceptance_criteria=signed.acceptance_criteria,
-            unresolved_criteria=signed.unresolved_criteria,
-            status=signed.status,
-            source_tree_hash=signed.source_tree_hash,
-            checks=signed.checks,
-            timestamp=signed.timestamp,
-            signature=signed.signature,
+    def test_load_report_json_preserves_failed_verdict(self) -> None:
+        """Scenario: Loading a report with verdict FAILED preserves FAILED verdict."""
+        failed_report = VerificationReport(
+            schema_version="2.0.0",
+            execution_origin="LOCAL",
+            verdict="FAILED",
+            workspace_state=WorkspaceState(source_manifest_digest_post="7f83b1657ff1fc53"),
         )
-        self.assertFalse(self.authority.verify_record(tampered_title))
+        json_str = self.engine.generate_report_json(failed_report)
+        loaded = self.engine.load_report_json(json_str)
+        self.assertEqual(loaded.verdict, "FAILED")
 
-        # Tamper with acceptance criteria
-        tampered_criteria = EvidenceRecord(
-            task_id=signed.task_id,
-            task_title=signed.task_title,
-            acceptance_criteria=["Falsified Criteria"],
-            unresolved_criteria=signed.unresolved_criteria,
-            status=signed.status,
-            source_tree_hash=signed.source_tree_hash,
-            checks=signed.checks,
-            timestamp=signed.timestamp,
-            signature=signed.signature,
-        )
-        self.assertFalse(self.authority.verify_record(tampered_criteria))
-
-    def test_json_and_markdown_with_task_criteria(self) -> None:
-        """Scenario EA-06: Task criteria roundtrip in JSON and render in Markdown."""
-        task_record = EvidenceRecord(
-            task_id="task-004",
-            task_title="Surgical Hook",
-            acceptance_criteria=["Criterion 1", "Criterion 2"],
-            unresolved_criteria=["Criterion 2"],
-            status="PASSED",
-            source_tree_hash="a1b2c3d4e5f60011",
-            checks=[CheckSummary(name="unit", passed=True, exit_code=0, duration_seconds=0.1)],
-            timestamp=1700000000.0,
-        )
-        signed = self.authority.sign_record(task_record)
-        json_str = self.authority.generate_evidence_json(signed)
-        loaded = EvidenceAuthority.load_evidence_json(json_str)
-
-        self.assertEqual(loaded.task_title, "Surgical Hook")
-        self.assertEqual(loaded.acceptance_criteria, ["Criterion 1", "Criterion 2"])
-        self.assertEqual(loaded.unresolved_criteria, ["Criterion 2"])
-        self.assertTrue(self.authority.verify_record(loaded))
-
-        md = self.authority.generate_evidence_markdown(signed)
-        self.assertIn("Surgical Hook", md)
-        self.assertIn("- [x] Criterion 1", md)
-        self.assertIn("- [ ] Criterion 2", md)
+    def test_legacy_evidence_classification(self) -> None:
+        """Scenario: Legacy v1 evidence.json with HMAC signature is classified as LEGACY_UNATTESTED."""
+        legacy_json = json.dumps({
+            "task_id": "legacy-task-001",
+            "status": "PASSED",
+            "source_tree_hash": "a1b2c3d4e5f60011",
+            "signature": "e9b5f...legacy-hmac",
+            "checks": [{"name": "unit", "passed": True, "exit_code": 0}],
+        })
+        classification = self.engine.classify_evidence_payload(legacy_json)
+        self.assertEqual(classification, "LEGACY_UNATTESTED")
 
 
 if __name__ == "__main__":
