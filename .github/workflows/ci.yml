@@ -65,6 +65,7 @@ jobs:
       contents: read
       id-token: write
       attestations: write
+      artifact-metadata: write
 
     steps:
       - name: Download Verification Report
@@ -95,6 +96,8 @@ jobs:
           "
 
       - name: Attest Verification Report
-        uses: actions/attest-build-provenance@c7dcf9546b010d92a1a51a01b9d3f1a0b5a3f3a0 # v2.2.0
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
         with:
           subject-path: verification-report.json
+          predicate-type: https://agent-gauntlet.dev/attestation/v1
+          predicate-path: verification-report.json
