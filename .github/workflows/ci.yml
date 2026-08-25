@@ -95,8 +95,6 @@ jobs:
           "
 
       - name: Attest Verification Report
-        uses: actions/attest@89f7831f13f1dd13a3ca7405e3240e1b8c1ec5a4 # v2.0.0
+        uses: actions/attest-build-provenance@c7dcf9546b010d92a1a51a01b9d3f1a0b5a3f3a0 # v2.2.0
         with:
           subject-path: verification-report.json
-          predicate-type: https://agent-gauntlet.dev/attestation/v1
-          predicate-path: verification-report.json
