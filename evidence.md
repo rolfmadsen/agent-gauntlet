@@ -4,10 +4,10 @@
 **Task Title**: Task 023: P0 Audit Remediation, Cryptographic Sigstore DSSE & Official Hook Schema  
 **Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `c2cfaba81b313b9ec7cc2a9c0e12ae7f4ef43c334a7d339c576b485ac0d2ea7d`  
-**Timestamp**: `2026-08-27T19:31:22Z`  
-**Head**: `b9a590f`  
-**Commit**: `b0b82ac`  
+**Source Manifest Digest**: `e6a1c088e6905b58f8b7b1c228cc56283f44aeb20227f97afda4c80f0a91161a`  
+**Timestamp**: `2026-08-27T19:40:55Z`  
+**Head**: `2aef19c`  
+**Commit**: `2aef19c`  
 
 ## Acceptance Criteria
 
@@ -28,10 +28,10 @@
 
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
-| `lint` | `PASSED` | `0` | `0.030s` |
-| `types` | `PASSED` | `0` | `1.329s` |
-| `unit` | `PASSED` | `0` | `1.085s` |
-| `invariants` | `PASSED` | `0` | `0.296s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `22.809s` |
+| `lint` | `PASSED` | `0` | `0.020s` |
+| `types` | `PASSED` | `0` | `1.286s` |
+| `unit` | `PASSED` | `0` | `1.127s` |
+| `invariants` | `PASSED` | `0` | `0.314s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `22.611s` |
 
 ---

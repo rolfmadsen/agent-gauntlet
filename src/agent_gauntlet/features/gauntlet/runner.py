@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import Sequence
@@ -30,15 +31,20 @@ def _execute_layer(
         existing_pp = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = f"{src_dir}:{existing_pp}" if existing_pp else str(src_dir)
 
+    cmd = list(layer.command)
+    if cmd and cmd[0] in ("python", "python3"):
+        cmd[0] = sys.executable
+
     try:
         proc = subprocess.run(
-            list(layer.command),
+            cmd,
             cwd=cwd,
             env=env,
             capture_output=True,
             text=True,
             timeout=layer.timeout_seconds,
         )
+
         duration = time.perf_counter() - start_time
         output = (proc.stdout or "") + (proc.stderr or "")
         passed = proc.returncode == 0

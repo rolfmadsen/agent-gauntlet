@@ -193,13 +193,14 @@ def execute_verify(
         },
     )
 
-    has_failed_checks = any(not c.passed or c.exit_code != 0 for c in checks)
+    has_mandatory_failures = any(not c.passed or c.exit_code != 0 for c in checks if not c.optional)
+    has_optional_failures = any(not c.passed or c.exit_code != 0 for c in checks if c.optional)
     is_self_mutated = manifest_pre.source_manifest_digest != manifest_post.source_manifest_digest
 
     # Invariant: Must have non-empty checks and non-empty criteria to pass
     if is_self_mutated:
         verdict = "FAILED"
-    elif not report.success:
+    elif not report.success or has_mandatory_failures:
         verdict = "FAILED"
     elif test_target:
         verdict = "PARTIAL"
@@ -209,7 +210,7 @@ def execute_verify(
         verdict = "FAILED"
     elif unresolved:
         verdict = "INCOMPLETE"
-    elif has_failed_checks:
+    elif has_optional_failures:
         verdict = "PARTIAL"
     else:
         verdict = "PASSED"
@@ -247,7 +248,12 @@ def execute_verify(
     )
 
     tree_digest = manifest_post.source_manifest_digest[:16]
-    is_verify_success = verdict == "PASSED" or (verdict == "PARTIAL" and report.success)
+    if test_target:
+        # Targeted developer test runs are advisory and succeed if target tests passed
+        is_verify_success = report.success
+    else:
+        # Full gauntlet verification strictly requires full PASSED verdict
+        is_verify_success = verdict == "PASSED"
 
     if diagnostics_json:
         output_payload = {

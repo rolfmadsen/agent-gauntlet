@@ -23,9 +23,9 @@
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "b1f691d15a1e33aeb42d70faaf0894029e15325b6aa27a3f1e06101fdc479453",
-    "source_manifest_digest_pre": "c2cfaba81b313b9ec7cc2a9c0e12ae7f4ef43c334a7d339c576b485ac0d2ea7d",
-    "source_manifest_digest_post": "c2cfaba81b313b9ec7cc2a9c0e12ae7f4ef43c334a7d339c576b485ac0d2ea7d",
+    "source_content_digest": "ee4478569143638b0efa3efe8f3d9cc0753661d9ada2aafa98ffad364063438c",
+    "source_manifest_digest_pre": "e6a1c088e6905b58f8b7b1c228cc56283f44aeb20227f97afda4c80f0a91161a",
+    "source_manifest_digest_post": "e6a1c088e6905b58f8b7b1c228cc56283f44aeb20227f97afda4c80f0a91161a",
     "config_digest": "aff95d54b35fdde4e4cc8ea1a676c9359cf1da0e04aab74c823b51b88b3d8958",
     "task_digest": "d0cdbcd88df207a5073db6b73c991fca3f222e7f47337d00da6ab0cdacb1e088",
     "policy_digest": "50caa920d3260f4d22778ff28481385f024eabfd7a0080c7b34053beda3f84c3",
@@ -33,15 +33,15 @@
     "included_files_count": 86,
     "vcs": {
       "type": "git",
-      "head": "b9a590f",
-      "commit": "b0b82ac",
+      "head": "2aef19c",
+      "commit": "2aef19c",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-27T19:30:57Z",
-    "finished_at": "2026-08-27T19:31:22Z",
-    "total_duration_seconds": 25.58,
+    "started_at": "2026-08-27T19:40:30Z",
+    "finished_at": "2026-08-27T19:40:55Z",
+    "total_duration_seconds": 25.396,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -53,7 +53,7 @@
       "name": "lint",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.03,
+      "duration_seconds": 0.02,
       "optional": true,
       "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
     },
@@ -61,7 +61,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.329,
+      "duration_seconds": 1.286,
       "optional": true,
       "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
     },
@@ -69,15 +69,15 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.085,
+      "duration_seconds": 1.127,
       "optional": false,
-      "log_digest": "1c71d0ca2aef00aa1088e416d9a10ffb70e01f10f643b4b8159e3d871c4cf78a"
+      "log_digest": "6303bb0a8b76f736e4204c515fc570dce4c3aa36be9e3e516757644bf156d435"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.296,
+      "duration_seconds": 0.314,
       "optional": true,
       "log_digest": "89d79feb3f9f4d5bed17f078329c6f6a7f786ac18d354f60aad23051c243b39e"
     },
@@ -85,7 +85,7 @@
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 22.809,
+      "duration_seconds": 22.611,
       "optional": true,
       "log_digest": "2dd3a56b01138f567189d4446c9d487e49cd5b847d19e1424b221cce8a76b667"
     }
