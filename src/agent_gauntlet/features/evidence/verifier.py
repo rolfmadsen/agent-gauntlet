@@ -297,6 +297,12 @@ def execute_verify(
                 if f.remediation_hint:
                     print(f"      Hint:    {f.remediation_hint}", file=out)
 
+        for l_res in report.layers:
+            if not l_res.passed and l_res.output:
+                print(
+                    f"\n[!] Layer '{l_res.name}' Execution Logs:\n{l_res.output.strip()}", file=err
+                )
+
         if verdict == "PASSED" and handoff_prompt:
             import textwrap
 
