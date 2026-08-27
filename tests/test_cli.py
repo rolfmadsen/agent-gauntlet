@@ -17,7 +17,11 @@ from agent_gauntlet.features.evidence import (
     WorkspaceState,
     compute_source_state,
 )
-from tests.features.test_attestation import _generate_crypto_bundle
+
+try:
+    from tests.features.test_attestation import _generate_crypto_bundle
+except ImportError:
+    from features.test_attestation import _generate_crypto_bundle
 
 
 class TestCliAcceptance(unittest.TestCase):
