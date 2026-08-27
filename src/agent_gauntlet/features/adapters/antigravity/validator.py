@@ -58,14 +58,15 @@ class AntigravityPluginValidator:
             )
 
         timeout = handler.get("timeout")
-        if timeout is not None and not isinstance(timeout, int):
-            issues.append(
-                ValidationIssue(
-                    severity=ValidationSeverity.ERROR,
-                    path=path,
-                    message=f"'timeout' must be an integer, got {type(timeout).__name__}.",
+        if timeout is not None:
+            if not isinstance(timeout, int) or isinstance(timeout, bool) or timeout <= 0:
+                issues.append(
+                    ValidationIssue(
+                        severity=ValidationSeverity.ERROR,
+                        path=path,
+                        message=f"'timeout' must be a positive integer, got {timeout}.",
+                    )
                 )
-            )
 
     def _validate_hooks_json(
         self,
@@ -96,6 +97,13 @@ class AntigravityPluginValidator:
             return
 
         if not data:
+            issues.append(
+                ValidationIssue(
+                    severity=ValidationSeverity.ERROR,
+                    path="hooks.json",
+                    message="'hooks.json' root object cannot be empty. Must define at least one named hook.",
+                )
+            )
             return
 
         # Check if root accidentally uses flat/legacy format
@@ -133,6 +141,16 @@ class AntigravityPluginValidator:
                         severity=ValidationSeverity.ERROR,
                         path="hooks.json",
                         message=f"'enabled' in hook '{hook_name}' must be a boolean.",
+                    )
+                )
+
+            event_keys = [k for k in hook_config.keys() if k != "enabled"]
+            if not event_keys:
+                issues.append(
+                    ValidationIssue(
+                        severity=ValidationSeverity.ERROR,
+                        path="hooks.json",
+                        message=f"Hook '{hook_name}' must define at least one lifecycle event from {sorted(VALID_EVENT_TYPES)}.",
                     )
                 )
 
@@ -182,16 +200,18 @@ class AntigravityPluginValidator:
                                 )
                             )
                         else:
-                            try:
-                                re.compile(matcher)
-                            except re.error as err:
-                                issues.append(
-                                    ValidationIssue(
-                                        severity=ValidationSeverity.ERROR,
-                                        path="hooks.json",
-                                        message=f"Invalid regex in matcher '{matcher}': {err}",
+                            # Antigravity supports '*' and '' as official match-all wildcards
+                            if matcher not in ("*", ""):
+                                try:
+                                    re.compile(matcher)
+                                except re.error as err:
+                                    issues.append(
+                                        ValidationIssue(
+                                            severity=ValidationSeverity.ERROR,
+                                            path="hooks.json",
+                                            message=f"Invalid regex in matcher '{matcher}': {err}",
+                                        )
                                     )
-                                )
 
                         handlers_list = matcher_group.get("hooks", [])
                         if not isinstance(handlers_list, list) or len(handlers_list) == 0:

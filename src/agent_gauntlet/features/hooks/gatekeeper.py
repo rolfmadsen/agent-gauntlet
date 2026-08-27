@@ -1,7 +1,8 @@
-"""Surgical Pre-Invocation Hook Policy Engine for agent-gauntlet.
+"""Cooperative UX and Process Guardrail Hook Policy Engine for agent-gauntlet.
 
-Ensures the agent cannot modify production source code without an active task in tasks/,
-and strictly prohibits remote git publications and destructive operations.
+Ensures the agent is protected against unintended modifications to production source code
+without an active task in tasks/, and blocks remote git publications and destructive operations.
+NOTE: This engine serves as a cooperative agent process guardrail rather than an impenetrable OS boundary.
 """
 
 from __future__ import annotations
@@ -23,18 +24,23 @@ from agent_gauntlet.features.hooks.models import (
     PolicyDecision,
     TrustedEnforcementContext,
 )
+from agent_gauntlet.features.tasks import (
+    has_active_task,
+    is_task_active,
+)
 
 FORBIDDEN_COMMAND_PATTERNS = [
-    r"\bgit\s+.*?\bpush\b",
-    r"\bgh\s+.*?\bpr\s+create\b",
-    r"\bgh\s+.*?\brelease\s+create\b",
-    r"\bgit\s+.*?--(?:hard|merge)\b",
-    r"\bgit\s+.*?\bclean\b.*?-[a-zA-Z0-9]*f",
-    r"\bgit\s+.*?\bbranch\b.*?-[dD]\b",
+    r"\bgit(?:\$\{IFS\}|\s+).*?\bpush\b",
+    r"\bgh(?:\$\{IFS\}|\s+).*?\bpr\s+create\b",
+    r"\bgh(?:\$\{IFS\}|\s+).*?\brelease\s+create\b",
+    r"\bgit(?:\$\{IFS\}|\s+).*?--(?:hard|merge)\b",
+    r"\bgit(?:\$\{IFS\}|\s+).*?\bclean\b.*?-[a-zA-Z0-9]*f",
+    r"\bgit(?:\$\{IFS\}|\s+).*?\bbranch\b.*?-[dD]\b",
+    r"python[0-9.]*\s+.*?(?:subprocess|os\.system|exec|spawn).*?git.*?push",
 ]
 
 SHELL_PROTECTED_PATH_PATTERNS = [
-    r"(?:>|>>|\btee\b)\s*['\"]?[^\s;&|]*(?:src|tests|\.agents|\.github)/",
+    r"(?:>|>>|\btee\b|\bdd\b\s+.*?of=)\s*['\"]?[^\s;&|]*(?:src|tests|\.agents|\.github)/",
     r"\b(?:rm|cp|mv|sed\s+-i|truncate|touch)\b.*?\b(?:src|tests|\.agents|\.github)(?:/|\b)",
     r"python[0-9.]*\s+.*?(?:open\(|Path\(|\.write|shutil\.|os\.remove).*?(?:src|tests|\.agents|\.github)",
 ]
@@ -65,49 +71,8 @@ SAFE_READONLY_TOOLS = {
     "list_permissions",
 }
 
-
-def parse_task_status(content: str) -> str:
-    """Extract task status from task markdown content."""
-    status_match = re.search(r"\*\*Status\*\*:\s*`?([A-Za-z_-]+)`?", content, re.IGNORECASE)
-    if status_match:
-        return status_match.group(1).upper()
-
-    header_match = re.search(r"\bStatus:\s*`?([A-Za-z_-]+)`?", content, re.IGNORECASE)
-    if header_match:
-        return header_match.group(1).upper()
-
-    return ""
-
-
-def is_task_active(content: str) -> bool:
-    """Check if task file content represents an active/approved task."""
-    status = parse_task_status(content)
-    if status and status in ("DONE", "COMPLETED", "DEPRECATED", "SUPERSEDED"):
-        return False
-    # Check for presence of acceptance criteria section
-    has_criteria = "acceptance criteria" in content.lower() or "- [" in content
-    return has_criteria
-
-
 # Backward-compatible alias
 _is_active_task_content = is_task_active
-
-
-def has_active_task(workspace: Path) -> bool:
-    """Determine whether the workspace has at least one active task in tasks/."""
-    tasks_dir = workspace / "tasks"
-    if not tasks_dir.is_dir():
-        return False
-
-    for task_path in sorted(tasks_dir.glob("*.md")):
-        try:
-            content = task_path.read_text(encoding="utf-8")
-            if is_task_active(content):
-                return True
-        except (OSError, UnicodeDecodeError):
-            continue
-
-    return False
 
 
 class PolicyEngine:

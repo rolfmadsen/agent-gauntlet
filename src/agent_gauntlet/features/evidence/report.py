@@ -47,6 +47,8 @@ class VerificationReportEngine:
                 "source_manifest_digest_pre": report.workspace_state.source_manifest_digest_pre,
                 "source_manifest_digest_post": report.workspace_state.source_manifest_digest_post,
                 "config_digest": report.workspace_state.config_digest,
+                "task_digest": report.workspace_state.task_digest
+                or report.task_contract.task_digest,
                 "policy_digest": report.workspace_state.policy_digest,
                 "check_definitions_digest": report.workspace_state.check_definitions_digest,
                 "included_files_count": report.workspace_state.included_files_count,
@@ -71,6 +73,7 @@ class VerificationReportEngine:
                 }
                 for c in report.checks
             ],
+            "diagnostics": report.diagnostics,
         }
         return json.dumps(data, indent=2)
 
@@ -107,6 +110,7 @@ class VerificationReportEngine:
                 source_manifest_digest_pre=str(ws_dict.get("source_manifest_digest_pre", "")),
                 source_manifest_digest_post=str(ws_dict.get("source_manifest_digest_post", "")),
                 config_digest=str(ws_dict.get("config_digest", "")),
+                task_digest=str(ws_dict.get("task_digest", "")),
                 policy_digest=str(ws_dict.get("policy_digest", "")),
                 check_definitions_digest=str(ws_dict.get("check_definitions_digest", "")),
                 included_files_count=int(ws_dict.get("included_files_count", 0)),
@@ -134,6 +138,9 @@ class VerificationReportEngine:
                 for c in data.get("checks", [])
             ]
 
+            raw_diagnostics = data.get("diagnostics", [])
+            diagnostics = list(raw_diagnostics) if isinstance(raw_diagnostics, list) else []
+
             return VerificationReport(
                 schema_version=str(data.get("schema_version", "2.0.0")),
                 execution_origin=str(data.get("execution_origin", "LOCAL")),
@@ -142,6 +149,7 @@ class VerificationReportEngine:
                 workspace_state=workspace_state,
                 execution_metadata=exec_metadata,
                 checks=checks,
+                diagnostics=diagnostics,
             )
 
         # Legacy fallback conversion
@@ -193,8 +201,9 @@ class VerificationReportEngine:
         current_manifest_digest: str,
         current_policy_digest: str = "",
         current_config_digest: str = "",
+        current_task_digest: str = "",
     ) -> bool:
-        """Verify that report post-execution manifest matches current workspace state, policy, and config."""
+        """Verify that report post-execution manifest matches current workspace state, policy, config, and tasks."""
         report_digest = str(report.workspace_state.source_manifest_digest_post or "")
         cur_digest = str(current_manifest_digest or "")
         if not report_digest or not cur_digest:
@@ -206,18 +215,22 @@ class VerificationReportEngine:
         if not hmac.compare_digest(report_digest, cur_digest):
             return False
 
-        # Verify policy digest match (e.g. .agents/, .github/, spec.md, CONTEXT.md)
-        if report.workspace_state.policy_digest and current_policy_digest:
-            rep_pol = report.workspace_state.policy_digest
-            cur_pol = current_policy_digest
-            if not hmac.compare_digest(rep_pol, cur_pol):
+        # Verify policy digest match when expected policy digest is provided
+        if current_policy_digest:
+            rep_pol = report.workspace_state.policy_digest or ""
+            if not rep_pol or not hmac.compare_digest(rep_pol, current_policy_digest):
                 return False
 
-        # Verify config digest match (e.g. gauntlet.toml, pyproject.toml)
-        if report.workspace_state.config_digest and current_config_digest:
-            rep_cfg = report.workspace_state.config_digest
-            cur_cfg = current_config_digest
-            if not hmac.compare_digest(rep_cfg, cur_cfg):
+        # Verify config digest match when expected config digest is provided
+        if current_config_digest:
+            rep_cfg = report.workspace_state.config_digest or ""
+            if not rep_cfg or not hmac.compare_digest(rep_cfg, current_config_digest):
+                return False
+
+        # Verify task digest match when expected task digest is provided
+        if current_task_digest:
+            rep_task = report.workspace_state.task_digest or ""
+            if not rep_task or not hmac.compare_digest(rep_task, current_task_digest):
                 return False
 
         return True

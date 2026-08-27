@@ -117,12 +117,34 @@ class TrustPolicyEngine:
                 reasons.append(f"Attestation status is '{attestation.status}' (expected VALID)")
                 is_policy_rejected = True
 
-        # 2. Execution Origin enforcement
-        report_origin_rank = ORIGIN_RANKS.get(report.execution_origin, 1)
+        # 2. Execution Origin enforcement (derived from verified attestation provenance and report claim)
+        has_valid_ci_attestation = (
+            attestation is not None
+            and attestation.status == AttestationStatus.VALID
+            and attestation.identity is not None
+            and attestation.identity.issuer in policy.allowed_oidc_issuers
+        )
+        if (
+            report.execution_origin == ExecutionOrigin.CI_PROTECTED.value
+            and has_valid_ci_attestation
+        ):
+            effective_origin = ExecutionOrigin.CI_PROTECTED.value
+        elif (
+            report.execution_origin == ExecutionOrigin.CI_UNPRIVILEGED.value
+            and has_valid_ci_attestation
+        ):
+            effective_origin = ExecutionOrigin.CI_UNPRIVILEGED.value
+        else:
+            effective_origin = ExecutionOrigin.LOCAL.value
+
+        effective_origin_rank = ORIGIN_RANKS.get(effective_origin, 1)
         required_origin_rank = ORIGIN_RANKS.get(policy.minimum_origin.value, 3)
-        if report_origin_rank < required_origin_rank and not policy.allow_unattested_local_advisory:
+        if (
+            effective_origin_rank < required_origin_rank
+            and not policy.allow_unattested_local_advisory
+        ):
             reasons.append(
-                f"Execution origin '{report.execution_origin}' does not satisfy minimum origin '{policy.minimum_origin.value}'"
+                f"Execution origin '{effective_origin}' does not satisfy minimum origin '{policy.minimum_origin.value}'"
             )
             is_policy_rejected = True
 

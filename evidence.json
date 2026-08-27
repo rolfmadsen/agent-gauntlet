@@ -6,41 +6,42 @@
   "task_contract": {
     "task_id": "023-p0-audit-remediation-and-cryptographic-attestation",
     "task_title": "Task 023: P0 Audit Remediation, Cryptographic Sigstore DSSE & Official Hook Schema",
-    "task_digest": "0e5c99721f25b9d9187a63030d96a1142450ee98a24ee6d53bd2dd8a4cc0ccbc",
+    "task_digest": "d0cdbcd88df207a5073db6b73c991fca3f222e7f47337d00da6ab0cdacb1e088",
     "acceptance_criteria": [
-      "`AttestationEngine` verificerer Sigstore Bundle v0.2 / v0.3 kryptografisk via ECDSA SHA-256 og RSA over DSSE PAE bytes, parser Fulcio x509 certifikater og OIDC extensions, og afviser opdigtede signaturer som `INVALID`.",
-      "`TrustPolicyEngine` afviser `LOCAL` rapporter n\u00e5r `minimum_origin = CI_PROTECTED` og h\u00e5ndh\u00e6ver `allowed_runner_environments`.",
-      "`.agents/hooks.json` og `plugins/agent-gauntlet/hooks.json` f\u00f8lger det officielle Google Antigravity schema (`{\"agent-gauntlet-gatekeeper\": {\"PreToolUse\": [...]}}`).",
-      "`AntigravityPluginValidator` validerer den komplette hooks-struktur mekanisk og fanger ulovlige hooks, manglende handlers og ugyldige felter.",
-      "`PolicyEngine` i `gatekeeper.py` blokerer `git -C . push`, `git clean -d -f`, `printf x >src/pwn.py`, og shell/python skrivninger til beskyttede mapper uden aktiv task.",
-      "`.github/workflows/ci.yml` pinner alle actions til 40-tegns commit-SHA'er og binder k\u00f8rslen til task 023.",
-      "`check-evidence` og `check-attestation` fejler hvis `.agents/hooks.json`, `.github/`, eller `gauntlet.toml` er \u00e6ndret (policy drift).",
-      "`cli.py` er refaktoreret til ren orkestrering (< 300 linjer) med `features/evidence/verifier.py` og `task_resolver.py`.",
-      "Resterende HMAC-referencer i `ROADMAP.md` og `plugins/agent-gauntlet/README.md` er fjernet.",
-      "0 Pyright fejl, 0 Ruff fejl, 100% mutants killed, alle tests best\u00e5et."
+      "1. En bundle uden DSSE/cert/timestamps eller med kun opdigtet `status: VALID` afvises som `INVALID`.",
+      "2. En lokalt selvsigneret dummy-bundle afvises under strict trust policy.",
+      "3. CI `attest`-jobbet validerer uafh\u00e6ngigt hele rapportkontrakten (non-empty criteria, non-empty checks, alle obligatoriske PASSED med exit code 0, og alle digests) mod `${{ github.sha }}` f\u00f8r signering.",
+      "4. Nul kriterier, nul checks, manglende digests og task-drift afvises fail-closed gennem CLI- og verifier-entrypoints.",
+      "5. Den legitime CI-rapport kan opn\u00e5 release eligibility via verificeret attestation uden selvangivet `CI_PROTECTED`-felt i rapporten.",
+      "6. Gatekeeperens dokumenterede rolle svarer til dens faktiske kooperative guardrail-model, og `is_task_active` afviser `DRAFT`, `REJECTED` og status-l\u00f8se tasks.",
+      "7. Task-parsing og status-semantik er udtrukket til en selvst\u00e6ndig `features/tasks/` modul uden cirkul\u00e6r afh\u00e6ngighed til gatekeeper.",
+      "8. `AntigravityPluginValidator` accepterer `matcher: \"*\"` og `matcher: \"\"` som gyldige match-all filtre, validerer non-empty root og events, og tjekker positivt integer timeout.",
+      "9. `src/agent_gauntlet/cli.py` er refaktoreret til ren dispatch/orkestrering (< 250 linjer).",
+      "10. `verification-report.json` serialiserer diagnostic findings, `tools/gauntlet.sh` k\u00f8rer `ruff format --check .`, og 0 Pyright/Ruff fejl med 46/46 kuraterede mutanter killed."
     ],
     "unresolved_criteria": []
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "bb8f2cb692612d51ab61998d305eb52f4d9e429c513513116390e6bc6fafd627",
-    "source_manifest_digest_pre": "b19d5abf0be33e0572871bed1f5a96e6f38bc43c77217d644d556f6a600c9905",
-    "source_manifest_digest_post": "b19d5abf0be33e0572871bed1f5a96e6f38bc43c77217d644d556f6a600c9905",
+    "source_content_digest": "b1f691d15a1e33aeb42d70faaf0894029e15325b6aa27a3f1e06101fdc479453",
+    "source_manifest_digest_pre": "c2cfaba81b313b9ec7cc2a9c0e12ae7f4ef43c334a7d339c576b485ac0d2ea7d",
+    "source_manifest_digest_post": "c2cfaba81b313b9ec7cc2a9c0e12ae7f4ef43c334a7d339c576b485ac0d2ea7d",
     "config_digest": "aff95d54b35fdde4e4cc8ea1a676c9359cf1da0e04aab74c823b51b88b3d8958",
-    "policy_digest": "94afa307d52d3513b9b23e195a82409363480d69a6fc4d0fa9a43eeda7440070",
+    "task_digest": "d0cdbcd88df207a5073db6b73c991fca3f222e7f47337d00da6ab0cdacb1e088",
+    "policy_digest": "50caa920d3260f4d22778ff28481385f024eabfd7a0080c7b34053beda3f84c3",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
-    "included_files_count": 82,
+    "included_files_count": 86,
     "vcs": {
       "type": "git",
-      "head": "7eb2fcf",
+      "head": "b9a590f",
       "commit": "b0b82ac",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-25T20:51:10Z",
-    "finished_at": "2026-08-25T20:51:36Z",
-    "total_duration_seconds": 26.627,
+    "started_at": "2026-08-27T19:30:57Z",
+    "finished_at": "2026-08-27T19:31:22Z",
+    "total_duration_seconds": 25.58,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -60,7 +61,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.277,
+      "duration_seconds": 1.329,
       "optional": true,
       "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
     },
@@ -68,25 +69,26 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.172,
+      "duration_seconds": 1.085,
       "optional": false,
-      "log_digest": "aeac193b33b3157847019a7a97ae70c174b3cdb3b10b57393a51b23d54791d8c"
+      "log_digest": "1c71d0ca2aef00aa1088e416d9a10ffb70e01f10f643b4b8159e3d871c4cf78a"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.309,
+      "duration_seconds": 0.296,
       "optional": true,
-      "log_digest": "acb9b79f276daaf02a5973918bcfdf1b4678ea537b80fc17b3468d9416b6c193"
+      "log_digest": "89d79feb3f9f4d5bed17f078329c6f6a7f786ac18d354f60aad23051c243b39e"
     },
     {
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 23.804,
+      "duration_seconds": 22.809,
       "optional": true,
       "log_digest": "2dd3a56b01138f567189d4446c9d487e49cd5b847d19e1424b221cce8a76b667"
     }
-  ]
+  ],
+  "diagnostics": []
 }

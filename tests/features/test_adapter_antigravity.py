@@ -280,7 +280,9 @@ class TestAntigravityPluginValidator(unittest.TestCase):
     def test_skill_missing_frontmatter_fails(self) -> None:
         """Skill without frontmatter in SKILL.md reports an error."""
         self._scaffold_valid_plugin()
-        (self.plugin_dir / "skills/old-coder/SKILL.md").write_text("# Old Coder without frontmatter")
+        (self.plugin_dir / "skills/old-coder/SKILL.md").write_text(
+            "# Old Coder without frontmatter"
+        )
         res = self.validator.validate(self.plugin_dir)
         self.assertFalse(res.valid)
         self.assertTrue(any("frontmatter" in i.message.lower() for i in res.issues))
@@ -318,6 +320,61 @@ class TestAntigravityPluginValidator(unittest.TestCase):
         res = self.validator.validate(self.plugin_dir)
         self.assertFalse(res.valid)
         self.assertTrue(any("command" in i.message.lower() for i in res.issues))
+
+    def test_valid_hooks_json_with_wildcard_matcher_succeeds(self) -> None:
+        """Wildcard matchers '*' and '' are accepted as official Antigravity match-all without regex error."""
+        self._scaffold_valid_plugin()
+        wildcard_hooks = {
+            "my-hook": {
+                "PreToolUse": [
+                    {
+                        "matcher": "*",
+                        "hooks": [{"command": "echo test"}],
+                    },
+                    {
+                        "matcher": "",
+                        "hooks": [{"command": "echo test2"}],
+                    },
+                ]
+            }
+        }
+        (self.plugin_dir / "hooks.json").write_text(json.dumps(wildcard_hooks))
+        res = self.validator.validate(self.plugin_dir)
+        self.assertTrue(res.valid, f"Wildcard matcher should be valid, got issues: {res.issues}")
+
+    def test_invalid_hooks_json_empty_root_rejected(self) -> None:
+        """Empty hooks.json root object is rejected."""
+        self._scaffold_valid_plugin()
+        (self.plugin_dir / "hooks.json").write_text("{}")
+        res = self.validator.validate(self.plugin_dir)
+        self.assertFalse(res.valid)
+        self.assertTrue(any("empty" in i.message.lower() for i in res.issues))
+
+    def test_invalid_hooks_json_no_events_rejected(self) -> None:
+        """Hook with only enabled property and no lifecycle events is rejected."""
+        self._scaffold_valid_plugin()
+        (self.plugin_dir / "hooks.json").write_text(json.dumps({"my-hook": {"enabled": True}}))
+        res = self.validator.validate(self.plugin_dir)
+        self.assertFalse(res.valid)
+        self.assertTrue(any("lifecycle event" in i.message.lower() for i in res.issues))
+
+    def test_invalid_hooks_json_non_positive_timeout_rejected(self) -> None:
+        """Negative or zero timeout values are rejected."""
+        self._scaffold_valid_plugin()
+        bad_timeout_hooks = {
+            "my-hook": {
+                "PreToolUse": [
+                    {
+                        "matcher": "run_command",
+                        "hooks": [{"command": "echo test", "timeout": -1}],
+                    }
+                ]
+            }
+        }
+        (self.plugin_dir / "hooks.json").write_text(json.dumps(bad_timeout_hooks))
+        res = self.validator.validate(self.plugin_dir)
+        self.assertFalse(res.valid)
+        self.assertTrue(any("timeout" in i.message.lower() for i in res.issues))
 
 
 class TestAntigravityHookCli(unittest.TestCase):

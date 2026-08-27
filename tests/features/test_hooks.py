@@ -101,13 +101,15 @@ class TestGatekeeperHook(unittest.TestCase):
         self.assertEqual(verdict.verdict_code, GatekeeperVerdict.ALLOW)
 
     def test_blocks_remote_git_push_commands_including_options(self) -> None:
-        """Running git push is strictly blocked regardless of flags or options."""
+        """Running git push is strictly blocked regardless of flags, IFS escapes, or subshell calls."""
         for cmd in [
             "git push origin main",
             "git -C . push",
             "git --git-dir=.git push origin main",
             "git -c user.name=tester push",
             "git push",
+            "git${IFS}push origin main",
+            "python3 -c \"import subprocess; subprocess.run(['git','push'])\"",
             "gh pr create --title 'test' --body 'body'",
             "gh release create v1.0.0",
         ]:
@@ -118,6 +120,24 @@ class TestGatekeeperHook(unittest.TestCase):
             )
             self.assertFalse(verdict.allowed, f"Command '{cmd}' must be blocked")
             self.assertEqual(verdict.verdict_code, GatekeeperVerdict.BLOCKED_FORBIDDEN_COMMAND)
+
+    def test_blocks_src_edit_when_task_is_draft_or_rejected(self) -> None:
+        """Modifying src/ is blocked if the task is in DRAFT or REJECTED status despite having criteria."""
+        for status_val in ["DRAFT", "REJECTED"]:
+            task_file = self.workspace / "tasks" / f"001-{status_val.lower()}.md"
+            task_file.write_text(
+                f"# Task 001\n\n**Status**: `{status_val}`\n\n## Acceptance Criteria\n- [ ] Implement\n"
+            )
+            verdict = evaluate_tool_invocation(
+                workspace=self.workspace,
+                tool_name="write_to_file",
+                tool_input={"TargetFile": str(self.workspace / "src" / "code.py")},
+            )
+            self.assertFalse(
+                verdict.allowed, f"Task status {status_val} must not authorize src/ write"
+            )
+            self.assertEqual(verdict.verdict_code, GatekeeperVerdict.BLOCKED_NO_ACTIVE_TASK)
+            task_file.unlink()
 
     def test_blocks_destructive_git_operations(self) -> None:
         """Destructive git operations (clean -d -f, reset --hard, branch -D) are strictly blocked."""

@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Sequence
 
-from agent_gauntlet.features.evidence.models import VcsMetadata
+from agent_gauntlet.features.evidence.models import VcsMetadata, WorkspaceState
 
 DEFAULT_SCOPES = (
     "src",
@@ -68,6 +68,23 @@ class CanonicalWorkspaceManifest:
     task_digest: str = ""
     policy_digest: str = ""
     vcs: VcsMetadata | None = None
+
+    def to_workspace_state(
+        self, pre_digest: str = "", check_definitions_digest: str = ""
+    ) -> WorkspaceState:
+        """Converts manifest into a WorkspaceState evidence model."""
+        return WorkspaceState(
+            manifest_version="1.0",
+            source_content_digest=self.source_content_digest,
+            source_manifest_digest_pre=pre_digest or self.source_manifest_digest,
+            source_manifest_digest_post=self.source_manifest_digest,
+            config_digest=self.config_digest,
+            task_digest=self.task_digest,
+            policy_digest=self.policy_digest,
+            check_definitions_digest=check_definitions_digest,
+            included_files_count=self.included_files_count,
+            vcs=self.vcs,
+        )
 
 
 def _git(root: Path, *args: str, check: bool = True) -> subprocess.CompletedProcess[bytes]:

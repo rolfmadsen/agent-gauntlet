@@ -9,16 +9,15 @@ PYTHON_BIN="$(which python3 || which python)"
 
 if [ -d ".venv/.venv/lib/python3.14/site-packages" ]; then
     export PYTHONPATH="src:.venv/.venv/lib/python3.14/site-packages:$PYTHONPATH"
+elif [ -d ".venv/lib/python3.12/site-packages" ]; then
+    export PYTHONPATH="src:.venv/lib/python3.12/site-packages:$PYTHONPATH"
 else
     export PYTHONPATH="src:$PYTHONPATH"
 fi
 
-if [ -d ".venv/.venv/bin" ]; then
-    export PATH=".venv/.venv/bin:$PATH"
-fi
-
 echo "=== Layer 1: Code Formatting & Static Analysis (Ruff) ==="
 $PYTHON_BIN -m ruff check .
+$PYTHON_BIN -m ruff format --check .
 
 echo "=== Layer 2: Strict Type Checking (Pyright) ==="
 $PYTHON_BIN -m pyright src tests tools

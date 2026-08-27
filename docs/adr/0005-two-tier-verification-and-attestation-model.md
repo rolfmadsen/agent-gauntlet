@@ -28,7 +28,7 @@ Furthermore, CI workflows previously ran verification and evidence checks in a s
 We decouple **Local Verification Reporting** from **Authoritative Attestation**:
 
 1. **Two Distinct Artifacts**:
-   - `verification-report.json`: An unsigned JSON document produced by `agent-gauntlet verify`. It records verification claims, layer outcomes, diagnostic findings, pre/post source manifest digests, and task contracts.
+   - `verification-report.json`: An unsigned JSON document produced by `agent-gauntlet verify`. It records verification claims, layer outcomes, diagnostic findings, pre/post source manifest digests, config/policy/task digests, and task contracts.
    - `attestation.bundle`: An optional, detached in-toto / DSSE / Sigstore attestation bundle generated strictly within a protected, privileged CI workflow. It cryptographically binds an ambient CI identity (OIDC) to the verification report and source manifest.
 
 2. **Orthogonal Assurance Dimensions**:
@@ -40,18 +40,28 @@ We decouple **Local Verification Reporting** from **Authoritative Attestation**:
    Release eligibility is strictly:
    `verification_result == PASSED AND attestation_status == VALID AND trust_decision == ACCEPTED`
 
-3. **Canonical Workspace Manifest**:
-   Workspace state is captured via a deterministic SHA-256 tree manifest that works identically offline without Git. It incorporates UTF-8 normalized relative paths, file content hashes, POSIX executable permission bits, and strict symlink boundary checks to prevent workspace escapes.
+3. **Canonical Workspace Manifest & Multi-Digest Binding**:
+   Workspace state is captured via a deterministic SHA-256 tree manifest that works identically offline without Git. It incorporates UTF-8 normalized relative paths, file content hashes, POSIX executable permission bits, and strict symlink boundary checks. Verification and attestation checks fail closed on any drift across:
+   - `source_manifest_digest` (source tree integrity)
+   - `policy_digest` (`spec.md`, `CONTEXT.md`, `docs/adr/`, `.agents/`, `.github/`)
+   - `config_digest` (`gauntlet.toml`, `pyproject.toml`)
+   - `task_digest` (`tasks/*.md` active task contract integrity)
 
-4. **Independent Privileged CI Attestation Path**:
-   - Pull request CI runs **unprivileged** (`permissions: contents: read`) with no OIDC tokens or signing secrets.
-   - Attestation occurs exclusively on protected branches/tags (`push` to `main`, releases) in a dedicated job with `permissions: id-token: write, attestations: write`.
-   - The attestation job **does not checkout or execute repository code** and never runs `tools/gauntlet.sh`. It verifies the report produced by the unprivileged job and generates the signed DSSE predicate natively via `actions/attest`.
+4. **Multi-CI & GitHub-Native Attestation Architecture**:
+   - **Issuance**: In GitHub Actions, the privileged attestation job uses official `actions/attest` with Sigstore Fulcio OIDC certificates and Rekor transparency log. In other CI harnesses (GitLab, Cloud Build, Jenkins), standard `cosign` or `sigstore-python` is used.
+   - **Cryptographic Verification**: Delegated to official, maintained verifiers (`gh attestation verify`, `sigstore-python`, or `cosign verify-blob`) with trusted roots, rather than custom homemade ASN.1/X.509 certificate parsers.
+   - **Domain Policy Enforcement**: `agent-gauntlet check-attestation` / `TrustPolicyEngine` acts as an authoritative policy consumer evaluating the verified attestation claims (issuer, repository, workflow, runner environment, digests, criteria resolution).
 
-5. **Self-Attestation Bootstrap Rule (Release N-1)**:
-   A candidate release $N$ of `agent-gauntlet` cannot define its own verification criteria. Release $N$ is verified by the pinned, trusted release $N-1$ distribution in CI before the attestation workflow signs the candidate artifact.
+5. **Self-Attestation Bootstrap & Candidate N Integrity**:
+   A candidate release $N$ cannot define or assert its own verification truth. The CI signer job independently validates:
+   - Schema version, non-empty acceptance criteria, zero unresolved criteria.
+   - Non-empty check array with all mandatory checks `PASSED` (exit code 0).
+   - Source commit, ref, and all digests matching `${{ github.sha }}` and workspace state.
+   - Release $N$ is verified by the pinned, trusted release $N-1$ or trusted reusable workflow before signing.
 
 ## Consequences
 - **Positive**: Eliminates all hardcoded keys and local HMAC secrets. Guarantees true cryptographic assurance tied to verifiable CI provenance.
+- **Positive**: Uses official, battle-tested Sigstore verification tools (`gh attestation verify` / `sigstore`) without fragile homemade ASN.1 parsers.
 - **Positive**: Local verification remains lightweight, zero-dependency, and fully functional offline for developer feedback and drift detection.
 - **Negative / Migration**: Legacy `evidence.json` files with static HMAC signatures are classified as `LEGACY_UNATTESTED` and rejected by release/stabilization gates unless explicitly overridden for advisory use.
+

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 
 class VerificationVerdict(str, Enum):
@@ -125,6 +126,7 @@ class VerificationReport:
     workspace_state: WorkspaceState = field(default_factory=WorkspaceState)
     execution_metadata: ExecutionMetadata = field(default_factory=ExecutionMetadata)
     checks: list[CheckSummary] = field(default_factory=list)
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 
 # Backward compatibility aliases

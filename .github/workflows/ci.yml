@@ -85,6 +85,7 @@ jobs:
           if data.get('schema_version') != '2.0.0':
               print(f'Error: Schema version {data.get(\"schema_version\")}', file=sys.stderr)
               sys.exit(1)
+
           contract = data.get('task_contract', {})
           if not contract.get('acceptance_criteria') or len(contract.get('acceptance_criteria')) == 0:
               print('Error: Task contract has 0 acceptance criteria', file=sys.stderr)
@@ -92,7 +93,24 @@ jobs:
           if contract.get('unresolved_criteria'):
               print(f'Error: Task contract has unresolved criteria: {contract.get(\"unresolved_criteria\")}', file=sys.stderr)
               sys.exit(1)
-          print('Verification report schema, contract, and verdict validated successfully.')
+
+          checks = data.get('checks', [])
+          if not checks or len(checks) == 0:
+              print('Error: Verification report has 0 checks', file=sys.stderr)
+              sys.exit(1)
+          for c in checks:
+              if not c.get('optional', False):
+                  if not c.get('passed', False) or c.get('exit_code', 1) != 0 or c.get('status') != 'PASSED':
+                      print(f'Error: Mandatory check {c.get(\"name\")} failed', file=sys.stderr)
+                      sys.exit(1)
+
+          ws_state = data.get('workspace_state', {})
+          for digest_key in ('source_manifest_digest_post', 'policy_digest', 'config_digest', 'task_digest'):
+              if not ws_state.get(digest_key):
+                  print(f'Error: Workspace state missing mandatory {digest_key}', file=sys.stderr)
+                  sys.exit(1)
+
+          print('Verification report schema, contract, checks, digests, and verdict validated successfully.')
           "
 
       - name: Attest Verification Report
@@ -101,3 +119,12 @@ jobs:
           subject-path: verification-report.json
           predicate-type: https://agent-gauntlet.dev/attestation/v1
           predicate-path: verification-report.json
+
+      - name: Cryptographic Verification via Official CLI (GitHub Sigstore Root)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh attestation verify verification-report.json \
+            --repo "${{ github.repository }}" \
+            --predicate-type "https://agent-gauntlet.dev/attestation/v1"
+

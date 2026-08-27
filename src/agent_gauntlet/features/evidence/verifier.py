@@ -2,23 +2,315 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TextIO
 
+from agent_gauntlet.features.config.loader import load_config
+from agent_gauntlet.features.diagnostics.parser import DiagnosticParser
 from agent_gauntlet.features.evidence.attestation import (
     AttestationBundle,
     AttestationEngine,
 )
 from agent_gauntlet.features.evidence.models import (
     AttestationStatus,
+    CheckSummary,
+    ExecutionMetadata,
+    TaskContract,
+    VerificationReport,
+    WorkspaceState,
 )
 from agent_gauntlet.features.evidence.report import VerificationReportEngine
 from agent_gauntlet.features.evidence.source_state import compute_workspace_manifest
+from agent_gauntlet.features.evidence.task_resolver import resolve_task_contract
 from agent_gauntlet.features.evidence.trust_policy import (
     TrustPolicyEngine,
 )
+from agent_gauntlet.features.gauntlet.models import LayerDefinition, LayerRequirement
+from agent_gauntlet.features.gauntlet.runner import run_gauntlet
+from agent_gauntlet.features.okf.validator import validate_okf_workspace
+from agent_gauntlet.features.tasks import is_task_active
+
+
+def generate_session_handoff_prompt(workspace: Path, task_id: str, task_title: str = "") -> str:
+    """Generates a clean starter prompt for the next chat session."""
+    tasks_dir = workspace / "tasks"
+    next_task_suggestion = ""
+    if tasks_dir.is_dir():
+        for candidate in sorted(tasks_dir.glob("*.md")):
+            if candidate.stem != task_id and not candidate.name.startswith(f"{task_id}-"):
+                try:
+                    content = candidate.read_text(encoding="utf-8")
+                    if is_task_active(content):
+                        next_task_suggestion = f" (f.eks. tasks/{candidate.name})"
+                        break
+                except Exception:
+                    continue
+
+    return (
+        f"Fortsæt udviklingen i projektet. Læs venligst CONTEXT.md, docs/adr/ og den næste opgave i tasks/{next_task_suggestion} "
+        f"for at fastlægge acceptkriterier og køre TDD-cyklussen for næste feature."
+    )
+
+
+def execute_verify(
+    workspace: Path,
+    task_id: str = "",
+    stack: str = "",
+    standalone: bool = False,
+    test_target: str = "",
+    save: bool = False,
+    as_json: bool = False,
+    diagnostics_json: bool = False,
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
+) -> int:
+    """Executes multi-layer gauntlet verification and builds unsigned report."""
+    out = stdout if stdout is not None else sys.stdout
+    err = stderr if stderr is not None else sys.stderr
+
+    start_time = time.time()
+    started_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    manifest_pre = compute_workspace_manifest(workspace)
+    config = load_config(workspace, explicit_stack=stack or None)
+
+    resolved_task_id, task_title, criteria, unresolved = resolve_task_contract(workspace, task_id)
+
+    if not standalone and not test_target:
+        context_file = workspace / "CONTEXT.md"
+        if not context_file.exists() or not context_file.read_text(encoding="utf-8").strip():
+            print(
+                "FAILED: Pre-flight check failed! CONTEXT.md is missing or empty. Please define domain glossary in CONTEXT.md or use --standalone.",
+                file=err,
+            )
+            return 1
+
+        okf_report = validate_okf_workspace(workspace)
+        if not okf_report.valid:
+            print(
+                f"FAILED: Pre-flight OKF validation failed! {len(okf_report.findings)} documentation defect(s) found:",
+                file=err,
+            )
+            for f in okf_report.findings[:5]:
+                try:
+                    rel_p = Path(f.file_path).relative_to(workspace)
+                except ValueError:
+                    rel_p = f.file_path
+                print(f"  [!] {f.rule} in {rel_p}: {f.message}", file=err)
+                if f.remediation_hint:
+                    print(f"      Hint: {f.remediation_hint}", file=err)
+            if len(okf_report.findings) > 5:
+                print(
+                    f"  ... and {len(okf_report.findings) - 5} more defect(s). Run 'agent-gauntlet okf validate' for full report.",
+                    file=err,
+                )
+            return 1
+
+    layers: list[LayerDefinition] = []
+    if test_target:
+        layers.append(
+            LayerDefinition(
+                name="targeted-test",
+                command=[sys.executable, "-m", "unittest", test_target],
+                optional=False,
+            )
+        )
+    else:
+        layers = config.to_layer_definitions()
+
+    report = run_gauntlet(layers, cwd=workspace)
+    finished_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    total_duration = time.time() - start_time
+    manifest_post = compute_workspace_manifest(workspace)
+
+    diagnostic_parser = DiagnosticParser()
+    diagnostic_reports = [
+        diagnostic_parser.parse_layer_output(
+            layer_name=res.name,
+            command=layers[i].command if i < len(layers) else [res.name],
+            exit_code=res.exit_code,
+            output=res.output,
+        )
+        for i, res in enumerate(report.layers)
+    ]
+
+    checks = [
+        CheckSummary(
+            name=layer.name,
+            status="PASSED" if layer.passed else "FAILED",
+            passed=layer.passed,
+            exit_code=layer.exit_code,
+            duration_seconds=layer.duration_seconds,
+            optional=(layer.requirement == LayerRequirement.OPTIONAL),
+            log_digest=hashlib.sha256(layer.output.encode("utf-8")).hexdigest()
+            if layer.output
+            else "",
+        )
+        for layer in report.layers
+    ]
+
+    check_defs_hasher = hashlib.sha256()
+    for layer_def in layers:
+        cmd_str = " ".join(layer_def.command)
+        check_defs_hasher.update(
+            f"{layer_def.name}:{cmd_str}:{layer_def.optional}\n".encode("utf-8")
+        )
+    check_definitions_digest = check_defs_hasher.hexdigest()
+
+    task_contract = TaskContract(
+        task_id=resolved_task_id,
+        task_title=task_title,
+        task_digest=manifest_post.task_digest,
+        acceptance_criteria=criteria,
+        unresolved_criteria=unresolved,
+    )
+
+    workspace_state = WorkspaceState(
+        manifest_version="1.0",
+        source_content_digest=manifest_post.source_content_digest,
+        source_manifest_digest_pre=manifest_pre.source_manifest_digest,
+        source_manifest_digest_post=manifest_post.source_manifest_digest,
+        config_digest=manifest_post.config_digest,
+        task_digest=manifest_post.task_digest,
+        policy_digest=manifest_post.policy_digest,
+        check_definitions_digest=check_definitions_digest,
+        included_files_count=manifest_post.included_files_count,
+        vcs=manifest_post.vcs,
+    )
+
+    exec_metadata = ExecutionMetadata(
+        started_at=started_iso,
+        finished_at=finished_iso,
+        total_duration_seconds=total_duration,
+        environment={
+            "python_version": sys.version.split()[0],
+            "platform": sys.platform,
+            "gauntlet_version": "0.2.0",
+        },
+    )
+
+    has_failed_checks = any(not c.passed or c.exit_code != 0 for c in checks)
+    is_self_mutated = manifest_pre.source_manifest_digest != manifest_post.source_manifest_digest
+
+    # Invariant: Must have non-empty checks and non-empty criteria to pass
+    if is_self_mutated:
+        verdict = "FAILED"
+    elif not report.success:
+        verdict = "FAILED"
+    elif test_target:
+        verdict = "PARTIAL"
+    elif not criteria and not standalone:
+        verdict = "INCOMPLETE"
+    elif not checks:
+        verdict = "FAILED"
+    elif unresolved:
+        verdict = "INCOMPLETE"
+    elif has_failed_checks:
+        verdict = "PARTIAL"
+    else:
+        verdict = "PASSED"
+
+    all_diagnostic_findings = [f.to_dict() for r in diagnostic_reports for f in r.findings]
+
+    report_obj = VerificationReport(
+        schema_version="2.0.0",
+        execution_origin="LOCAL",
+        verdict=verdict,
+        task_contract=task_contract,
+        workspace_state=workspace_state,
+        execution_metadata=exec_metadata,
+        checks=checks,
+        diagnostics=all_diagnostic_findings,
+    )
+
+    engine = VerificationReportEngine()
+    if save:
+        report_json_str = engine.generate_report_json(report_obj)
+        (workspace / "verification-report.json").write_text(report_json_str, encoding="utf-8")
+        (workspace / config.evidence_file).write_text(report_json_str, encoding="utf-8")
+        (workspace / config.evidence_markdown_file).write_text(
+            engine.generate_report_markdown(report_obj), encoding="utf-8"
+        )
+
+    handoff_prompt = (
+        generate_session_handoff_prompt(
+            workspace,
+            report_obj.task_contract.task_id,
+            report_obj.task_contract.task_title,
+        )
+        if verdict == "PASSED"
+        else ""
+    )
+
+    tree_digest = manifest_post.source_manifest_digest[:16]
+    is_verify_success = verdict == "PASSED" or (verdict == "PARTIAL" and report.success)
+
+    if diagnostics_json:
+        output_payload = {
+            "verdict": verdict,
+            "source_tree_hash": tree_digest,
+            "execution_origin": "LOCAL",
+            "diagnostic_reports": [r.to_dict() for r in diagnostic_reports],
+            "handoff_prompt": handoff_prompt,
+        }
+        print(json.dumps(output_payload, indent=2), file=out)
+    elif as_json:
+        print(engine.generate_report_json(report_obj), file=out)
+    else:
+        print(f"\nVerification Result: {verdict}", file=out)
+        if report_obj.task_contract.task_id and report_obj.task_contract.task_id != "default-run":
+            task_label = (
+                f"{report_obj.task_contract.task_id} ({report_obj.task_contract.task_title})"
+                if report_obj.task_contract.task_title
+                else report_obj.task_contract.task_id
+            )
+            print(f"Bound Task:          {task_label}", file=out)
+        print(f"Stack Profile:       {config.stack}", file=out)
+        print(f"Source Tree Hash:    {tree_digest}", file=out)
+        print("Execution Origin:    LOCAL (Unsigned report)", file=out)
+        print("\nVerification Layers:", file=out)
+        for c in report_obj.checks:
+            tag = "[+]" if c.passed else "[-]"
+            print(f"  {tag} {c.name} (exit {c.exit_code}) in {c.duration_seconds:.3f}s", file=out)
+
+        all_findings = [f for r in diagnostic_reports for f in r.findings]
+        if all_findings:
+            print("\nActionable Diagnostics:", file=out)
+            for f in all_findings:
+                location = (
+                    f"{f.file_path}:{f.line_number}"
+                    if f.file_path and f.line_number
+                    else (f.file_path or f.tool_name)
+                )
+                print(f"  [!] {f.finding_type.value} in {location}", file=out)
+                print(f"      Message: {f.message}", file=out)
+                if f.remediation_hint:
+                    print(f"      Hint:    {f.remediation_hint}", file=out)
+
+        if verdict == "PASSED" and handoff_prompt:
+            import textwrap
+
+            print("\n" + "╭" + "─" * 76 + "╮", file=out)
+            print(f"│ 🏁 SESSION HANDOFF: {report_obj.task_contract.task_id:<53} │", file=out)
+            print("│" + " " * 76 + "│", file=out)
+            print(
+                "│ 💡 Start venligst en frisk chat-session for at undgå context rot.          │",
+                file=out,
+            )
+            print(
+                "│ 📋 Kopiér og indsæt følgende starter-prompt i en ny chat:                  │",
+                file=out,
+            )
+            print("├" + "─" * 76 + "┤", file=out)
+            for wrapped_line in textwrap.wrap(handoff_prompt, width=74):
+                print(f"│ {wrapped_line:<74} │", file=out)
+            print("╰" + "─" * 76 + "╯", file=out)
+
+    return 0 if is_verify_success else 1
 
 
 def execute_check_evidence(
@@ -85,11 +377,21 @@ def execute_check_evidence(
         )
         return 1
 
+    # Invariant: Non-empty criteria required for PASSED verification
+    if not report_obj.task_contract.acceptance_criteria:
+        print("FAILED: Verification report has 0 acceptance criteria.", file=err)
+        return 1
+
     if report_obj.task_contract.unresolved_criteria:
         print(
             f"FAILED: Verification report has {len(report_obj.task_contract.unresolved_criteria)} unresolved acceptance criteria.",
             file=err,
         )
+        return 1
+
+    # Invariant: Non-empty checks required
+    if not report_obj.checks:
+        print("FAILED: Verification report contains 0 verification checks.", file=err)
         return 1
 
     failed_checks = [
@@ -110,10 +412,11 @@ def execute_check_evidence(
         current_manifest.source_manifest_digest,
         current_manifest.policy_digest,
         current_manifest.config_digest,
+        current_manifest.task_digest,
     ):
         report_digest = report_obj.workspace_state.source_manifest_digest_post or "(none)"
         print(
-            f"FAILED: Source manifest or policy drift detected! Report bound to '{report_digest}', but current workspace is '{current_manifest.source_manifest_digest}'.",
+            f"FAILED: Source manifest, policy, config, or task drift detected! Report bound to '{report_digest}', current workspace manifest is '{current_manifest.source_manifest_digest}'.",
             file=err,
         )
         return 1
@@ -164,16 +467,26 @@ def execute_check_attestation(
         print(f"FAILED: Failed to parse verification report '{report_path}': {exc}", file=err)
         return 1
 
+    # Invariants: Non-empty criteria and non-empty checks
+    if not report_obj.task_contract.acceptance_criteria:
+        print("FAILED: Verification report has 0 acceptance criteria.", file=err)
+        return 1
+
+    if not report_obj.checks:
+        print("FAILED: Verification report contains 0 verification checks.", file=err)
+        return 1
+
     current_manifest = compute_workspace_manifest(workspace)
     if not report_engine.verify_workspace_state_match(
         report_obj,
         current_manifest.source_manifest_digest,
         current_manifest.policy_digest,
         current_manifest.config_digest,
+        current_manifest.task_digest,
     ):
         report_digest = report_obj.workspace_state.source_manifest_digest_post or "(none)"
         print(
-            f"FAILED: Source manifest or policy drift detected! Report bound to '{report_digest}', but current workspace is '{current_manifest.source_manifest_digest}'.",
+            f"FAILED: Source manifest, policy, config, or task drift detected! Report bound to '{report_digest}', current workspace manifest is '{current_manifest.source_manifest_digest}'.",
             file=err,
         )
         return 1

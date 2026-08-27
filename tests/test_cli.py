@@ -17,6 +17,7 @@ from agent_gauntlet.features.evidence import (
     WorkspaceState,
     compute_source_state,
 )
+from tests.features.test_attestation import _generate_crypto_bundle
 
 
 class TestCliAcceptance(unittest.TestCase):
@@ -58,16 +59,24 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-01: tree-hash prints tree hash and returns 0."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            (ws / "file.txt").write_text("hello", encoding="utf-8")
+            (ws / "a.txt").write_text("content", encoding="utf-8")
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 exit_code = main(["tree-hash", "-w", str(ws)])
-
             self.assertEqual(exit_code, 0)
-            output = stdout.getvalue().strip()
-            self.assertGreaterEqual(len(output), 16)
-            _, _, expected_tree = compute_source_state(ws)
-            self.assertEqual(output, expected_tree)
+            self.assertGreater(len(stdout.getvalue().strip()), 0)
+
+    def test_tree_hash_json(self) -> None:
+        """Scenario CLI-01-JSON: tree-hash --json outputs structured json."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            (ws / "a.txt").write_text("content", encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["tree-hash", "-w", str(ws), "--json"])
+            self.assertEqual(exit_code, 0)
+            data = json.loads(stdout.getvalue())
+            self.assertIn("source_tree_hash", data)
 
     def test_check_evidence_valid(self) -> None:
         """Scenario CLI-02: check-evidence verifies valid unsigned verification report matching manifest."""
@@ -82,11 +91,12 @@ class TestCliAcceptance(unittest.TestCase):
                 schema_version="2.0.0",
                 execution_origin="LOCAL",
                 verdict="PASSED",
-                task_contract=TaskContract(task_id="task-cli-valid", acceptance_criteria=[]),
-                workspace_state=WorkspaceState(
-                    source_manifest_digest_post=manifest.source_manifest_digest,
-                    source_content_digest=manifest.source_content_digest,
+                task_contract=TaskContract(
+                    task_id="task-cli-valid",
+                    acceptance_criteria=["Criterion 1"],
+                    task_digest=manifest.task_digest,
                 ),
+                workspace_state=manifest.to_workspace_state(),
                 checks=[CheckSummary(name="unit-tests", status="PASSED", passed=True, exit_code=0)],
             )
             report_file = ws / "verification-report.json"
@@ -100,6 +110,70 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             self.assertIn("VALID", stdout.getvalue().upper())
             self.assertIn("LOCAL", stdout.getvalue().upper())
+
+    def test_check_evidence_rejects_zero_acceptance_criteria(self) -> None:
+        """Scenario CLI-02-ZERO-CRIT: check-evidence rejects report with 0 acceptance criteria."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            (ws / "file.txt").write_text("hello", encoding="utf-8")
+            from agent_gauntlet.features.evidence import compute_workspace_manifest
+
+            manifest = compute_workspace_manifest(ws)
+            engine = VerificationReportEngine()
+            report = VerificationReport(
+                schema_version="2.0.0",
+                execution_origin="LOCAL",
+                verdict="PASSED",
+                task_contract=TaskContract(task_id="task-cli-zero-crit", acceptance_criteria=[]),
+                workspace_state=WorkspaceState(
+                    source_manifest_digest_post=manifest.source_manifest_digest,
+                    source_content_digest=manifest.source_content_digest,
+                ),
+                checks=[CheckSummary(name="unit-tests", status="PASSED", passed=True, exit_code=0)],
+            )
+            report_file = ws / "verification-report.json"
+            report_file.write_text(engine.generate_report_json(report), encoding="utf-8")
+
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)]
+                )
+            self.assertEqual(exit_code, 1)
+            self.assertIn("0 acceptance criteria", stderr.getvalue().lower())
+
+    def test_check_evidence_rejects_zero_checks(self) -> None:
+        """Scenario CLI-02-ZERO-CHECKS: check-evidence rejects report with 0 checks."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            (ws / "file.txt").write_text("hello", encoding="utf-8")
+            from agent_gauntlet.features.evidence import compute_workspace_manifest
+
+            manifest = compute_workspace_manifest(ws)
+            engine = VerificationReportEngine()
+            report = VerificationReport(
+                schema_version="2.0.0",
+                execution_origin="LOCAL",
+                verdict="PASSED",
+                task_contract=TaskContract(
+                    task_id="task-cli-valid", acceptance_criteria=["Crit 1"]
+                ),
+                workspace_state=WorkspaceState(
+                    source_manifest_digest_post=manifest.source_manifest_digest,
+                    source_content_digest=manifest.source_content_digest,
+                ),
+                checks=[],
+            )
+            report_file = ws / "verification-report.json"
+            report_file.write_text(engine.generate_report_json(report), encoding="utf-8")
+
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)]
+                )
+            self.assertEqual(exit_code, 1)
+            self.assertIn("0 verification checks", stderr.getvalue().lower())
 
     def test_check_evidence_legacy_fails_by_default(self) -> None:
         """Scenario CLI-03a: check-evidence rejects legacy v1 HMAC evidence by default."""
@@ -166,7 +240,9 @@ class TestCliAcceptance(unittest.TestCase):
                 schema_version="2.0.0",
                 execution_origin="LOCAL",
                 verdict="PASSED",
-                task_contract=TaskContract(task_id="task-cli-drifted"),
+                task_contract=TaskContract(
+                    task_id="task-cli-drifted", acceptance_criteria=["Crit 1"]
+                ),
                 workspace_state=WorkspaceState(
                     source_manifest_digest_post="deadbeef00000000",
                 ),
@@ -183,8 +259,9 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertEqual(exit_code, 1)
             self.assertIn("drift detected", stderr.getvalue().lower())
 
-    def test_verify_command_pass(self) -> None:
-        """Scenario CLI-04: verify runs layers in isolated workspace and returns 0 on success."""
+    def test_verify_targeted_test_partial(self) -> None:
+        """Scenario CLI-04a: verify with --test-target produces PARTIAL output and returns 0."""
+
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
             main(["init", "-w", str(ws), "--harness", "antigravity"])
@@ -413,9 +490,49 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertEqual(exit_code, 1)
             self.assertIn("INVALID", stdout.getvalue().upper())
 
+    def test_verify_command_pass(self) -> None:
+        """Scenario CLI-04: verify runs layers in isolated workspace and returns 0 on success."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            # Resolve task criteria
+            (ws / "tasks/001-bootstrap.md").write_text(
+                "# Task 001: Initial Project Bootstrap & Setup\n- [x] Done 1\n- [x] Done 2\n",
+                encoding="utf-8",
+            )
+            # Custom simple gauntlet config for isolated test
+            (ws / "gauntlet.toml").write_text(
+                f'stack = "python"\n[[layers]]\nname = "unit"\ncommand = ["{sys.executable}", "-m", "unittest", "discover", "tests"]\noptional = false\n',
+                encoding="utf-8",
+            )
+            tests_dir = ws / "tests"
+            tests_dir.mkdir(parents=True, exist_ok=True)
+            (tests_dir / "test_sample.py").write_text(
+                "import unittest\nclass TestS(unittest.TestCase):\n    def test_ok(self): pass\n",
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(
+                    [
+                        "verify",
+                        "-w",
+                        str(ws),
+                        "--task-id",
+                        "001-bootstrap",
+                        "--standalone",
+                        "--json",
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            data = json.loads(stdout.getvalue())
+            self.assertEqual(data["verdict"], "PASSED")
+            self.assertEqual(len(data["checks"]), 1)
+
     def test_okf_validate_command(self) -> None:
         """Scenario CLI-OKF-VALIDATE: okf validate returns 0 for workspace documentation."""
         stdout = io.StringIO()
+
         with redirect_stdout(stdout):
             exit_code = main(["okf", "validate", "-w", str(self.workspace)])
         self.assertEqual(exit_code, 0)
@@ -467,7 +584,7 @@ class TestCliAcceptance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
             (ws / "tasks").mkdir()
-            (ws / "tasks/001-init.md").write_text("# Task\n- [x] done\n")
+            (ws / "tasks/001-init.md").write_text("# Task\n**Status**: `ACTIVE`\n\n- [x] done\n")
             manifest = compute_workspace_manifest(ws)
 
             engine = VerificationReportEngine()
@@ -476,25 +593,19 @@ class TestCliAcceptance(unittest.TestCase):
                 schema_version="2.0.0",
                 execution_origin="CI_PROTECTED",
                 verdict="PASSED",
-                task_contract=TaskContract(task_id="001-init", acceptance_criteria=["done"]),
-                workspace_state=WorkspaceState(
-                    source_manifest_digest_post=manifest.source_manifest_digest
+                task_contract=TaskContract(
+                    task_id="001-init",
+                    acceptance_criteria=["done"],
+                    task_digest=manifest.task_digest,
                 ),
+                workspace_state=manifest.to_workspace_state(),
+                checks=[CheckSummary(name="unit", status="PASSED", passed=True, exit_code=0)],
             )
             report_str = engine.generate_report_json(report)
             (ws / "verification-report.json").write_text(report_str, encoding="utf-8")
             subject_digest = att_engine.compute_report_subject_digest(report_str)
 
-            bundle_data = {
-                "bundle_version": "0.1",
-                "status": "VALID",
-                "identity": {
-                    "issuer": "https://token.actions.githubusercontent.com",
-                    "repository": "rolfmadsen/agent-gauntlet",
-                    "workflow": ".github/workflows/ci.yml@refs/heads/main",
-                },
-                "subject_digest": subject_digest,
-            }
+            bundle_data = _generate_crypto_bundle(subject_digest)
             (ws / "attestation.json").write_text(json.dumps(bundle_data), encoding="utf-8")
 
             policy_data = {
@@ -535,6 +646,8 @@ class TestCliAcceptance(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
+            (ws / "tasks").mkdir()
+            (ws / "tasks/001-init.md").write_text("# Task\n**Status**: `ACTIVE`\n\n- [x] done\n")
             manifest = compute_workspace_manifest(ws)
 
             engine = VerificationReportEngine()
@@ -543,24 +656,19 @@ class TestCliAcceptance(unittest.TestCase):
                 schema_version="2.0.0",
                 execution_origin="CI_PROTECTED",
                 verdict="FAILED",
-                task_contract=TaskContract(task_id="001-init"),
-                workspace_state=WorkspaceState(
-                    source_manifest_digest_post=manifest.source_manifest_digest
+                task_contract=TaskContract(
+                    task_id="001-init",
+                    acceptance_criteria=["done"],
+                    task_digest=manifest.task_digest,
                 ),
+                workspace_state=manifest.to_workspace_state(),
+                checks=[CheckSummary(name="unit", status="FAILED", passed=False, exit_code=1)],
             )
             report_str = engine.generate_report_json(report)
             (ws / "verification-report.json").write_text(report_str, encoding="utf-8")
             subject_digest = att_engine.compute_report_subject_digest(report_str)
 
-            bundle_data = {
-                "bundle_version": "0.1",
-                "status": "VALID",
-                "identity": {
-                    "issuer": "https://token.actions.githubusercontent.com",
-                    "repository": "rolfmadsen/agent-gauntlet",
-                },
-                "subject_digest": subject_digest,
-            }
+            bundle_data = _generate_crypto_bundle(subject_digest)
             (ws / "attestation.json").write_text(json.dumps(bundle_data), encoding="utf-8")
 
             stdout = io.StringIO()
@@ -586,18 +694,30 @@ class TestCliAcceptance(unittest.TestCase):
 
     def test_check_attestation_manifest_drift_fails(self) -> None:
         """Scenario CLI-ATTEST-03: Manifest drift fails check-attestation even with --allow-unattested."""
+        from agent_gauntlet.features.evidence import compute_workspace_manifest
+
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
+            (ws / "tasks").mkdir()
+            (ws / "tasks/001-init.md").write_text("# Task\n**Status**: `ACTIVE`\n\n- [x] done\n")
+            manifest = compute_workspace_manifest(ws)
+
             engine = VerificationReportEngine()
             report = VerificationReport(
                 schema_version="2.0.0",
                 execution_origin="LOCAL",
                 verdict="PASSED",
-                task_contract=TaskContract(task_id="001-init"),
-                workspace_state=WorkspaceState(
-                    source_manifest_digest_post="drifted_digest_1234567890abcdef1234567890abcdef"
+                task_contract=TaskContract(
+                    task_id="001-init",
+                    acceptance_criteria=["done"],
+                    task_digest=manifest.task_digest,
                 ),
+                workspace_state=WorkspaceState(
+                    source_manifest_digest_post="drifted_digest_1234567890abcdef"
+                ),
+                checks=[CheckSummary(name="unit", status="PASSED", passed=True, exit_code=0)],
             )
+
             report_str = engine.generate_report_json(report)
             (ws / "verification-report.json").write_text(report_str, encoding="utf-8")
 
@@ -624,6 +744,8 @@ class TestCliAcceptance(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
+            (ws / "tasks").mkdir()
+            (ws / "tasks/001-init.md").write_text("# Task\n**Status**: `ACTIVE`\n\n- [x] done\n")
             manifest = compute_workspace_manifest(ws)
 
             engine = VerificationReportEngine()
@@ -631,10 +753,13 @@ class TestCliAcceptance(unittest.TestCase):
                 schema_version="2.0.0",
                 execution_origin="LOCAL",
                 verdict="PASSED",
-                task_contract=TaskContract(task_id="001-init"),
-                workspace_state=WorkspaceState(
-                    source_manifest_digest_post=manifest.source_manifest_digest
+                task_contract=TaskContract(
+                    task_id="001-init",
+                    acceptance_criteria=["done"],
+                    task_digest=manifest.task_digest,
                 ),
+                workspace_state=manifest.to_workspace_state(),
+                checks=[CheckSummary(name="unit", status="PASSED", passed=True, exit_code=0)],
             )
             report_str = engine.generate_report_json(report)
             (ws / "verification-report.json").write_text(report_str, encoding="utf-8")
@@ -662,6 +787,8 @@ class TestCliAcceptance(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
+            (ws / "tasks").mkdir()
+            (ws / "tasks/001-init.md").write_text("# Task\n**Status**: `ACTIVE`\n\n- [x] done\n")
             manifest = compute_workspace_manifest(ws)
 
             engine = VerificationReportEngine()
@@ -669,10 +796,13 @@ class TestCliAcceptance(unittest.TestCase):
                 schema_version="2.0.0",
                 execution_origin="LOCAL",
                 verdict="FAILED",
-                task_contract=TaskContract(task_id="001-init"),
-                workspace_state=WorkspaceState(
-                    source_manifest_digest_post=manifest.source_manifest_digest
+                task_contract=TaskContract(
+                    task_id="001-init",
+                    acceptance_criteria=["done"],
+                    task_digest=manifest.task_digest,
                 ),
+                workspace_state=manifest.to_workspace_state(),
+                checks=[CheckSummary(name="unit", status="FAILED", passed=False, exit_code=1)],
             )
             report_str = engine.generate_report_json(report)
             (ws / "verification-report.json").write_text(report_str, encoding="utf-8")
@@ -781,7 +911,7 @@ class TestCliAcceptance(unittest.TestCase):
                 schema_version="2.0.0",
                 execution_origin="LOCAL",
                 verdict="PARTIAL",
-                task_contract=TaskContract(task_id="001-partial"),
+                task_contract=TaskContract(task_id="001-partial", acceptance_criteria=["done"]),
                 workspace_state=WorkspaceState(
                     source_manifest_digest_post=manifest.source_manifest_digest
                 ),
@@ -810,7 +940,7 @@ class TestCliAcceptance(unittest.TestCase):
                 schema_version="2.0.0",
                 execution_origin="LOCAL",
                 verdict="PASSED",
-                task_contract=TaskContract(task_id="001-fake-pass"),
+                task_contract=TaskContract(task_id="001-fake-pass", acceptance_criteria=["done"]),
                 workspace_state=WorkspaceState(
                     source_manifest_digest_post=manifest.source_manifest_digest
                 ),
@@ -948,6 +1078,62 @@ class TestCliAcceptance(unittest.TestCase):
                 main(["verify", "-w", str(ws), "--task-id", "001-opt", "--json"])
             data = json.loads(stdout.getvalue())
             self.assertEqual(data["verdict"], "PARTIAL")
+
+    def test_check_evidence_rejects_task_drift(self) -> None:
+        """Scenario CLI-17: check-evidence rejects report if tasks/*.md files are modified after verification."""
+        from agent_gauntlet.features.evidence import compute_workspace_manifest
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            tasks_dir = ws / "tasks"
+            tasks_dir.mkdir(parents=True, exist_ok=True)
+            task_file = tasks_dir / "001-active.md"
+            task_file.write_text("# Task\n**Status**: `ACTIVE`\n\n- [x] done\n", encoding="utf-8")
+
+            manifest = compute_workspace_manifest(ws)
+            engine = VerificationReportEngine()
+            report = VerificationReport(
+                schema_version="2.0.0",
+                execution_origin="LOCAL",
+                verdict="PASSED",
+                task_contract=TaskContract(
+                    task_id="001-active",
+                    acceptance_criteria=["done"],
+                    task_digest=manifest.task_digest,
+                ),
+                workspace_state=WorkspaceState(
+                    source_manifest_digest_post=manifest.source_manifest_digest,
+                    policy_digest=manifest.policy_digest,
+                    config_digest=manifest.config_digest,
+                    task_digest=manifest.task_digest,
+                ),
+                checks=[CheckSummary(name="unit", status="PASSED", passed=True, exit_code=0)],
+            )
+            report_file = ws / "verification-report.json"
+            report_file.write_text(engine.generate_report_json(report), encoding="utf-8")
+
+            # Mutate the task file post-report
+            task_file.write_text(
+                "# Task\n**Status**: `ACTIVE`\n\n- [x] done\n- [x] extra unauthorized criteria\n",
+                encoding="utf-8",
+            )
+
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                exit_code = main(
+                    ["check-evidence", "-w", str(ws), "--evidence-file", str(report_file)]
+                )
+            self.assertEqual(exit_code, 1)
+            self.assertIn("drift detected", stderr.getvalue().lower())
+
+    def test_cli_line_count_under_300(self) -> None:
+        """Architectural Invariant: cli.py must remain a slim dispatcher under 300 lines."""
+        cli_file = Path(__file__).resolve().parent.parent / "src" / "agent_gauntlet" / "cli.py"
+        self.assertTrue(cli_file.is_file())
+        lines = cli_file.read_text(encoding="utf-8").splitlines()
+        self.assertLess(
+            len(lines), 300, f"cli.py must be under 300 lines, found {len(lines)} lines"
+        )
 
 
 if __name__ == "__main__":

@@ -4,23 +4,23 @@
 **Task Title**: Task 023: P0 Audit Remediation, Cryptographic Sigstore DSSE & Official Hook Schema  
 **Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `b19d5abf0be33e0572871bed1f5a96e6f38bc43c77217d644d556f6a600c9905`  
-**Timestamp**: `2026-08-25T20:51:36Z`  
-**Head**: `7eb2fcf`  
+**Source Manifest Digest**: `c2cfaba81b313b9ec7cc2a9c0e12ae7f4ef43c334a7d339c576b485ac0d2ea7d`  
+**Timestamp**: `2026-08-27T19:31:22Z`  
+**Head**: `b9a590f`  
 **Commit**: `b0b82ac`  
 
 ## Acceptance Criteria
 
-- [x] `AttestationEngine` verificerer Sigstore Bundle v0.2 / v0.3 kryptografisk via ECDSA SHA-256 og RSA over DSSE PAE bytes, parser Fulcio x509 certifikater og OIDC extensions, og afviser opdigtede signaturer som `INVALID`.
-- [x] `TrustPolicyEngine` afviser `LOCAL` rapporter når `minimum_origin = CI_PROTECTED` og håndhæver `allowed_runner_environments`.
-- [x] `.agents/hooks.json` og `plugins/agent-gauntlet/hooks.json` følger det officielle Google Antigravity schema (`{"agent-gauntlet-gatekeeper": {"PreToolUse": [...]}}`).
-- [x] `AntigravityPluginValidator` validerer den komplette hooks-struktur mekanisk og fanger ulovlige hooks, manglende handlers og ugyldige felter.
-- [x] `PolicyEngine` i `gatekeeper.py` blokerer `git -C . push`, `git clean -d -f`, `printf x >src/pwn.py`, og shell/python skrivninger til beskyttede mapper uden aktiv task.
-- [x] `.github/workflows/ci.yml` pinner alle actions til 40-tegns commit-SHA'er og binder kørslen til task 023.
-- [x] `check-evidence` og `check-attestation` fejler hvis `.agents/hooks.json`, `.github/`, eller `gauntlet.toml` er ændret (policy drift).
-- [x] `cli.py` er refaktoreret til ren orkestrering (< 300 linjer) med `features/evidence/verifier.py` og `task_resolver.py`.
-- [x] Resterende HMAC-referencer i `ROADMAP.md` og `plugins/agent-gauntlet/README.md` er fjernet.
-- [x] 0 Pyright fejl, 0 Ruff fejl, 100% mutants killed, alle tests bestået.
+- [x] 1. En bundle uden DSSE/cert/timestamps eller med kun opdigtet `status: VALID` afvises som `INVALID`.
+- [x] 2. En lokalt selvsigneret dummy-bundle afvises under strict trust policy.
+- [x] 3. CI `attest`-jobbet validerer uafhængigt hele rapportkontrakten (non-empty criteria, non-empty checks, alle obligatoriske PASSED med exit code 0, og alle digests) mod `${{ github.sha }}` før signering.
+- [x] 4. Nul kriterier, nul checks, manglende digests og task-drift afvises fail-closed gennem CLI- og verifier-entrypoints.
+- [x] 5. Den legitime CI-rapport kan opnå release eligibility via verificeret attestation uden selvangivet `CI_PROTECTED`-felt i rapporten.
+- [x] 6. Gatekeeperens dokumenterede rolle svarer til dens faktiske kooperative guardrail-model, og `is_task_active` afviser `DRAFT`, `REJECTED` og status-løse tasks.
+- [x] 7. Task-parsing og status-semantik er udtrukket til en selvstændig `features/tasks/` modul uden cirkulær afhængighed til gatekeeper.
+- [x] 8. `AntigravityPluginValidator` accepterer `matcher: "*"` og `matcher: ""` som gyldige match-all filtre, validerer non-empty root og events, og tjekker positivt integer timeout.
+- [x] 9. `src/agent_gauntlet/cli.py` er refaktoreret til ren dispatch/orkestrering (< 250 linjer).
+- [x] 10. `verification-report.json` serialiserer diagnostic findings, `tools/gauntlet.sh` kører `ruff format --check .`, og 0 Pyright/Ruff fejl med 46/46 kuraterede mutanter killed.
 
 ---
 
@@ -29,9 +29,9 @@
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
 | `lint` | `PASSED` | `0` | `0.030s` |
-| `types` | `PASSED` | `0` | `1.277s` |
-| `unit` | `PASSED` | `0` | `1.172s` |
-| `invariants` | `PASSED` | `0` | `0.309s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `23.804s` |
+| `types` | `PASSED` | `0` | `1.329s` |
+| `unit` | `PASSED` | `0` | `1.085s` |
+| `invariants` | `PASSED` | `0` | `0.296s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `22.809s` |
 
 ---

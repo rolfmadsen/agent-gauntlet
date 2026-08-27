@@ -112,9 +112,7 @@ class AttestationEngine:
 
         # Fallback to Subject Alternative Name URI if needed
         try:
-            san_ext = cert.extensions.get_extension_for_oid(
-                ExtensionOID.SUBJECT_ALTERNATIVE_NAME
-            )
+            san_ext = cert.extensions.get_extension_for_oid(ExtensionOID.SUBJECT_ALTERNATIVE_NAME)
             for name in san_ext.value:  # type: ignore[attr-defined]
                 if isinstance(name, x509.UniformResourceIdentifier) and "github.com" in name.value:
                     if not workflow:
@@ -153,9 +151,9 @@ class AttestationEngine:
             data.get("predicate_type", "https://agent-gauntlet.dev/attestation/v1")
         )
         identity: AttestationIdentity | None = None
-        status = AttestationStatus.VALID
 
         # Check for explicit identity payload
+
         identity_data = data.get("identity")
         if isinstance(identity_data, dict):
             identity = AttestationIdentity(
@@ -166,115 +164,135 @@ class AttestationEngine:
                 sha=str(identity_data.get("sha", "")),
             )
 
-        # Check for Sigstore DSSE envelope and verificationMaterial
+        # DSSE Envelope and verificationMaterial are mandatory for VALID attestation
         dsse_envelope = data.get("dsseEnvelope")
         verification_material = data.get("verificationMaterial", {})
 
-        if isinstance(dsse_envelope, dict):
-            payload_b64 = dsse_envelope.get("payload", "")
-            payload_type = str(dsse_envelope.get("payloadType", "application/vnd.in-toto+json"))
-            signatures = dsse_envelope.get("signatures", [])
+        if not isinstance(dsse_envelope, dict) or not isinstance(verification_material, dict):
+            return AttestationBundle(
+                bundle_version=str(data.get("bundle_version", "0.2")),
+                media_type=media_type,
+                status=AttestationStatus.INVALID,
+                identity=identity,
+                predicate_type=predicate_type,
+                subject_digest=subject_digest,
+                raw_bundle=data,
+            )
 
-            if not payload_b64 or not isinstance(signatures, list) or len(signatures) == 0:
-                return AttestationBundle(status=AttestationStatus.INVALID, raw_bundle=data)
+        payload_b64 = dsse_envelope.get("payload", "")
+        payload_type = str(dsse_envelope.get("payloadType", "application/vnd.in-toto+json"))
+        signatures = dsse_envelope.get("signatures", [])
 
-            try:
-                payload_raw_bytes = base64.b64decode(payload_b64)
-                statement = json.loads(payload_raw_bytes.decode("utf-8"))
-                if isinstance(statement, dict):
-                    predicate_type = str(statement.get("predicateType", predicate_type))
-                    subjects = statement.get("subject", [])
-                    if (
-                        isinstance(subjects, list)
-                        and len(subjects) > 0
-                        and isinstance(subjects[0], dict)
-                    ):
-                        subject_digest = str(
-                            subjects[0].get("digest", {}).get("sha256", subject_digest)
-                        )
-            except Exception:
-                return AttestationBundle(status=AttestationStatus.INVALID, raw_bundle=data)
+        if not payload_b64 or not isinstance(signatures, list) or len(signatures) == 0:
+            return AttestationBundle(
+                bundle_version=str(data.get("bundle_version", "0.2")),
+                media_type=media_type,
+                status=AttestationStatus.INVALID,
+                identity=identity,
+                predicate_type=predicate_type,
+                subject_digest=subject_digest,
+                raw_bundle=data,
+            )
 
-            # Cryptographic Verification against leaf certificate or public key
-            if isinstance(verification_material, dict):
-                cert_obj = None
-                cert_chain = verification_material.get("x509CertificateChain", {})
-                if isinstance(cert_chain, dict):
-                    certs_list = cert_chain.get("certificates", [])
-                    if (
-                        isinstance(certs_list, list)
-                        and len(certs_list) > 0
-                        and isinstance(certs_list[0], dict)
-                    ):
-                        raw_cert_b64 = certs_list[0].get("rawBytes", "")
-                        if raw_cert_b64:
-                            try:
-                                cert_der = base64.b64decode(raw_cert_b64)
-                                cert_obj = x509.load_der_x509_certificate(cert_der)
-                            except Exception:
-                                return AttestationBundle(
-                                    status=AttestationStatus.INVALID, raw_bundle=data
-                                )
-
-                if not cert_obj and "certificate" in verification_material:
-                    raw_cert_b64 = verification_material.get("certificate", {}).get("rawBytes", "")
-                    if raw_cert_b64:
-                        try:
-                            cert_der = base64.b64decode(raw_cert_b64)
-                            cert_obj = x509.load_der_x509_certificate(cert_der)
-                        except Exception:
-                            return AttestationBundle(
-                                status=AttestationStatus.INVALID, raw_bundle=data
-                            )
-
-                if cert_obj:
-                    identity = self._parse_certificate_identity(cert_obj)
-                    public_key = cert_obj.public_key()
-                    pae_bytes = dsse_pae(payload_type, payload_raw_bytes)
-
-                    # Verify cryptographic signature
-                    sig_valid = False
-                    for sig_entry in signatures:
-                        if not isinstance(sig_entry, dict) or not sig_entry.get("sig"):
-                            continue
-                        try:
-                            sig_bytes = base64.b64decode(sig_entry["sig"])
-                            if isinstance(public_key, ec.EllipticCurvePublicKey):
-                                public_key.verify(sig_bytes, pae_bytes, ec.ECDSA(hashes.SHA256()))
-                                sig_valid = True
-                                break
-                            elif isinstance(public_key, rsa.RSAPublicKey):
-                                try:
-                                    public_key.verify(
-                                        sig_bytes, pae_bytes, padding.PKCS1v15(), hashes.SHA256()
-                                    )
-                                    sig_valid = True
-                                    break
-                                except InvalidSignature:
-                                    public_key.verify(
-                                        sig_bytes,
-                                        pae_bytes,
-                                        padding.PSS(
-                                            mgf=padding.MGF1(hashes.SHA256()),
-                                            salt_length=padding.PSS.MAX_LENGTH,
-                                        ),
-                                        hashes.SHA256(),
-                                    )
-                                    sig_valid = True
-                                    break
-                        except (InvalidSignature, Exception):
-                            continue
-
-                    if not sig_valid:
-                        status = AttestationStatus.INVALID
-
-        status_str = str(data.get("status", status.value)).upper()
         try:
-            final_status = AttestationStatus(status_str)
-            if status == AttestationStatus.INVALID:
-                final_status = AttestationStatus.INVALID
-        except ValueError:
-            final_status = AttestationStatus.INVALID
+            payload_raw_bytes = base64.b64decode(payload_b64)
+            statement = json.loads(payload_raw_bytes.decode("utf-8"))
+            if isinstance(statement, dict):
+                predicate_type = str(statement.get("predicateType", predicate_type))
+                subjects = statement.get("subject", [])
+                if (
+                    isinstance(subjects, list)
+                    and len(subjects) > 0
+                    and isinstance(subjects[0], dict)
+                ):
+                    subject_digest = str(
+                        subjects[0].get("digest", {}).get("sha256", subject_digest)
+                    )
+        except Exception:
+            return AttestationBundle(
+                bundle_version=str(data.get("bundle_version", "0.2")),
+                media_type=media_type,
+                status=AttestationStatus.INVALID,
+                identity=identity,
+                predicate_type=predicate_type,
+                subject_digest=subject_digest,
+                raw_bundle=data,
+            )
+
+        # Cryptographic Verification against leaf certificate or public key
+        cert_obj = None
+        cert_chain = verification_material.get("x509CertificateChain", {})
+        if isinstance(cert_chain, dict):
+            certs_list = cert_chain.get("certificates", [])
+            if (
+                isinstance(certs_list, list)
+                and len(certs_list) > 0
+                and isinstance(certs_list[0], dict)
+            ):
+                raw_cert_b64 = certs_list[0].get("rawBytes", "")
+                if raw_cert_b64:
+                    try:
+                        cert_der = base64.b64decode(raw_cert_b64)
+                        cert_obj = x509.load_der_x509_certificate(cert_der)
+                    except Exception:
+                        return AttestationBundle(status=AttestationStatus.INVALID, raw_bundle=data)
+
+        if not cert_obj and "certificate" in verification_material:
+            raw_cert_b64 = verification_material.get("certificate", {}).get("rawBytes", "")
+            if raw_cert_b64:
+                try:
+                    cert_der = base64.b64decode(raw_cert_b64)
+                    cert_obj = x509.load_der_x509_certificate(cert_der)
+                except Exception:
+                    return AttestationBundle(status=AttestationStatus.INVALID, raw_bundle=data)
+
+        if not cert_obj:
+            return AttestationBundle(
+                bundle_version=str(data.get("bundle_version", "0.2")),
+                media_type=media_type,
+                status=AttestationStatus.INVALID,
+                identity=identity,
+                predicate_type=predicate_type,
+                subject_digest=subject_digest,
+                raw_bundle=data,
+            )
+
+        identity = self._parse_certificate_identity(cert_obj)
+        public_key = cert_obj.public_key()
+        pae_bytes = dsse_pae(payload_type, payload_raw_bytes)
+
+        # Verify cryptographic signature
+        sig_valid = False
+        for sig_entry in signatures:
+            if not isinstance(sig_entry, dict) or not sig_entry.get("sig"):
+                continue
+            try:
+                sig_bytes = base64.b64decode(sig_entry["sig"])
+                if isinstance(public_key, ec.EllipticCurvePublicKey):
+                    public_key.verify(sig_bytes, pae_bytes, ec.ECDSA(hashes.SHA256()))
+                    sig_valid = True
+                    break
+                elif isinstance(public_key, rsa.RSAPublicKey):
+                    try:
+                        public_key.verify(sig_bytes, pae_bytes, padding.PKCS1v15(), hashes.SHA256())
+                        sig_valid = True
+                        break
+                    except InvalidSignature:
+                        public_key.verify(
+                            sig_bytes,
+                            pae_bytes,
+                            padding.PSS(
+                                mgf=padding.MGF1(hashes.SHA256()),
+                                salt_length=padding.PSS.MAX_LENGTH,
+                            ),
+                            hashes.SHA256(),
+                        )
+                        sig_valid = True
+                        break
+            except (InvalidSignature, Exception):
+                continue
+
+        final_status = AttestationStatus.VALID if sig_valid else AttestationStatus.INVALID
 
         return AttestationBundle(
             bundle_version=str(data.get("bundle_version", "0.2")),
