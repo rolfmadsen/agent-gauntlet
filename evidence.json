@@ -28,20 +28,20 @@
     "source_manifest_digest_post": "7cd9765eca73fd6559da8dbf389cd83276f9457548fb95e21b43e89db49184dd",
     "config_digest": "aff95d54b35fdde4e4cc8ea1a676c9359cf1da0e04aab74c823b51b88b3d8958",
     "task_digest": "d0cdbcd88df207a5073db6b73c991fca3f222e7f47337d00da6ab0cdacb1e088",
-    "policy_digest": "50caa920d3260f4d22778ff28481385f024eabfd7a0080c7b34053beda3f84c3",
+    "policy_digest": "fe1bf5bfcced47f743edb66063aecb6e9a547e49a37e43536f73d92de86037a7",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
     "included_files_count": 86,
     "vcs": {
       "type": "git",
-      "head": "3a1870f",
-      "commit": "3a1870f",
+      "head": "c59c885",
+      "commit": "c59c885",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-27T20:21:24Z",
-    "finished_at": "2026-08-27T20:21:50Z",
-    "total_duration_seconds": 25.821,
+    "started_at": "2026-08-27T20:30:58Z",
+    "finished_at": "2026-08-27T20:31:24Z",
+    "total_duration_seconds": 25.938,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -53,7 +53,7 @@
       "name": "lint",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.022,
+      "duration_seconds": 0.027,
       "optional": true,
       "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
     },
@@ -61,7 +61,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.266,
+      "duration_seconds": 1.29,
       "optional": true,
       "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
     },
@@ -69,23 +69,23 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.133,
+      "duration_seconds": 1.121,
       "optional": false,
-      "log_digest": "20bf2784e55df9798251338e515840be12503a8a6dab34f9e36c814e35fd92ab"
+      "log_digest": "6303bb0a8b76f736e4204c515fc570dce4c3aa36be9e3e516757644bf156d435"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.296,
+      "duration_seconds": 0.302,
       "optional": true,
-      "log_digest": "ef08e6c84f0e738d04a4398dc26ff91be159913fd8de8eddda454d53f4d3f435"
+      "log_digest": "adab1c2748e90cc521d7d71979e818f96f0125353839020c16a05af1a4058bbb"
     },
     {
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 23.068,
+      "duration_seconds": 23.165,
       "optional": true,
       "log_digest": "2dd3a56b01138f567189d4446c9d487e49cd5b847d19e1424b221cce8a76b667"
     }
