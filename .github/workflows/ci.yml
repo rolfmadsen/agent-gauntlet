@@ -103,7 +103,7 @@ jobs:
               sys.exit(1)
           for c in checks:
               if not c.get('optional', False):
-                  if not c.get('passed', False) or c.get('exit_code', 1) != 0 or c.get('status') != 'PASSED':
+                  if c.get('status') != 'PASSED' or c.get('exit_code', 1) != 0 or c.get('passed') is False:
                       print(f'Error: Mandatory check {c.get(\"name\")} failed: {c}', file=sys.stderr)
                       sys.exit(1)
 

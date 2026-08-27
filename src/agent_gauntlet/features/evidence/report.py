@@ -69,6 +69,7 @@ class VerificationReportEngine:
                     "exit_code": c.exit_code,
                     "duration_seconds": round(c.duration_seconds, 3),
                     "optional": c.optional,
+                    "passed": bool(c.passed and c.status == "PASSED" and c.exit_code == 0),
                     "log_digest": c.log_digest,
                 }
                 for c in report.checks
