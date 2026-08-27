@@ -134,7 +134,7 @@ def resolve_task_contract(
                 target_file = candidate
                 break
 
-    if not target_file:
+    if not target_file and not explicit_task_id:
         for candidate in sorted(tasks_dir.glob("*.md")):
             try:
                 content = candidate.read_text(encoding="utf-8")

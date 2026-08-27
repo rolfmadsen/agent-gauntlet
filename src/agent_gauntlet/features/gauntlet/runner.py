@@ -26,9 +26,10 @@ def _execute_layer(
     start_time = time.perf_counter()
     req = layer.requirement
     env = dict(os.environ)
-    src_dir = Path(cwd or ".").resolve() / "src"
+    cwd_path = Path(cwd or ".").resolve()
+    src_dir = cwd_path / "src"
+    existing_pp = env.get("PYTHONPATH", "")
     if src_dir.is_dir():
-        existing_pp = env.get("PYTHONPATH", "")
         env["PYTHONPATH"] = f"{src_dir}:{existing_pp}" if existing_pp else str(src_dir)
 
     cmd = list(layer.command)
