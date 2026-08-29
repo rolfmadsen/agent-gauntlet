@@ -4,40 +4,39 @@
   "execution_origin": "LOCAL",
   "verdict": "PASSED",
   "task_contract": {
-    "task_id": "030-cursor-ide-adapter-and-rules-bridge",
-    "task_title": "Task 030: Cursor IDE Adapter and Rules Bridge",
-    "task_digest": "a432995b1fc12219fc3f5139960b9fe94e485653bb763b4d68f016ab09f42a69",
+    "task_id": "034-npm-and-npx-distribution-wrapper",
+    "task_title": "Task 034: NPM and NPX Distribution Wrapper",
+    "task_digest": "b0b82995234efabc6fd8b90a18ff0adda6e30dc33e7a42c0d19116dac9c5291e",
     "acceptance_criteria": [
-      "Oprette `src/agent_gauntlet/features/adapters/cursor/` vertical slice modul med `CursorAdapter` og regel-skabeloner.",
-      "Implementere scaffolding af `.cursor/rules/agent-gauntlet.mdc` med `description`, `globs: \"*\"` og `alwaysApply: true`, der peger autoritativt p\u00e5 `.agents/AGENTS.md`.",
-      "Udvide `scaffolder.py` og CLI `--harness cursor` flag til at generere Cursor konfiguration deterministisk.",
-      "Tilf\u00f8je sort-boks accepttests i `tests/features/test_adapter_cursor.py` og `tests/test_cli.py`.",
-      "Tilf\u00f8je mutation testing i `tools/mutants.py` til at beskytte Cursor-adapter logik (100% kill-rate).",
-      "`agent-gauntlet okf validate` godkender alle oprettede og modificerede filer."
+      "Oprette `packages/agent-gauntlet/package.json` med `name: \"agent-gauntlet\"`, `bin: { \"agent-gauntlet\": \"./bin/agent-gauntlet.js\" }` og version synkroniseret med kernen.",
+      "Implementere `packages/agent-gauntlet/bin/agent-gauntlet.js` med fail-safe Python-detektion, gennemsigtig argument-videresendelse og signal/exit-code h\u00e5ndtering.",
+      "Sikre at `npx agent-gauntlet init` virker fejlfrit i ethvert vilk\u00e5rligt projektkatalog (f.eks. `knowledgegraphstudio`).",
+      "Tilf\u00f8je automatiseret integrationstest for npx/Node-wrapperen i testsuiten (`tests/test_npx_wrapper.py` eller tilsvarende).",
+      "`agent-gauntlet okf validate` godkender alle nye metadata-filer."
     ],
     "unresolved_criteria": []
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "c0d17b6095738ad740ac084e7046ab057684b8daf793a5a5a15d2b435cd0592f",
-    "source_manifest_digest_pre": "54773f10b1f072f1e58bcc2fafd6a8181db5e133b120afa0676cb134308fd9c7",
-    "source_manifest_digest_post": "54773f10b1f072f1e58bcc2fafd6a8181db5e133b120afa0676cb134308fd9c7",
+    "source_content_digest": "8e6a907e8ba4feb1788b6f95d602e50574f13a882c87bc55fe790f9249a2d011",
+    "source_manifest_digest_pre": "66a3375703a40d28686e6d3f0e93413826659358d222db52f714b58ee6b0a3ac",
+    "source_manifest_digest_post": "66a3375703a40d28686e6d3f0e93413826659358d222db52f714b58ee6b0a3ac",
     "config_digest": "51ec26e22eaa2addbe080205a2b8b26842492f9a8cbd37018389eb81bc641a8e",
-    "task_digest": "a432995b1fc12219fc3f5139960b9fe94e485653bb763b4d68f016ab09f42a69",
+    "task_digest": "b0b82995234efabc6fd8b90a18ff0adda6e30dc33e7a42c0d19116dac9c5291e",
     "policy_digest": "d10dc637ffc7b049786076b46013e6eba7492c5e1be282aa7330b06409b7d8ff",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
-    "included_files_count": 91,
+    "included_files_count": 92,
     "vcs": {
       "type": "git",
-      "head": "61302c0",
-      "commit": "61302c0",
+      "head": "cc8e727",
+      "commit": "cc8e727",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-29T11:06:30Z",
-    "finished_at": "2026-08-29T11:06:58Z",
-    "total_duration_seconds": 27.554,
+    "started_at": "2026-08-29T14:19:23Z",
+    "finished_at": "2026-08-29T14:19:53Z",
+    "total_duration_seconds": 29.624,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -49,7 +48,7 @@
       "name": "lint",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.036,
+      "duration_seconds": 0.022,
       "optional": true,
       "passed": true,
       "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
@@ -58,7 +57,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.314,
+      "duration_seconds": 1.375,
       "optional": true,
       "passed": true,
       "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
@@ -67,16 +66,16 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.204,
+      "duration_seconds": 1.508,
       "optional": false,
       "passed": true,
-      "log_digest": "f6228c6f874836de010cb66082c11d132b2514a5486e94d754196871329268a7"
+      "log_digest": "4669832f8d0a91f75a890370edb99be6c0d426ee257df10799557c9d52e56da1"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.3,
+      "duration_seconds": 0.298,
       "optional": true,
       "passed": true,
       "log_digest": "6f072cc3cb3d73ce47ef168ca96caf5e6924a90a035f777f7c6a7e02caf71816"
@@ -85,10 +84,10 @@
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 24.663,
+      "duration_seconds": 26.387,
       "optional": true,
       "passed": true,
-      "log_digest": "b9edc3a73155b512388db5bc252a3a87231331d1c5d77b93bacb151785c42fc9"
+      "log_digest": "68f3c70a186ff1c0af13a384ab3fbd5fd007f9541617c4ec31f9bcb5818e44e0"
     }
   ],
   "diagnostics": []

@@ -1,0 +1,39 @@
+{
+  "name": "@agent-gauntlet/cli",
+  "version": "0.3.0",
+  "description": "Universal multi-stack verification gauntlet & tamper-proof evidence authority for AI coding agents",
+  "bin": {
+    "agent-gauntlet": "./bin/agent-gauntlet.js",
+    "ag": "./bin/agent-gauntlet.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node ./bin/agent-gauntlet.js",
+    "prepack": "cp -r ../../src . 2>/dev/null || true",
+    "build": "cp -r ../../src . 2>/dev/null || true"
+  },
+  "keywords": [
+    "ai-agent",
+    "verification",
+    "gauntlet",
+    "tdd",
+    "clean-craftsmanship",
+    "evidence",
+    "antigravity",
+    "claude-code",
+    "cursor"
+  ],
+  "author": "Antigravity Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rolfmadsen/agent-gauntlet.git"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

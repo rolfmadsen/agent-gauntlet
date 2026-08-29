@@ -1,14 +1,44 @@
-# agent-gauntlet 🛡️
+<p align="center">
+  <a href="#-arkitektur--designprincipper"><b>Arkitektur</b></a> •
+  <a href="#-hvordan-virker-agent-gauntlet-livscyklus--fsm"><b>Livscyklus & AI-Roller</b></a> •
+  <a href="#️-mappestruktur-package-by-feature"><b>Mappestruktur</b></a> •
+  <a href="#-hurtig-start--anvendelse"><b>Hurtig Start (NPX)</b></a> •
+  <a href="#️-fuld-cli-reference"><b>CLI Reference</b></a> •
+  <a href="#-python-api"><b>Python API</b></a> •
+  <a href="#️-arkitektur-adrs"><b>ADRs</b></a> •
+  <a href="CHANGELOG.md"><b>Changelog</b></a>
+</p>
 
-[![CI](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml)
-[![Mutants Killed](https://img.shields.io/badge/mutants%20killed-100%25-brightgreen.svg)](tools/mutants.py)
-[![Evidence Model](https://img.shields.io/badge/evidence-Two--Tier%20Attestation-blue.svg)](docs/adr/0005-two-tier-verification-and-attestation-model.md)
-[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](pyproject.toml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+---
 
-**agent-gauntlet** er en universel multi-stack verifikations- og actionable diagnostics motor bygget på **Uncle Bobs (Robert C. Martin) TDD- og Clean Craftsmanship-filosofi**.
+<p align="center">
+  <img src="docs/assets/spiessgasse-gauntlet.png" alt="agent-gauntlet — Running the Gauntlet" width="640" /><br/>
+  <em>»Spiessgasse« (Pike-Alley / <a href="https://en.wikipedia.org/wiki/Running_the_gauntlet">Running the Gauntlet</a>) — <a href="https://en.wikipedia.org/wiki/Jost_Amman">Jost Amman</a> illustration, Kriegs Ordnung (1564)</em>
+</p>
 
-Den omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Linters, Type-checkere, Unit tests, Property- og Invariant-tests, Mutationsafprøvning og To-Tier evidens & attestering jf. [ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md)) og oversætter rå fejludskrifter til **Actionable Diagnostics**, som AI-agenter kan handle direkte på.
+<h1 align="center">agent-gauntlet 🛡️</h1>
+
+<p align="center">
+  <em>Universel multi-stack verifikations- og actionable diagnostics motor bygget på Robert C. Martin ("Uncle Bob") TDD & Clean Craftsmanship</em>
+</p>
+
+<p align="center">
+  <a href="https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml"><img src="https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
+  <a href="tools/mutants.py"><img src="https://img.shields.io/badge/mutants%20killed-100%25-brightgreen.svg" alt="Mutants Killed" /></a>
+  <a href="docs/adr/0005-two-tier-verification-and-attestation-model.md"><img src="https://img.shields.io/badge/evidence-Two--Tier%20Attestation-blue.svg" alt="Evidence Model" /></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg" alt="Python Version" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
+</p>
+
+---
+
+**Dokumentation**: [Makro-Spec](spec.md) • [Domæne-Glossary](CONTEXT.md) • [Kodestandarder](CODING_STANDARDS.md) • [Arkitektur (ADRs)](docs/adr/) • [Changelog](CHANGELOG.md)
+
+**Kildekode & Pakker**: [GitHub](https://github.com/rolfmadsen/agent-gauntlet) • [NPM Pakke](packages/agent-gauntlet)
+
+---
+
+**agent-gauntlet** omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Linters, Type-checkere, Unit tests, Property- og Invariant-tests, Mutationsafprøvning og To-Tier evidens & attestering jf. [ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md)) og oversætter rå fejludskrifter til **Actionable Diagnostics** i et feedback-loop, som AI-agenter kan handle direkte på.
 
 ---
 
@@ -80,7 +110,7 @@ flowchart TD
     end
 ```
 
-### 👥 De 3 Ingeniør-Personaer & Livscyklus-FSM:
+### 👥 De 3 AI roller & Livscyklus-FSM:
 
 For at undgå uendelige review-loops (*bikeshedding*) og bevare et skarpt kontekstvindue, anvender `agent-gauntlet` en deterministisk **Finite State Machine** (`infer_next_session_role()`):
 
@@ -108,6 +138,7 @@ agent-gauntlet/
 ├── CHANGELOG.md                  # Versionshistorik & release notes (Keep a Changelog)
 ├── ROADMAP.md                    # Prioriteret feature-køreplan & udvidelser
 ├── gauntlet.toml                 # Deklarativ multi-stack konfiguration
+├── packages/agent-gauntlet/      # NPM / NPX distributions-pakke & bin/agent-gauntlet.js wrapper
 ├── plugins/agent-gauntlet/       # Antigravity plugin & skills (old-coder, grill-me, code-review, diagnose)
 ├── src/agent_gauntlet/
 │   ├── __init__.py
@@ -129,32 +160,23 @@ agent-gauntlet/
 
 ## 🚀 Hurtig Start & Anvendelse
 
-### 1. Installer CLI-værktøjet (Engangs-opsætning)
-Installer `agent-gauntlet` globalt eller i dit foretrukne Python-miljø:
-
-```bash
-# Klon og installer i editable tilstand
-git clone https://github.com/rolfmadsen/agent-gauntlet.git ~/Github/agent-gauntlet
-pip install -e ~/Github/agent-gauntlet
-```
-
----
-
-### 2. Initialiser i dit Projekt (⭐ Anbefalet Standard & Best Practice)
-For at sikre at regler ([.agents/AGENTS.md](.agents/AGENTS.md)), kodestandarder ([CODING_STANDARDS.md](CODING_STANDARDS.md)), begreber ([CONTEXT.md](CONTEXT.md)), Architecture Decision Records (ADR) ([docs/adr/](docs/adr/)) og verifikationskrav ([gauntlet.toml](gauntlet.toml) & [tasks/](tasks/)) **følger din kildekode i Git**, initialiseres `agent-gauntlet` direkte i projektets rodmappe:
+### 1. Initialiser dit Projekt (Zero Setup via NPX)
+Stil dig i dit projektkatalog (f.eks. et TypeScript, Python, Rust eller Go projekt), og kør:
 
 ```bash
 cd /sti/til/dit-projekt
-
-# Auto-detekter stack (Python, TypeScript, Rust, Go) og scaffold projektet sikkert
-agent-gauntlet init
 ```
 
-#### 📦 Hvad `agent-gauntlet init` opretter i projektet:
+# Scaffolder alle in-repo styringsfiler direkte uden forudgående installation:
+```bash
+npx @agent-gauntlet/cli init
+```
+
+#### 📦 Hvad `agent-gauntlet init` opretter lokalt i projektet (In-Repo Single Source of Truth):
 | Fil / Mappe | Formål |
 |---|---|
 | [`gauntlet.toml`](gauntlet.toml) | Deklarativ konfiguration af linter, types, tests, mutation testing |
-| [`CONTEXT.md`](CONTEXT.md) | Domæne-glossary for projektet (Aristoteles' genus et differentiam) |
+| [`CONTEXT.md`](CONTEXT.md) | Domæne-glossary for projektet (Aristoteles' *definitio per genus et differentiam*) |
 | [`CODING_STANDARDS.md`](CODING_STANDARDS.md) | Multi-stack kodestandarder (Python, TypeScript, Rust, Go, CSS/Web) |
 | [`spec.md`](spec.md) | Makro-specifikation og system-invarianter |
 | [`tasks/001-bootstrap.md`](tasks/) | Opgavemappe til håndhævelse af task-kontrakter & acceptkriterier |
@@ -168,20 +190,23 @@ agent-gauntlet init
 > `agent-gauntlet init` overskriver **aldrig** eksisterende filer i dit projekt, medmindre du udtrykkeligt angiver `--force`.
 
 > [!IMPORTANT]
-> **🚪 Zero Lock-in & Hurtig Afinstallation (Clean Uninstall):**  
-> Hvis du fortryder eller vil fjerne `agent-gauntlet` fra et projekt, slettes de oprettede metadata-filer med én linje uden at røre ved projektets egen kildekode:
+> **🚪 Zero Lock-in & Ren Afinstallation (Clean Uninstall):**  
+> Da alt ligger lokalt i projektets Git-træ, slettes `agent-gauntlet` fra et projekt med én simpel kommando uden at efterlade globale ændringer på maskinen:
 > ```bash
-> rm -rf .agents tasks docs/adr CONTEXT.md gauntlet.toml evidence.json evidence.md
+> rm -rf .agents tasks docs/adr CONTEXT.md CODING_STANDARDS.md spec.md gauntlet.toml evidence.json evidence.md
 > ```
 
 ---
 
-### 3. Valgfrit: Global Antigravity Plugin Installation
-Hvis du ønsker at have adgang til `agent-gauntlet` skills (`/grill-me`, `/diagnose`, osv.) på tværs af **alle** workspaces i Google Antigravity IDE — også i projekter hvor du endnu ikke har kørt `agent-gauntlet init` — kan du registrere pluginet globalt:
+### 2. Kør Verifikation & Tjek Evidens
+Når du arbejder på en opgave i dit projekt, afvikles gauntlettet direkte via:
 
 ```bash
-mkdir -p ~/.gemini/config/plugins/
-cp -r ~/Github/agent-gauntlet/plugins/agent-gauntlet ~/.gemini/config/plugins/
+# Kør gauntlet og forseg evidens for en opgave:
+npx @agent-gauntlet/cli verify --task-id 001-bootstrap
+
+# Valider dokumentation & OKF v0.2 metadata:
+npx @agent-gauntlet/cli okf validate
 ```
 
 ---
@@ -320,10 +345,11 @@ sh tools/gauntlet.sh
 
 ## 🙏 Anerkendelse & Inspiration (Credits)
 
-`agent-gauntlet` bygger videre på idéer og pionerarbejde inden for agentisk softwareudvikling:
+`agent-gauntlet` bygger videre på idéer, historiske rødder og pionerarbejde inden for stringent verifikation:
 
-- **[Matt Pocock](https://github.com/mattpocock)**: For skabelsen af workflow-skills (`grill-me`, `grill-with-docs`, `diagnose`, `code-review` m.fl.), som muliggør sokratisk kravsafklaring, domæneforankring og uafhængig to-akset kode-granskning.
-- **[amazingang (old-coder)](https://github.com/amazingang/old-coder)**: For formuleringen af Evidence-First filosofien (*"Trust moves from inspection to constraints"*).
+- **[Jost Amman (1564)](https://en.wikipedia.org/wiki/Jost_Amman)**: For den historiske illustration af *Spiessgasse* (*[Running the Gauntlet](https://en.wikipedia.org/wiki/Running_the_gauntlet)*, *Kriegs Ordnung*), der symboliserer at lade koden løbe igennem en uomgængelig række af spyd (linters, typer, tests, invarianter og mutationer).
 - **[Robert C. Martin ("Uncle Bob")](https://x.com/unclebobmartin/status/2080257779395154409)**: For den oprindelige idé om at erstatte manuel kodeinspektion med en uomgængelig *gauntlet* af tests, typer, mutation testing og invarianter.
+- **[amazingang (old-coder)](https://github.com/amazingang/old-coder)**: For formuleringen af Evidence-First filosofien (*"Trust moves from inspection to constraints"*).
+- **[Matt Pocock](https://github.com/mattpocock)**: For skabelsen af workflow-skills (`grill-me`, `grill-with-docs`, `diagnose`, `code-review` m.fl.), som muliggør sokratisk kravsafklaring, domæneforankring og uafhængig to-akset kode-granskning.
 
 

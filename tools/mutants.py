@@ -26,6 +26,7 @@ TARGET_OKF_VALIDATOR = ROOT / "src/agent_gauntlet/features/okf/validator.py"
 TARGET_OKF_STAMPER = ROOT / "src/agent_gauntlet/features/okf/stamper.py"
 TARGET_CLI = ROOT / "src/agent_gauntlet/cli.py"
 TARGET_VERIFIER = ROOT / "src/agent_gauntlet/features/evidence/verifier.py"
+TARGET_NPX_WRAPPER = ROOT / "packages/agent-gauntlet/bin/agent-gauntlet.js"
 
 
 def _clean_pycache() -> None:
@@ -68,6 +69,10 @@ SCAFFOLD_TESTS = [
 
 CLI_TESTS = [
     "tests.test_cli",
+]
+
+NPX_TESTS = [
+    "tests.features.test_npx_wrapper",
 ]
 
 
@@ -447,6 +452,21 @@ MUTANTS = [
         '    if False:\n        meta["status"] = status',
         OKF_TESTS,
     ),
+    # --- NPX wrapper mutants ---
+    (
+        TARGET_NPX_WRAPPER,
+        "NPX-M1 fail-open on missing python binary",
+        "  if (!pythonBin) {",
+        "  if (false) {",
+        NPX_TESTS,
+    ),
+    (
+        TARGET_NPX_WRAPPER,
+        "NPX-M2 drop CLI arguments forwarding",
+        "  const args = process.argv.slice(2);",
+        "  const args = [];",
+        NPX_TESTS,
+    ),
 ]
 
 
@@ -541,6 +561,7 @@ def main() -> int:
         TARGET_OKF_STAMPER: TARGET_OKF_STAMPER.read_text(),
         TARGET_CLI: TARGET_CLI.read_text(),
         TARGET_VERIFIER: TARGET_VERIFIER.read_text(),
+        TARGET_NPX_WRAPPER: TARGET_NPX_WRAPPER.read_text(),
     }
 
     try:

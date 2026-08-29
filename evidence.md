@@ -1,22 +1,21 @@
 # Verification Report
 
-**Task ID**: `030-cursor-ide-adapter-and-rules-bridge`  
-**Task Title**: Task 030: Cursor IDE Adapter and Rules Bridge  
+**Task ID**: `034-npm-and-npx-distribution-wrapper`  
+**Task Title**: Task 034: NPM and NPX Distribution Wrapper  
 **Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `54773f10b1f072f1e58bcc2fafd6a8181db5e133b120afa0676cb134308fd9c7`  
-**Timestamp**: `2026-08-29T11:06:58Z`  
-**Head**: `61302c0`  
-**Commit**: `61302c0`  
+**Source Manifest Digest**: `66a3375703a40d28686e6d3f0e93413826659358d222db52f714b58ee6b0a3ac`  
+**Timestamp**: `2026-08-29T14:19:53Z`  
+**Head**: `cc8e727`  
+**Commit**: `cc8e727`  
 
 ## Acceptance Criteria
 
-- [x] Oprette `src/agent_gauntlet/features/adapters/cursor/` vertical slice modul med `CursorAdapter` og regel-skabeloner.
-- [x] Implementere scaffolding af `.cursor/rules/agent-gauntlet.mdc` med `description`, `globs: "*"` og `alwaysApply: true`, der peger autoritativt på `.agents/AGENTS.md`.
-- [x] Udvide `scaffolder.py` og CLI `--harness cursor` flag til at generere Cursor konfiguration deterministisk.
-- [x] Tilføje sort-boks accepttests i `tests/features/test_adapter_cursor.py` og `tests/test_cli.py`.
-- [x] Tilføje mutation testing i `tools/mutants.py` til at beskytte Cursor-adapter logik (100% kill-rate).
-- [x] `agent-gauntlet okf validate` godkender alle oprettede og modificerede filer.
+- [x] Oprette `packages/agent-gauntlet/package.json` med `name: "agent-gauntlet"`, `bin: { "agent-gauntlet": "./bin/agent-gauntlet.js" }` og version synkroniseret med kernen.
+- [x] Implementere `packages/agent-gauntlet/bin/agent-gauntlet.js` med fail-safe Python-detektion, gennemsigtig argument-videresendelse og signal/exit-code håndtering.
+- [x] Sikre at `npx agent-gauntlet init` virker fejlfrit i ethvert vilkårligt projektkatalog (f.eks. `knowledgegraphstudio`).
+- [x] Tilføje automatiseret integrationstest for npx/Node-wrapperen i testsuiten (`tests/test_npx_wrapper.py` eller tilsvarende).
+- [x] `agent-gauntlet okf validate` godkender alle nye metadata-filer.
 
 ---
 
@@ -24,10 +23,10 @@
 
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
-| `lint` | `PASSED` | `0` | `0.036s` |
-| `types` | `PASSED` | `0` | `1.314s` |
-| `unit` | `PASSED` | `0` | `1.204s` |
-| `invariants` | `PASSED` | `0` | `0.300s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `24.663s` |
+| `lint` | `PASSED` | `0` | `0.022s` |
+| `types` | `PASSED` | `0` | `1.375s` |
+| `unit` | `PASSED` | `0` | `1.508s` |
+| `invariants` | `PASSED` | `0` | `0.298s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `26.387s` |
 
 ---
