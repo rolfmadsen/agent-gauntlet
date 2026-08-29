@@ -4,10 +4,10 @@
 **Task Title**: Task 034: NPM and NPX Distribution Wrapper  
 **Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `66a3375703a40d28686e6d3f0e93413826659358d222db52f714b58ee6b0a3ac`  
-**Timestamp**: `2026-08-29T14:19:53Z`  
-**Head**: `cc8e727`  
-**Commit**: `cc8e727`  
+**Source Manifest Digest**: `8e30099c47a7bea8744cb8a15b03d5cdb06574f3eb1e98ce9669787427309726`  
+**Timestamp**: `2026-08-29T14:29:40Z`  
+**Head**: `0327fb6`  
+**Commit**: `0327fb6`  
 
 ## Acceptance Criteria
 
@@ -23,10 +23,10 @@
 
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
-| `lint` | `PASSED` | `0` | `0.022s` |
-| `types` | `PASSED` | `0` | `1.375s` |
-| `unit` | `PASSED` | `0` | `1.508s` |
-| `invariants` | `PASSED` | `0` | `0.298s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `26.387s` |
+| `lint` | `PASSED` | `0` | `0.025s` |
+| `types` | `PASSED` | `0` | `1.376s` |
+| `unit` | `PASSED` | `0` | `1.505s` |
+| `invariants` | `PASSED` | `0` | `0.296s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `26.351s` |
 
 ---

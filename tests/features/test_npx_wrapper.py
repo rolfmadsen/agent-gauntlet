@@ -67,7 +67,9 @@ class TestNpxWrapperAcceptance(unittest.TestCase):
                 text=True,
                 cwd=str(REPO_ROOT),
             )
-            self.assertEqual(result.returncode, 0, f"Stderr: {result.stderr}\nStdout: {result.stdout}")
+            self.assertEqual(
+                result.returncode, 0, f"Stderr: {result.stderr}\nStdout: {result.stdout}"
+            )
             self.assertTrue((tmp_path / "gauntlet.toml").is_file())
             self.assertTrue((tmp_path / "spec.md").is_file())
             self.assertTrue((tmp_path / "CODING_STANDARDS.md").is_file())

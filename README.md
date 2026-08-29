@@ -163,11 +163,12 @@ agent-gauntlet/
 ### 1. Initialiser dit Projekt (Zero Setup via NPX)
 Stil dig i dit projektkatalog (f.eks. et TypeScript, Python, Rust eller Go projekt), og kør:
 
+Åben dit projekt
 ```bash
-cd /sti/til/dit-projekt
+cd ~/sti/til/dit-projekt
 ```
 
-# Scaffolder alle in-repo styringsfiler direkte uden forudgående installation:
+Scaffold for alle in-repo styringsfiler direkte uden forudgående installation:
 ```bash
 npx @agent-gauntlet/cli init
 ```
