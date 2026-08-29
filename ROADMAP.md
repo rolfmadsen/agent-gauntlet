@@ -23,19 +23,22 @@ Dette dokument samler og prioriterer udvidelser og modenheds-features for `agent
                                     ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │                   ADAPTER- OG PLUGIN-LAG (HARNESSES)                   │
-│  (Hver platform har sin egen plugin- og hook-arkitektur)               │
+│  (Hver platform har sin egen plugin-, hook- og instruktions-bridge)    │
 │                                                                        │
 │  ├── 🟢 Google Antigravity: .agents/plugins/, hooks.json, HUD, skills  │
-│  ├── 🔵 Claude Code:       CLAUDE.md, .claude/ hooks, tool-aliasing    │
-│  ├── 🟣 DeepSeek/OpenHands: CoT-diagnostics, prompt-pakker, headless   │
-│  └── 🟡 Generic MCP:        Model Context Protocol server (Cursor mfl) │
+│  ├── 🔵 Claude Code:       CLAUDE.md -> .agents/AGENTS.md, .claude/    │
+│  ├── 🟡 Cursor (IDE):       .cursor/rules/gauntlet.mdc -> .agents/     │
+│  ├── 🌊 Windsurf (Cascade): .windsurfrules / .windsurf/rules/          │
+│  ├── 🐙 GitHub Copilot:    .github/copilot-instructions.md -> .agents/ │
+│  └── 🟣 DeepSeek/OpenHands: CONVENTIONS.md / AGENTS.md, CoT-diagnostics│
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
-Da hver platform (Google Antigravity IDE, Claude Code, DeepSeek m.fl.) har sin egen plugin- og hook-model, implementeres understøttelsen via isolerede adaptere, der varetager:
-1. **Tool- & Hook-Mapping**: Oversættelse mellem platformens værktøjer/hændelser og gatekeeperens `evaluate_tool_invocation`.
-2. **Plugin Packaging & Manifests**: Format-specifikke konfigurationer (`plugin.json`, `.claude/settings.json`, system-prompts).
-3. **Scaffolding & Installation**: `agent-gauntlet init --harness <navn>` tilpasset målmiljøet.
+Da hver platform (Google Antigravity IDE, Claude Code, Cursor, Windsurf, GitHub Copilot m.fl.) har sin egen plugin-, hook- og prompt-model, implementeres understøttelsen via isolerede adaptere, der varetager:
+1. **Autoritativ Instruktions-Bridge**: En letvægts entrypoint-fil i platformens forventede format/sti, der refererer autoritativt til projektets centrale regler i `.agents/AGENTS.md` og `.agents/rules/`.
+2. **Tool- & Hook-Mapping**: Oversættelse mellem platformens værktøjer/hændelser og gatekeeperens `evaluate_tool_invocation`.
+3. **Plugin Packaging & Manifests**: Format-specifikke konfigurationer (`plugin.json`, `.claude/settings.json`, `.cursor/rules/*.mdc`).
+4. **Scaffolding & Installation**: `agent-gauntlet init --harness <navn>` tilpasset målmiljøet.
 
 ---
 
@@ -43,70 +46,91 @@ Da hver platform (Google Antigravity IDE, Claude Code, DeepSeek m.fl.) har sin e
 
 | Rangering | Feature / Opgave | Formål | Kilde / Reference | Prioritet / Status |
 |:---:|---|---|---|:---:|
-| **1** | **Google Antigravity IDE Plugin & Adapter** | Fuld implementering af Antigravity plugin-arkitektur (`.agents/plugins/agent-gauntlet/`), `hooks.json`, Response HUD og skills | [Beskrivelse](#1--google-antigravity-ide-plugin--adapter-nuværende-fokus) | **FØRSTEPRIORITET (NUVÆRENDE)** |
-| **2** | **Claude Code Plugin & Adapter Integration** | Fuld understøttelse af Claude Code i gatekeeper, tool-aliasing (`Bash`, `Edit`, `Write`), `.claude/` hooks og scaffolding | [Beskrivelse](#2--claude-code-plugin--adapter-integration) | **FREMTIDIG UDVIDELSE** |
-| **3** | **DeepSeek-Harness & Reasoner Integration** | Kompakt Actionable Diagnostics pipeline optimeret til DeepSeek/OpenHands/Aider og Chain-of-Thought ræsonnering | [Beskrivelse](#3--deepseek-harness--reasoner-integration) | **FREMTIDIG UDVIDELSE** |
-| **4** | **Changed-Line Differential Coverage** | Gennemtvinger 100% test- og forgreningstjek på *udelukkende* ændrede/tilføjede linjer i git diff | [`gauntlet.md`](../old-coder/skills/old-coder/references/gauntlet.md) | **HØJ** |
-| **5** | **Spec $\to$ Test Mapping & "Must NOT" Validator** | Mekanisk 1:1 håndhævelse af at alle Gherkin-scenarier og negative begrænsninger ("Must NOT") har specifikke tests | [`templates.md`](../old-coder/skills/old-coder/references/templates.md) | **HØJ** |
-| **6** | **Fresh-Context Adversarial Verifier** | Uafhængig sub-agent i ren session, der blindt angriber koden for blinde vinkler, test-gaming og spec-drift | [`verifier.md`](../old-coder/skills/old-coder/references/verifier.md), [`verifier-case-study.md`](../old-coder/skills/old-coder/references/verifier-case-study.md) | **MEDIUM** |
-| **7** | **Extended Security & Supply-Chain Audits** | Automatiserede gauntlet-lag for `secret-scan` (`gitleaks`) og pakkesårbarheder (`pip-audit`, `npm audit`, `cargo-audit`) | [`gauntlet.md`](../old-coder/skills/old-coder/references/gauntlet.md) | **MEDIUM** |
-| **8** | **Suite Health & Test-Order Randomizer** | Randomiseret testrækkefølge med deterministisk seed for at afsløre globale tilstandslækager og flakiness | [`gauntlet.md`](../old-coder/skills/old-coder/references/gauntlet.md) | **LAV** |
+| **1** | **Google Antigravity IDE Plugin & Adapter** | Fuld implementering af Antigravity plugin-arkitektur (`.agents/plugins/agent-gauntlet/`), `hooks.json`, Response HUD og skills | [Beskrivelse](#1--google-antigravity-ide-plugin--adapter-fuldført--reference) | **FULDFØRT (REFERENCE)** |
+| **2** | **Claude Code Adapter & `CLAUDE.md` Bridge** | Fuld understøttelse af Claude Code i gatekeeper, tool-aliasing (`Bash`, `Edit`, `Write`), `CLAUDE.md` bridge og `.claude/` hooks | [Beskrivelse](#2--claude-code-adapter--claudemd-bridge) | **FULDFØRT (Task 007)** |
+| **3** | **Cursor Adapter & `.cursor/rules/` Bridge** | Scaffolding af `.cursor/rules/agent-gauntlet.mdc` (og `.cursorrules`) der peger autoritativt på `.agents/AGENTS.md` | [Beskrivelse](#3--cursor-ide-adapter--cursorrulesmdc-bridge) | **KLARGJORT (Task 030)** |
+| **4** | **Windsurf Adapter & `.windsurfrules` Bridge** | Scaffolding af `.windsurfrules` og `.windsurf/rules/` cascade-regler med bridge til `.agents/AGENTS.md` | [Beskrivelse](#4--windsurf-cascade-adapter--windsurfrules-bridge) | **KLARGJORT (Task 031)** |
+| **5** | **GitHub Copilot & OpenAI/Codex Bridge** | Scaffolding af `.github/copilot-instructions.md` med autoritativ reference til `.agents/AGENTS.md` | [Beskrivelse](#5--github-copilot--openaicodex-bridge) | **KLARGJORT (Task 032)** |
+| **6** | **DeepSeek & OpenHands/Aider Adapter** | `CONVENTIONS.md` bridge, CoT Actionable Diagnostics og token-komprimeret spec-ingestion for open-weights modeller | [Beskrivelse](#6--deepseek-harness--reasoner-integration-openhands--aider) | **FREMTIDIG UDVIDELSE** |
+| **7** | **Changed-Line Differential Coverage** | Gennemtvinger 100% test- og forgreningstjek på *udelukkende* ændrede/tilføjede linjer i git diff | [`gauntlet.md`](../old-coder/skills/old-coder/references/gauntlet.md) | **KLARGJORT (Task 033)** |
+| **8** | **Spec $\to$ Test Mapping & "Must NOT" Validator** | Mekanisk 1:1 håndhævelse af at alle Gherkin-scenarier og negative begrænsninger ("Must NOT") har specifikke tests | [`templates.md`](../old-coder/skills/old-coder/references/templates.md) | **HØJ** |
+| **9** | **Fresh-Context Adversarial Verifier** | Uafhængig sub-agent i ren session, der blindt angriber koden for blinde vinkler, test-gaming og spec-drift | [`verifier.md`](../old-coder/skills/old-coder/references/verifier.md), [`verifier-case-study.md`](../old-coder/skills/old-coder/references/verifier-case-study.md) | **MEDIUM** |
+| **10** | **Extended Security & Supply-Chain Audits** | Automatiserede gauntlet-lag for `secret-scan` (`gitleaks`) og pakkesårbarheder (`pip-audit`, `npm audit`, `cargo-audit`) | [`gauntlet.md`](../old-coder/skills/old-coder/references/gauntlet.md) | **MEDIUM** |
+| **11** | **Suite Health & Test-Order Randomizer** | Randomiseret testrækkefølge med deterministisk seed for at afsløre globale tilstandslækager og flakiness | [`gauntlet.md`](../old-coder/skills/old-coder/references/gauntlet.md) | **LAV** |
 
 ---
 
 ## 💡 Begrundelse for Prioritering & Udviklingsrækkefølge
 
-1. **Rangering 1: Google Antigravity IDE Plugin & Adapter (Nuværende Fokus & Testmiljø)**
-   - *Hvorfor først*: Google Antigravity IDE er det aktive testmiljø. Ved at færdiggøre og raffinere plugin-pakken, Response HUD og gatekeeper-hooket her, opnås et gennemprøvet reference-mønster for, hvordan harness-adaptere skal opbygges.
-2. **Rangering 2: Claude Code Plugin & Adapter Integration (Multi-Harness Fundament)**
-   - *Hvorfor*: Gør `agent-gauntlet`'s gatekeeper, task-binding og evidensverifikation kompatibel med Anthropic Claude Code terminal-arbejdsgange via tool-aliasing (`Bash`, `Edit`, `Write`) og dedikerede Claude-hooks.
-3. **Rangering 3: DeepSeek-Harness & Reasoner Integration (Open-Source / API-Harnesses)**
-   - *Hvorfor*: Sikrer at ræsonneringsmodeller (f.eks. DeepSeek R1/V3) i harnesses som OpenHands eller Aider modtager ultra-kompakte, strukturerede diagnostik-feeds tilpasset store Chain-of-Thought ræsonneringsforløb.
-4. **Rangering 4: Changed-Line Differential Coverage (Højeste Pragmatiske Værdi)**
-   - *Hvorfor*: Deterministisk, matematisk kontrol der sikrer 100% test- og branch-dækning på al ny kode og bugfixes uden at kræve 100% dækning af legacy-kodebasen.
-5. **Rangering 5: Spec $\to$ Test Mapping & "Must NOT" Validator (TDD-Garant)**
-   - *Hvorfor*: Sikrer at AI-agenten ikke tager lette genveje eller ignorerer negative begrænsninger ("Must NOT") og vanskelige kanttilfælde.
-6. **Rangering 6: Fresh-Context Adversarial Verifier (Avanceret Second Opinion)**
-   - *Hvorfor*: Enorm værdi mod test-gaming, men bygger naturligt oven på en velfungerende Multi-Harness arkitektur, da den skal kunne spawne sub-agenter via API/harness.
-7. **Rangering 7: Extended Security & Supply-Chain Audits (Lavthængende Frugter)**
-   - *Hvorfor*: Vigtigt mod læk af hemmeligheder og sårbare pakker, men tilføjes let som simple deklarative lag i `gauntlet.toml`.
-8. **Rangering 8: Suite Health & Test-Order Randomizer (Optimering)**
-   - *Hvorfor*: Fjerner subtile tilstandslækager i testsuiter, men er en optimering oven på en allerede moden testbase.
+1. **Rangering 1 & 2: Google Antigravity & Claude Code (Fundamentet på Plads)**
+   - Google Antigravity IDE og Claude Code udgør vores fuldt implementerede reference-adaptere med `CLAUDE.md` og `.agents/hooks.json` integration jf. Task 007.
+2. **Rangering 3, 4, 5 & 6: Cursor, Windsurf, Copilot & OpenHands Bridges (Multi-Harness Scaffolding)**
+   - Etablerer letvægts instruction-bridges (`.cursor/rules/`, `.windsurfrules`, `.github/copilot-instructions.md`, `CONVENTIONS.md`), så ethvert udviklermiljø automatisk understøttes via `agent-gauntlet init --harness <navn>`.
+3. **Rangering 7: Changed-Line Differential Coverage (Højeste Pragmatiske Værdi)**
+   - Deterministisk, matematisk kontrol der sikrer 100% test- og branch-dækning på al ny kode og bugfixes uden at kræve 100% dækning af legacy-kodebasen.
+4. **Rangering 8: Spec $\to$ Test Mapping & "Must NOT" Validator (TDD-Garant)**
+   - Sikrer at AI-agenten ikke tager lette genveje eller ignorerer negative begrænsninger ("Must NOT") og vanskelige kanttilfælde.
+5. **Rangering 9: Fresh-Context Adversarial Verifier (Avanceret Second Opinion)**
+   - Enorm værdi mod test-gaming, bygget oven på en isoleret kontekst via harness eller sub-agent.
+6. **Rangering 10: Extended Security & Supply-Chain Audits (Lavthængende Frugter)**
+   - Vigtigt mod læk af hemmeligheder og sårbare pakker, tilføjes deklarativt i `gauntlet.toml`.
+7. **Rangering 11: Suite Health & Test-Order Randomizer (Optimering)**
+   - Fjerner subtile tilstandslækager i testsuiter.
 
 ---
 
 ## 🔍 Detaljerede Feature Beskrivelser
 
-### 1. 🛡️ Google Antigravity IDE Plugin & Adapter (Nuværende Fokus)
+### 1. 🛡️ Google Antigravity IDE Plugin & Adapter (Fuldført & Reference)
 * **Koncept**:
   Fuldendt, robust integration med Google Antigravity IDE's officielle plugin- og hook-system:
   1. **Plugin Manifest & Packaging**: Komplet `plugins/agent-gauntlet/plugin.json` og distribution af bundled skills (`old-coder`, `grill-me`, `grill-with-docs`, `diagnose`).
   2. **Pre-Invocation Hook Gatekeeper**: Sikker validering af `run_command`, `write_to_file`, `replace_file_content` og `multi_replace_file_content` via `.agents/hooks.json`.
   3. **Task HUD & State Generator**: Automatisk generering af Task HUD og session handoff prompts tilpasset Antigravity chat-miljøet.
-* **Hvorfor det er vigtigt**:
-  * Fungerer som testet reference-adapter for alle fremtidige harness-tilkoblinger.
 
 ---
 
-### 2. 🔌 Claude Code Plugin & Adapter Integration
+### 2. 🔌 Claude Code Adapter & `CLAUDE.md` Bridge
 * **Koncept**:
-  Etablere fuld tovejs-integration med Anthropic's **Claude Code** CLI og agent-økosystem:
-  1. **Tool-Call Normalisering**: Gatekeeper-mapping for Claude Code's værktøjer (`Bash` $\to$ `run_command`, `Edit`/`Write` $\to$ `replace_file_content`/`write_to_file`, `View` $\to$ `view_file`).
-  2. **Claude Hooks Scaffolding**: Automatisk opsætning af `.claude/settings.json` eller Claude Code pre-execution hooks, der eksekverer `gatekeeper.py`.
-  3. **Autoritativ Regelbro**: Automatisk synkronisering og bridging mellem `CLAUDE.md` og `.agents/AGENTS.md`.
-* **Hvorfor det er vigtigt**:
-  * Udvider `agent-gauntlet`'s strenge TDD- og gatekeeper-disciplin til Claude Code-brugere uden manuelle tilpasninger.
+  Fuld integration med Anthropic's **Claude Code** CLI og agent-økosystem jf. Task 007:
+  1. **Autoritativ Regelbro (`CLAUDE.md`)**: Automatisk oprettelse af en rod-`CLAUDE.md`, der autoritativt henviser agenten til `.agents/AGENTS.md` og `.agents/rules/`.
+  2. **Tool-Call Normalisering**: Gatekeeper-mapping for Claude Code's værktøjer (`Bash` $\to$ `run_command`, `Edit`/`Write` $\to$ `replace_file_content`/`write_to_file`, `View` $\to$ `view_file`).
+  3. **Claude Hooks Scaffolding**: Automatisk opsætning af `.claude/settings.json` eller Claude Code pre-execution hooks, der eksekverer `gatekeeper.py`.
 
 ---
 
-### 3. 🧠 DeepSeek-Harness & Reasoner Integration
+### 3. 🎯 Cursor IDE Adapter & `.cursor/rules/*.mdc` Bridge
+* **Koncept**:
+  Dedikeret adapter og scaffolding for **Cursor IDE**:
+  1. **Autoritativ Regelbro (`.cursor/rules/agent-gauntlet.mdc`)**: Opretter en modulær regel i `.cursor/rules/` med YAML-frontmatter (`alwaysApply: true`), der instruerer Cursor-agenten i at læse og overholde `.agents/AGENTS.md` og `.agents/rules/`.
+  2. **Legacy Fallback (`.cursorrules`)**: Valgfri generering af en rod-`.cursorrules` fil for ældre Cursor-versioner.
+  3. **Scaffolding Integration**: `agent-gauntlet init --harness cursor` klargør automatisk `.cursor/rules/` strukturen.
+
+---
+
+### 4. 🌊 Windsurf (Cascade) Adapter & `.windsurfrules` Bridge
+* **Koncept**:
+  Integration til Codeium's **Windsurf IDE** og Cascade agent-motor:
+  1. **Autoritativ Regelbro (`.windsurfrules` & `.windsurf/rules/`)**: Opretter en slank `.windsurfrules` entrypoint-fil i projektets rod, der instruerer Cascade i at læse `.agents/AGENTS.md` og håndhæve Task HUD & TDD-cyklus.
+  2. **Cascade Workflows**: Mulighed for at synkronisere `.agents/workflows/` til Windsurf Cascade workflows.
+  3. **Scaffolding Integration**: `agent-gauntlet init --harness windsurf`.
+
+---
+
+### 5. 🐙 GitHub Copilot & OpenAI/Codex Bridge
+* **Koncept**:
+  Understøttelse af **GitHub Copilot Workspace / Chat** samt OpenAI Codex/Assistant interfaces:
+  1. **Autoritativ Regelbro (`.github/copilot-instructions.md`)**: Etablerer standarden for GitHub Copilot i `.github/`, som instruerer Copilot i projektets TDD-disciplin, Task-krav og forbyder kildekode-ændringer uden en aktiv task i `tasks/`.
+  2. **Scaffolding Integration**: `agent-gauntlet init --harness copilot` eller `agent-gauntlet init --harness codex`.
+
+---
+
+### 6. 🧠 DeepSeek-Harness & Reasoner Integration (OpenHands / Aider)
 * **Koncept**:
   Specialiseret integration til **DeepSeek** (R1/V3) og lignende avancerede ræsonneringsmodeller afviklet via OpenHands, Aider eller headless API-harnesses:
-  1. **Chain-of-Thought Remediation Engine**: Formatering af `DiagnosticReport` og `DiagnosticFinding` til ultra-kompakte, strukturerede prompts optimeret til modeller med dybe `<think>` ræsonneringsspor.
-  2. **Token-komprimeret Spec & Task Ingestion**: Eliminering af overflødig støj i fejllogs for at spare ræsonnerings-tokens i store multi-turn sessions.
+  1. **Autoritativ Regelbro (`CONVENTIONS.md` & `AGENTS.md`)**: Automatisk mapping for headless CLI-værktøjer som Aider og OpenHands.
+  2. **Chain-of-Thought Remediation Engine**: Formatering af `DiagnosticReport` og `DiagnosticFinding` til ultra-kompakte, strukturerede prompts optimeret til modeller med dybe `<think>` ræsonneringsspor.
   3. **Headless Execution Bridge**: CLI- og JSON-interfacer skræddersyet til automatiserede agent-loops (f.eks. OpenHands benchmark runs).
-* **Hvorfor det er vigtigt**:
-  * Åbner for kørsel af `agent-gauntlet` med open-weights og cost-effektive ræsonneringsmodeller med maksimal præcision.
 
 ---
 

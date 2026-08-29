@@ -51,7 +51,7 @@ class TestGatekeeperHook(unittest.TestCase):
         )
         self.assertTrue(verdict.allowed)
 
-        for filename in ["CONTEXT.md", "CLAUDE.md", "ROADMAP.md", "spec.md"]:
+        for filename in ["CONTEXT.md", "CLAUDE.md", "ROADMAP.md", "spec.md", "CODING_STANDARDS.md"]:
             verdict_meta = evaluate_tool_invocation(
                 workspace=self.workspace,
                 tool_name="replace_file_content",

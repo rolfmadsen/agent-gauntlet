@@ -1,26 +1,22 @@
 # Verification Report
 
-**Task ID**: `023-p0-audit-remediation-and-cryptographic-attestation`  
-**Task Title**: Task 023: P0 Audit Remediation, Cryptographic Sigstore DSSE & Official Hook Schema  
+**Task ID**: `030-cursor-ide-adapter-and-rules-bridge`  
+**Task Title**: Task 030: Cursor IDE Adapter and Rules Bridge  
 **Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `2e9740e881adff2e9014f349288b724ba8015153285261dcb725cf2b78b1c56a`  
-**Timestamp**: `2026-08-27T20:50:29Z`  
-**Head**: `af3e78f`  
-**Commit**: `c59c885`  
+**Source Manifest Digest**: `54773f10b1f072f1e58bcc2fafd6a8181db5e133b120afa0676cb134308fd9c7`  
+**Timestamp**: `2026-08-29T11:06:58Z`  
+**Head**: `61302c0`  
+**Commit**: `61302c0`  
 
 ## Acceptance Criteria
 
-- [x] 1. En bundle uden DSSE/cert/timestamps eller med kun opdigtet `status: VALID` afvises som `INVALID`.
-- [x] 2. En lokalt selvsigneret dummy-bundle afvises under strict trust policy.
-- [x] 3. CI `attest`-jobbet validerer uafhængigt hele rapportkontrakten (non-empty criteria, non-empty checks, alle obligatoriske PASSED med exit code 0, og alle digests) mod `${{ github.sha }}` før signering.
-- [x] 4. Nul kriterier, nul checks, manglende digests og task-drift afvises fail-closed gennem CLI- og verifier-entrypoints.
-- [x] 5. Den legitime CI-rapport kan opnå release eligibility via verificeret attestation uden selvangivet `CI_PROTECTED`-felt i rapporten.
-- [x] 6. Gatekeeperens dokumenterede rolle svarer til dens faktiske kooperative guardrail-model, og `is_task_active` afviser `DRAFT`, `REJECTED` og status-løse tasks.
-- [x] 7. Task-parsing og status-semantik er udtrukket til en selvstændig `features/tasks/` modul uden cirkulær afhængighed til gatekeeper.
-- [x] 8. `AntigravityPluginValidator` accepterer `matcher: "*"` og `matcher: ""` som gyldige match-all filtre, validerer non-empty root og events, og tjekker positivt integer timeout.
-- [x] 9. `src/agent_gauntlet/cli.py` er refaktoreret til ren dispatch/orkestrering (< 250 linjer).
-- [x] 10. `verification-report.json` serialiserer diagnostic findings, `tools/gauntlet.sh` kører `ruff format --check .`, og 0 Pyright/Ruff fejl med 46/46 kuraterede mutanter killed.
+- [x] Oprette `src/agent_gauntlet/features/adapters/cursor/` vertical slice modul med `CursorAdapter` og regel-skabeloner.
+- [x] Implementere scaffolding af `.cursor/rules/agent-gauntlet.mdc` med `description`, `globs: "*"` og `alwaysApply: true`, der peger autoritativt på `.agents/AGENTS.md`.
+- [x] Udvide `scaffolder.py` og CLI `--harness cursor` flag til at generere Cursor konfiguration deterministisk.
+- [x] Tilføje sort-boks accepttests i `tests/features/test_adapter_cursor.py` og `tests/test_cli.py`.
+- [x] Tilføje mutation testing i `tools/mutants.py` til at beskytte Cursor-adapter logik (100% kill-rate).
+- [x] `agent-gauntlet okf validate` godkender alle oprettede og modificerede filer.
 
 ---
 
@@ -28,10 +24,10 @@
 
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
-| `lint` | `PASSED` | `0` | `0.020s` |
-| `types` | `PASSED` | `0` | `1.280s` |
-| `unit` | `PASSED` | `0` | `1.077s` |
-| `invariants` | `PASSED` | `0` | `0.303s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `23.440s` |
+| `lint` | `PASSED` | `0` | `0.036s` |
+| `types` | `PASSED` | `0` | `1.314s` |
+| `unit` | `PASSED` | `0` | `1.204s` |
+| `invariants` | `PASSED` | `0` | `0.300s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `24.663s` |
 
 ---

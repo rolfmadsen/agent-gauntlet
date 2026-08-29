@@ -23,6 +23,8 @@ The agent has direct access to bundled skills located in [.agents/skills/](.agen
    * *Purpose*: Challenges plans against domain concepts in [CONTEXT.md](CONTEXT.md) and creates/updates ADRs in [docs/adr/](docs/adr/).
 4. **[diagnose](.agents/skills/diagnose/SKILL.md)**:
    * *Purpose*: Disciplined root-cause diagnosis loop (Reproduce $\to$ Minimize $\to$ Hypothesize $\to$ Instrument $\to$ Fix $\to$ Regression-test).
+5. **[code-review](.agents/skills/code-review/SKILL.md)**:
+   * *Purpose*: Two-axis review (Standards vs Spec) running parallel sub-agents with Fowler code smells baseline.
 
 ---
 
@@ -66,6 +68,7 @@ Before writing code, classify intent and align with domain terminology:
 - 🔍 **QUERY / DIAGNOSIS:** Information request or root-cause discovery (read-only; use `diagnose`).
 - 🚀 **NEW FEATURE / REFACTOR:** Run `grill-me` or `grill-with-docs` to resolve decisions and update `CONTEXT.md` before coding.
 - 🐛 **BUG FIX:** Reproduce failure in a red test before changing production code.
+- 🧐 **CODE REVIEW / AUDIT:** Independent two-axis evaluation of changes against repository standards and spec invariants (use `code-review`).
 
 ---
 
@@ -85,12 +88,13 @@ SPEC / GRILL → (Human Approval) → RED → GREEN → REFACTOR → GAUNTLET �
    - Invariant & Property Tests (`hypothesis`, `proptest`)
    - Mutation Testing Gauntlet (`mutants.py`)
 6. **EVIDENCE**: Persist verification report in `verification-report.json` and `evidence.md`.
-7. **SESSION HANDOFF**: Display the clean `🏁 SESSION HANDOFF` card with the copy-paste starter prompt in the final user-facing response:
+7. **SESSION HANDOFF**: Display the clean `🏁 SESSION HANDOFF` card with the copy-paste starter prompt and inferred engineering role in the final user-facing response:
    > ### 🏁 SESSION HANDOFF • `<task_id>`
-   > **Status**: `TASK: DONE` | **Evidens**: `FORSEGLET (Two-Tier Model)` | **Context**: `Fresh Session Recommended`
+   > **Status**: `TASK: DONE` | **Evidens**: `FORSEGLET (Two-Tier Model)` | **Næste Rolle**: `<inferred_role>`
    > 💡 *Start venligst en frisk chat-session for at bevare et skarpt kontekstvindue uden context rot.*
    >
    > 📋 **Kopiér og indsæt følgende starter-prompt i en ny chat:**
    > ```text
    > <handoff_prompt>
    > ```
+

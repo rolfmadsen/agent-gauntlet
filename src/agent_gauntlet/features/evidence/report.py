@@ -19,7 +19,14 @@ class VerificationReportEngine:
     """Engine for generating, serializing, and inspecting unsigned verification reports."""
 
     def generate_report_json(self, report: VerificationReport) -> str:
-        """Serialize verification report to canonical Schema v2 JSON."""
+        """Serialize verification report to canonical Schema v2 JSON.
+
+        Args:
+            report: VerificationReport model instance to serialize.
+
+        Returns:
+            Formatted canonical JSON string adhering to Schema v2.
+        """
         vcs_dict = None
         if report.workspace_state.vcs:
             vcs_dict = {
@@ -80,7 +87,18 @@ class VerificationReportEngine:
 
     @classmethod
     def load_report_json(cls, json_str: str) -> VerificationReport:
-        """Deserialize verification report from JSON (Schema v2 or legacy format)."""
+        """Deserialize verification report from JSON (Schema v2 or legacy format).
+
+        Args:
+            json_str: Raw JSON string representing verification report.
+
+        Returns:
+            Instantiated VerificationReport dataclass.
+
+        Raises:
+            json.JSONDecodeError: If json_str is invalid JSON.
+            KeyError: If mandatory verification report fields are missing.
+        """
         data = json.loads(json_str)
 
         # Handle Schema v2
@@ -204,7 +222,18 @@ class VerificationReportEngine:
         current_config_digest: str = "",
         current_task_digest: str = "",
     ) -> bool:
-        """Verify that report post-execution manifest matches current workspace state, policy, config, and tasks."""
+        """Verify that report post-execution manifest matches current workspace state, policy, config, and tasks.
+
+        Args:
+            report: VerificationReport to compare.
+            current_manifest_digest: Current workspace source manifest digest.
+            current_policy_digest: Optional current workspace policy digest.
+            current_config_digest: Optional current workspace config digest.
+            current_task_digest: Optional current workspace task digest.
+
+        Returns:
+            True if all provided digests match the report's workspace state.
+        """
         report_digest = str(report.workspace_state.source_manifest_digest_post or "")
         cur_digest = str(current_manifest_digest or "")
         if not report_digest or not cur_digest:
@@ -241,7 +270,15 @@ class VerificationReportEngine:
         report: VerificationReport,
         title: str = "Verification Report",
     ) -> str:
-        """Render verification report as human-readable markdown summary."""
+        """Render verification report as human-readable markdown summary.
+
+        Args:
+            report: VerificationReport model to format.
+            title: Title header string. Defaults to 'Verification Report'.
+
+        Returns:
+            Markdown formatted report summary string.
+        """
         vcs_head = report.workspace_state.vcs.head if report.workspace_state.vcs else "(no git)"
         vcs_commit = report.workspace_state.vcs.commit if report.workspace_state.vcs else "(no git)"
 

@@ -36,6 +36,7 @@ src/agent_gauntlet/
 └── features/
     ├── gauntlet/                 # Afvikling af lag, timing, fail-fast / fail-closed
     ├── evidence/                 # Canonical manifest, verification report, attestation & trust policy
+    ├── tasks/                    # Opgavekontrakter, markdown-parsing og statussemantik
     ├── stacks/                   # Stack-detektion & standardprofiler (Python, TS, Rust)
     ├── diagnostics/              # Actionable LLM feedback engine & extractors
     ├── config/                   # gauntlet.toml / gauntlet.json indlæsning
@@ -44,6 +45,7 @@ src/agent_gauntlet/
     ├── adapters/                 # Vertikale feature-slices for AI-harnesses (Google Antigravity mv.)
     └── okf/                      # OKF v0.2 metadata parsing, validation, tidsinvarianter & stempling
 ```
+
 
 ---
 

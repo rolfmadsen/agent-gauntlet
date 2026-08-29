@@ -33,28 +33,164 @@ from agent_gauntlet.features.evidence.trust_policy import (
 from agent_gauntlet.features.gauntlet.models import LayerDefinition, LayerRequirement
 from agent_gauntlet.features.gauntlet.runner import run_gauntlet
 from agent_gauntlet.features.okf.validator import validate_okf_workspace
-from agent_gauntlet.features.tasks import is_task_active
+from agent_gauntlet.features.tasks import parse_task_file
+from agent_gauntlet.features.tasks.models import ALLOWED_ACTIVE_STATUSES, TaskStatus
+
+
+def is_audit_or_review_task(task_id: str, title: str = "", content: str = "") -> bool:
+    """Checks whether a task identifier, title, or content represents an audit or code review package.
+
+    Args:
+        task_id: Stem or identifier of the task file.
+        title: Optional title line of the task.
+        content: Optional raw markdown content of the task.
+
+    Returns:
+        True if the task is an audit or code review package, False otherwise.
+    """
+    task_id_lower = task_id.lower().replace("_", "-")
+    title_lower = title.lower()
+    content_lower = content.lower()
+
+    if any(
+        t in task_id_lower
+        for t in ("audit", "code-review", "code_review", "re-review", "granskning")
+    ):
+        return True
+    if any(
+        t in title_lower for t in ("audit", "code review", "code-review", "re-review", "granskning")
+    ):
+        return True
+    if "code-review" in content_lower or "code review" in content_lower:
+        if (
+            "audit" in content_lower
+            or "remediation" in content_lower
+            or "granskning" in content_lower
+        ):
+            return True
+    return False
+
+
+def infer_next_session_role(workspace: Path, current_task_id: str = "") -> tuple[str, str, str]:
+    """Infers the next engineering role, task ID, and actionable starter prompt.
+
+    Args:
+        workspace: Path to repository workspace root.
+        current_task_id: Optional task identifier being completed or verified.
+
+    Returns:
+        A tuple of (next_role, next_task_id, handoff_prompt).
+    """
+    tasks_dir = workspace / "tasks"
+    candidate_active: tuple[str, str, str] | None = None
+    candidate_draft: tuple[str, str, str] | None = None
+    completed_tasks: list[tuple[str, str, str]] = []
+
+    if tasks_dir.is_dir():
+        for candidate in sorted(tasks_dir.glob("*.md")):
+            try:
+                raw_content = candidate.read_text(encoding="utf-8")
+                task_info = parse_task_file(candidate)
+                completed_tasks.append((task_info.task_id, task_info.title, raw_content))
+            except Exception:
+                raw_content = ""
+                task_info = None
+
+            if candidate.stem == current_task_id or candidate.name.startswith(
+                f"{current_task_id}-"
+            ):
+                continue
+
+            if task_info is not None:
+                # Check for active task with pending work
+                if task_info.status in ALLOWED_ACTIVE_STATUSES and task_info.unresolved_criteria:
+                    if candidate_active is None:
+                        prompt = (
+                            f"Du agerer som Senior Software Engineer (Feature Implementation & Testing) på dette projekt.\n"
+                            f"Din opgave er at implementere kravene i tasks/{candidate.name} i henhold til den godkendte spec.md.\n\n"
+                            f"Arbejdsmetode for denne opgave:\n"
+                            f"- Følg strikt Test-Driven Development (skriv og observer den første fejlede RED test før kodeændringer).\n"
+                            f"- Skriv minimal produktionskode for at opnå GREEN status.\n"
+                            f"- Refaktorer under frosne assertions og verificér via projektets testsuite.\n"
+                            f"- Du må IKKE ændre specifikationen eller tilføje uautoriserede afhængigheder."
+                        )
+                        candidate_active = (
+                            "Senior Software Engineer (Feature Implementation & Testing)",
+                            candidate.stem,
+                            prompt,
+                        )
+                # Check for draft task requiring specification
+                elif task_info.status == TaskStatus.DRAFT or not task_info.acceptance_criteria:
+                    if candidate_draft is None:
+                        prompt = (
+                            f"Du agerer som Senior Software Engineer (System Architecture & Requirements) på dette projekt.\n"
+                            f"Din opgave er at afklare kravene til tasks/{candidate.name}, udfordre antagelser, "
+                            f"definere system-invarianter (Must NOT) og formulere eksekverbare acceptkriterier i spec.md og opgavefilen, "
+                            f"før kodning påbegyndes.\n"
+                            f"Læs CONTEXT.md, docs/adr/ og spec.md for at sikre overensstemmelse med projektets domænemodel."
+                        )
+                        candidate_draft = (
+                            "Senior Software Engineer (System Architecture & Requirements)",
+                            candidate.stem,
+                            prompt,
+                        )
+
+    if candidate_active is not None:
+        return candidate_active
+    if candidate_draft is not None:
+        return candidate_draft
+
+    # When all tasks are complete, determine whether an audit/code review has already been performed.
+    has_audit_completed = False
+    if current_task_id and is_audit_or_review_task(current_task_id):
+        has_audit_completed = True
+    elif completed_tasks:
+        latest_task_id, latest_title, latest_content = completed_tasks[-1]
+        if is_audit_or_review_task(latest_task_id, latest_title, latest_content):
+            has_audit_completed = True
+
+    if has_audit_completed:
+        release_prompt = (
+            "Du agerer som Release & Operations Engineer på dette projekt.\n"
+            "Samtlige planlagte opgaver og uafhængige kode-granskninger (code review & audit) er gennemført og godkendt med grønt lys.\n\n"
+            "Din opgave er at:\n"
+            "1. Verificere release-eligibility og DSSE-attestering via 'agent-gauntlet check-attestation'.\n"
+            "2. Klargøre release-dokumentation, changelog og versionsopdatering i projektkonfigurationen.\n"
+            "3. Hvis der skal påbegyndes en ny epoke, definér da næste milepælsopgaver i tasks/ med udgangspunkt i ROADMAP.md."
+        )
+        return (
+            "Release & Operations Engineer (Release Attestation & Deployment)",
+            "",
+            release_prompt,
+        )
+
+    # Default fallback when feature tasks are complete, but independent audit is pending
+    fallback_prompt = (
+        "Du agerer som Senior Software Engineer (Independent Code Review & Audit) på dette projekt.\n"
+        "Alle planlagte opgaver er gennemført. Din opgave er at udføre en to-akset uafhængig granskning "
+        "ved hjælp af code-review skillen (.agents/skills/code-review/SKILL.md) mod repoets standarder og spec.md "
+        "for at afdække eventuelle oversete edge cases, Fowler code smells eller specifikations-afvigelser."
+    )
+    return (
+        "Senior Software Engineer (Independent Code Review & Audit)",
+        "",
+        fallback_prompt,
+    )
 
 
 def generate_session_handoff_prompt(workspace: Path, task_id: str, task_title: str = "") -> str:
-    """Generates a clean starter prompt for the next chat session."""
-    tasks_dir = workspace / "tasks"
-    next_task_suggestion = ""
-    if tasks_dir.is_dir():
-        for candidate in sorted(tasks_dir.glob("*.md")):
-            if candidate.stem != task_id and not candidate.name.startswith(f"{task_id}-"):
-                try:
-                    content = candidate.read_text(encoding="utf-8")
-                    if is_task_active(content):
-                        next_task_suggestion = f" (f.eks. tasks/{candidate.name})"
-                        break
-                except Exception:
-                    continue
+    """Generates a clean starter prompt for the next chat session using role inference.
 
-    return (
-        f"Fortsæt udviklingen i projektet. Læs venligst CONTEXT.md, docs/adr/ og den næste opgave i tasks/{next_task_suggestion} "
-        f"for at fastlægge acceptkriterier og køre TDD-cyklussen for næste feature."
-    )
+    Args:
+        workspace: Path to repository workspace root.
+        task_id: Current task identifier being completed.
+        task_title: Optional human-readable task title.
+
+    Returns:
+        Formatted starter prompt string for the next chat session.
+    """
+    _role, _next_id, prompt = infer_next_session_role(workspace, task_id)
+    return prompt
 
 
 def execute_verify(
@@ -69,7 +205,23 @@ def execute_verify(
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
-    """Executes multi-layer gauntlet verification and builds unsigned report."""
+    """Executes multi-layer gauntlet verification and builds unsigned report.
+
+    Args:
+        workspace: Path to repository workspace root.
+        task_id: Optional explicit task ID to bind against.
+        stack: Optional explicit stack name override.
+        standalone: If True, bypasses CONTEXT.md and task criteria requirements.
+        test_target: Optional dotted unit test target for targeted test run.
+        save: If True, writes verification-report.json and evidence markdown files.
+        as_json: If True, prints canonical verification report JSON to stdout.
+        diagnostics_json: If True, prints actionable diagnostics JSON payload to stdout.
+        stdout: Optional TextIO stream for standard output.
+        stderr: Optional TextIO stream for standard error.
+
+    Returns:
+        Exit code: 0 if verification passes, 1 if verification or pre-flight fails.
+    """
     out = stdout if stdout is not None else sys.stdout
     err = stderr if stderr is not None else sys.stderr
 
@@ -189,7 +341,7 @@ def execute_verify(
         environment={
             "python_version": sys.version.split()[0],
             "platform": sys.platform,
-            "gauntlet_version": "0.2.0",
+            "gauntlet_version": "0.3.0",
         },
     )
 
@@ -237,14 +389,13 @@ def execute_verify(
             engine.generate_report_markdown(report_obj), encoding="utf-8"
         )
 
-    handoff_prompt = (
-        generate_session_handoff_prompt(
+    next_role, next_task_id, handoff_prompt = (
+        infer_next_session_role(
             workspace,
             report_obj.task_contract.task_id,
-            report_obj.task_contract.task_title,
         )
         if verdict == "PASSED"
-        else ""
+        else ("", "", "")
     )
 
     tree_digest = manifest_post.source_manifest_digest[:16]
@@ -261,6 +412,7 @@ def execute_verify(
             "source_tree_hash": tree_digest,
             "execution_origin": "LOCAL",
             "diagnostic_reports": [r.to_dict() for r in diagnostic_reports],
+            "next_role": next_role,
             "handoff_prompt": handoff_prompt,
         }
         print(json.dumps(output_payload, indent=2), file=out)
@@ -308,6 +460,8 @@ def execute_verify(
 
             print("\n" + "╭" + "─" * 76 + "╮", file=out)
             print(f"│ 🏁 SESSION HANDOFF: {report_obj.task_contract.task_id:<53} │", file=out)
+            if next_role:
+                print(f"│ 👤 Næste Rolle: {next_role:<58} │", file=out)
             print("│" + " " * 76 + "│", file=out)
             print(
                 "│ 💡 Start venligst en frisk chat-session for at undgå context rot.          │",
@@ -318,8 +472,12 @@ def execute_verify(
                 file=out,
             )
             print("├" + "─" * 76 + "┤", file=out)
-            for wrapped_line in textwrap.wrap(handoff_prompt, width=74):
-                print(f"│ {wrapped_line:<74} │", file=out)
+            for paragraph in handoff_prompt.splitlines():
+                if not paragraph.strip():
+                    print("│" + " " * 76 + "│", file=out)
+                    continue
+                for wrapped_line in textwrap.wrap(paragraph, width=74):
+                    print(f"│ {wrapped_line:<74} │", file=out)
             print("╰" + "─" * 76 + "╯", file=out)
 
     return 0 if is_verify_success else 1
@@ -333,7 +491,19 @@ def execute_check_evidence(
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
-    """Checks verification report integrity, criteria resolution, check outcomes, and workspace state."""
+    """Checks verification report integrity, criteria resolution, check outcomes, and workspace state.
+
+    Args:
+        workspace: Path to repository workspace root.
+        evidence_file: Optional path or filename for verification-report.json.
+        legacy_advisory: If True, inspects legacy v1 evidence payloads in non-blocking advisory mode.
+        as_json: If True, prints status payload JSON to stdout.
+        stdout: Optional TextIO stream for standard output.
+        stderr: Optional TextIO stream for standard error.
+
+    Returns:
+        Exit code: 0 if evidence matches current workspace state and all criteria/checks passed, 1 on failure.
+    """
     out = stdout if stdout is not None else sys.stdout
     err = stderr if stderr is not None else sys.stderr
 
@@ -459,7 +629,21 @@ def execute_check_attestation(
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
-    """Checks verification report and cryptographic DSSE attestation against consumer TrustPolicy."""
+    """Checks verification report and cryptographic DSSE attestation against consumer TrustPolicy.
+
+    Args:
+        workspace: Path to repository workspace root.
+        report_file: Path to verification-report.json.
+        attestation_file: Optional path to attestation.json / bundle.
+        policy_file: Optional path to trust-policy.json.
+        allow_unattested: If True, permits unattested verification reports when attestation is absent.
+        as_json: If True, outputs trust evaluation result JSON to stdout.
+        stdout: Optional TextIO stream for standard output.
+        stderr: Optional TextIO stream for standard error.
+
+    Returns:
+        Exit code: 0 if release eligible or permitted, 1 on failure or denial.
+    """
     out = stdout if stdout is not None else sys.stdout
     err = stderr if stderr is not None else sys.stderr
 

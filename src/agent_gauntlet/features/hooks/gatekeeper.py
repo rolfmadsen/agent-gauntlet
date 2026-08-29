@@ -24,10 +24,7 @@ from agent_gauntlet.features.hooks.models import (
     PolicyDecision,
     TrustedEnforcementContext,
 )
-from agent_gauntlet.features.tasks import (
-    has_active_task,
-    is_task_active,
-)
+from agent_gauntlet.features.tasks import has_active_task
 
 FORBIDDEN_COMMAND_PATTERNS = [
     r"\bgit(?:\$\{IFS\}|\s+).*?\bpush\b",
@@ -47,6 +44,7 @@ SHELL_PROTECTED_PATH_PATTERNS = [
 
 ALLOWED_METADATA_PATHS = {
     "claude.md",
+    "coding_standards.md",
     "context.md",
     "evidence.json",
     "evidence.md",
@@ -71,9 +69,6 @@ SAFE_READONLY_TOOLS = {
     "list_permissions",
 }
 
-# Backward-compatible alias
-_is_active_task_content = is_task_active
-
 
 class PolicyEngine:
     """Core domain safety policy engine evaluating typed CapabilityRequests."""
@@ -83,7 +78,15 @@ class PolicyEngine:
         request: CapabilityRequest,
         context: TrustedEnforcementContext,
     ) -> PolicyDecision:
-        """Evaluates a CapabilityRequest against workspace safety invariants."""
+        """Evaluates a CapabilityRequest against workspace safety invariants.
+
+        Args:
+            request: The typed capability request (command execution, file write, file read, etc.).
+            context: Trusted enforcement context including workspace root and active task status.
+
+        Returns:
+            PolicyDecision with allow/deny verdict, verdict code, and optional explanation.
+        """
         # 1. Command Execution Policy
         if (
             isinstance(request, CommandExecutionRequest)
@@ -233,7 +236,16 @@ def evaluate_tool_invocation(
     tool_name: str,
     tool_input: dict[str, Any],
 ) -> HookResult:
-    """Backward-compatible helper evaluating raw tool invocation via PolicyEngine."""
+    """Backward-compatible helper evaluating raw tool invocation via PolicyEngine.
+
+    Args:
+        workspace: Path to workspace root.
+        tool_name: Name of tool being invoked.
+        tool_input: Dictionary payload containing tool arguments.
+
+    Returns:
+        HookResult decision indicating whether invocation is permitted.
+    """
     engine = PolicyEngine()
     active = has_active_task(workspace)
     context = TrustedEnforcementContext(
@@ -265,7 +277,14 @@ def evaluate_tool_invocation(
 
 
 def main_hook_entrypoint(argv: list[str] | None = None) -> int:
-    """CLI entrypoint for Antigravity IDE PreInvocation hook."""
+    """CLI entrypoint for Antigravity IDE PreInvocation hook.
+
+    Args:
+        argv: Optional list of CLI arguments. Defaults to sys.argv.
+
+    Returns:
+        Exit code: 0 if invocation is allowed, 1 if blocked.
+    """
     from agent_gauntlet.features.adapters.antigravity.hook import main_hook_entrypoint as _hook_main
 
     return _hook_main(argv)

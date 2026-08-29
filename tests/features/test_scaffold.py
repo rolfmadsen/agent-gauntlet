@@ -31,6 +31,7 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
         self.assertTrue((self.workspace / "CONTEXT.md").is_file())
         self.assertTrue((self.workspace / "spec.md").is_file())
         self.assertTrue((self.workspace / "CLAUDE.md").is_file())
+        self.assertTrue((self.workspace / "CODING_STANDARDS.md").is_file())
 
         # Tasks directory
         self.assertTrue((self.workspace / "tasks").is_dir())
@@ -50,6 +51,7 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
         self.assertTrue((self.workspace / ".agents/skills/grill-me/SKILL.md").is_file())
         self.assertTrue((self.workspace / ".agents/skills/grill-with-docs/SKILL.md").is_file())
         self.assertTrue((self.workspace / ".agents/skills/diagnose/SKILL.md").is_file())
+        self.assertTrue((self.workspace / ".agents/skills/code-review/SKILL.md").is_file())
 
         # All entries should have CREATED status
         for entry in result.entries:
@@ -96,6 +98,57 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
             e for e in force_result.entries if e.status == ScaffoldStatus.OVERWRITTEN
         ]
         self.assertGreater(len(overwritten_entries), 0)
+
+    def test_scaffold_creates_role_aware_agents_md(self) -> None:
+        """Scenario SC-04: Scaffolding creates AGENTS.md with role-aware session handoff protocol, spec governance, and bundled skills."""
+        self.scaffolder.scaffold(self.workspace, stack="python", config_format="toml")
+        agents_md = (self.workspace / ".agents/AGENTS.md").read_text(encoding="utf-8")
+        self.assertIn("SESSION HANDOFF", agents_md)
+        self.assertIn("Næste Rolle", agents_md)
+        self.assertIn("code-review", agents_md)
+        self.assertIn("Specification Governance", agents_md)
+        self.assertIn("CODE REVIEW / AUDIT", agents_md)
+
+    def test_scaffold_stack_specific_coding_standards(self) -> None:
+        """Scenario SC-05: Scaffolder produces tailored CODING_STANDARDS.md per supported stack."""
+        # 1. Python Stack
+        self.scaffolder.scaffold(self.workspace, stack="python", config_format="toml", force=True)
+        py_standards = (self.workspace / "CODING_STANDARDS.md").read_text(encoding="utf-8")
+        self.assertIn("Google Python Style Guide", py_standards)
+        self.assertIn("Type Annotations", py_standards)
+        self.assertIn("Package-by-Feature", py_standards)
+        self.assertIn("Google Docstrings", py_standards)
+        self.assertIn("Args:", py_standards)
+        self.assertIn("## 6. Concrete DO / DON'T Examples", py_standards)
+
+        # 2. TypeScript Stack
+        self.scaffolder.scaffold(
+            self.workspace, stack="typescript", config_format="toml", force=True
+        )
+        ts_standards = (self.workspace / "CODING_STANDARDS.md").read_text(encoding="utf-8")
+        self.assertIn("Google TypeScript Style Guide", ts_standards)
+        self.assertIn("React", ts_standards)
+        self.assertIn("Custom Hooks", ts_standards)
+        self.assertIn("TSDoc Documentation Standard", ts_standards)
+        self.assertIn("@param", ts_standards)
+        self.assertIn("## 6. Concrete DO / DON'T Examples", ts_standards)
+
+        # 3. Rust Stack
+        self.scaffolder.scaffold(self.workspace, stack="rust", config_format="toml", force=True)
+        rust_standards = (self.workspace / "CODING_STANDARDS.md").read_text(encoding="utf-8")
+        self.assertIn("Official Rust API Guidelines", rust_standards)
+        self.assertIn("Naming Conventions", rust_standards)
+        self.assertIn("Error Handling", rust_standards)
+        self.assertIn("Rustdoc Documentation Standard", rust_standards)
+        self.assertIn("# Errors", rust_standards)
+        self.assertIn("## 5. Concrete DO / DON'T Examples", rust_standards)
+
+        # 4. Auto-detected TypeScript Stack
+        (self.workspace / "tsconfig.json").write_text("{}", encoding="utf-8")
+        self.scaffolder.scaffold(self.workspace, stack=None, config_format="toml", force=True)
+        auto_ts_standards = (self.workspace / "CODING_STANDARDS.md").read_text(encoding="utf-8")
+        self.assertIn("Google TypeScript Style Guide", auto_ts_standards)
+        self.assertIn("TSDoc Documentation Standard", auto_ts_standards)
 
 
 if __name__ == "__main__":

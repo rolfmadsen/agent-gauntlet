@@ -29,20 +29,21 @@ Den omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Lint
 
 ---
 
-## 🧭 Hvordan virker agent-gauntlet? (Core Loop)
+## 🧭 Hvordan virker agent-gauntlet? (Livscyklus & FSM)
 
-`agent-gauntlet` tvinger AI-agenten igennem en deterministisk, videnskabelig udviklingsproces, hvor påstande erstattes af eksekverbare beviser:
+`agent-gauntlet` styrer AI-agenter igennem en deterministisk, videnskabelig udviklingsproces, hvor påstande erstattes af eksekverbare beviser, og hvor specialiserede ingeniør-personaer overdrager arbejdet uden *context rot* eller *review fatigue*:
 
 ```mermaid
 flowchart TD
-    subgraph 1. Forberedelse & Intent
-        Intent["🎯 1. SPEC & Intent Afklaring\n(spec.md / CONTEXT.md)"] --> Appr["👤 2. Menneskelig Godkendelse\n(Gennemgå og frys specifikationen)"]
+    subgraph 1. Forberedelse & Intent Afklaring
+        Role1["👤 Rolle: Feature Engineer"] --> Intent["🎯 1. SPEC & Intent Afklaring\n(spec.md / CONTEXT.md / grill-me)"]
+        Intent --> Appr["📋 2. Menneskelig Godkendelse\n(Gennemgå og frys specifikationen)"]
     end
 
     subgraph 2. Uncle Bob TDD-Cyklus
         Appr --> Red["🔴 3. RED: Skriv fejlet test\n(Bevis at testen rent faktisk fejler)"]
         Red --> Green["🟢 4. GREEN: Minimal kode\n(Få testen til at passere)"]
-        Green --> Refactor["🔵 5. REFACTOR: Oprydning\n(Bevar grøn status)"]
+        Green --> Refactor["🔵 5. REFACTOR: Oprydning\n(Bevar frosne assertions)"]
     end
 
     subgraph 3. Multi-Layer Gauntlet
@@ -64,15 +65,34 @@ flowchart TD
 
         Layer5 -->|Alle lag PASSED| Report["📋 6. Lokal Verifikationsrapport\n(Canonical Workspace Digest + Unsigned Report)"]
         Report --> Ledger["📄 verification-report.json & evidence.md"]
-        Ledger -. CI Push / Release .-> Attest["🔏 7. Sigstore OIDC Attestation\n(actions/attest keyless DSSE bundle)"]
+    end
+
+    subgraph 5. To-Akset Code Review & Audit
+        Ledger --> Handoff1["🏁 Session Handoff\n(Frisk kontekstvindue)"]
+        Handoff1 --> Role2["🧐 Rolle: Independent Code Reviewer"]
+        Role2 --> Review["⚖️ To-Akset Granskning (code-review skill)\n• Akse A: Standards (CODING_STANDARDS.md)\n• Akse B: Spec (spec.md / tasks/)"]
+    end
+
+    subgraph 6. Release & Operations
+        Review -->|Audit Godkendt| Handoff2["🏁 Session Handoff\n(Frisk kontekstvindue)"]
+        Handoff2 --> Role3["🚀 Rolle: Release & Operations Engineer"]
+        Role3 --> Attest["🔏 7. DSSE Attestering & Deployment\n(agent-gauntlet check-attestation &\nSigstore OIDC keyless DSSE bundle i CI)"]
     end
 ```
 
-### De 4 Nøglesøjler i Kredsløbet:
-1. **SPEC & Intent Afklaring:** Formålet fastlægges entydigt i `spec.md` forankret i domænets sprog (`CONTEXT.md`).
-2. **TDD Disciplin (Red $\to$ Green $\to$ Refactor):** Ingen kode skrives uden en forudgående, verificeret rød test.
-3. **Kompromisløst Gauntlet:** Koden skal overleve 5 uafhængige kontrol-lag inkl. syntetiske mutanter og tilfældige kanttilfælde.
-4. **Actionable Diagnostics & Two-Tier Evidens:** Hvis et lag fejler, modtager agenten præcise maskinlæsbare udbedringsforslag. Når alt er grønt, udregnes et deterministisk kildemanifest til lokal drift-kontrol, og der genereres en uafhængig Sigstore OIDC attestering i CI.
+### 👥 De 3 Ingeniør-Personaer & Livscyklus-FSM:
+
+For at undgå uendelige review-loops (*bikeshedding*) og bevare et skarpt kontekstvindue, anvender `agent-gauntlet` en deterministisk **Finite State Machine** (`infer_next_session_role()`):
+
+1. **`Senior Software Engineer (Feature Implementation & Testing)`**:
+   * Etablerer SPEC, forankrer domænebegreber i `CONTEXT.md` og driver TDD-cyklussen (`RED` $\to$ `GREEN` $\to$ `REFACTOR`).
+   * Forsegler den lokale evidens via `agent-gauntlet verify --task-id <id> --save`.
+2. **`Senior Software Engineer (Independent Code Review & Audit)`**:
+   * Starter i en ren, frisk session for at undgå bias og context rot.
+   * Udfører to-akset granskning langs **Akse A (Kodestandarder)** jf. `CODING_STANDARDS.md` og **Akse B (Krav & Invarianter)** jf. `spec.md` og `tasks/`.
+3. **`Release & Operations Engineer (Release Attestation & Deployment)`**:
+   * Tager over når alle opgaver og audits er godkendt.
+   * Validerer release-eligibility via `agent-gauntlet check-attestation`, opdaterer changelog, bumper version og klargør næste epokes opgaver i `tasks/`.
 
 ---
 
@@ -80,17 +100,20 @@ flowchart TD
 
 ```text
 agent-gauntlet/
-├── tasks/                        # Aktive og afsluttede opgaver (rene handoffs)
+├── tasks/                        # Aktive og afsluttede opgavepakker (OKF v0.2)
 ├── docs/adr/                     # Arkitekturbeslutninger (ADRs)
 ├── CONTEXT.md                    # Domæne-glossary (Aristoteles' genus et differentiam)
+├── CODING_STANDARDS.md           # Multi-stack kodestandarder (Python, TS, Rust, Go, Web)
+├── spec.md                       # Makro-specifikation & system-invarianter
+├── CHANGELOG.md                  # Versionshistorik & release notes (Keep a Changelog)
 ├── ROADMAP.md                    # Prioriteret feature-køreplan & udvidelser
 ├── gauntlet.toml                 # Deklarativ multi-stack konfiguration
-├── plugins/agent-gauntlet/       # Antigravity IDE plugin & skills (grill-me, diagnose)
+├── plugins/agent-gauntlet/       # Antigravity plugin & skills (old-coder, grill-me, code-review, diagnose)
 ├── src/agent_gauntlet/
 │   ├── __init__.py
 │   ├── cli.py                    # Udvidet CLI (init, verify, check-evidence, check-attestation, okf)
 │   └── features/
-│       ├── adapters/             # Vertikale feature-slices for AI-harnesses (Antigravity mv.)
+│       ├── adapters/             # Vertikale feature-slices for AI-harnesses (Antigravity, Claude mv.)
 │       ├── config/               # gauntlet.toml / gauntlet.json loader & schema
 │       ├── diagnostics/          # Actionable LLM feedback engine & extractors
 │       ├── evidence/             # Canonical manifest, verification report, attestation & trust policy
@@ -118,7 +141,7 @@ pip install -e ~/Github/agent-gauntlet
 ---
 
 ### 2. Initialiser i dit Projekt (⭐ Anbefalet Standard & Best Practice)
-For at sikre at regler ([.agents/AGENTS.md](.agents/AGENTS.md)), begreber ([CONTEXT.md](CONTEXT.md)), Architecture Decision Records (ADR) ([docs/adr/](docs/adr/)) og verifikationskrav ([gauntlet.toml](gauntlet.toml) & [tasks/](tasks/)) **følger din kildekode i Git**, initialiseres `agent-gauntlet` direkte i projektets rodmappe:
+For at sikre at regler ([.agents/AGENTS.md](.agents/AGENTS.md)), kodestandarder ([CODING_STANDARDS.md](CODING_STANDARDS.md)), begreber ([CONTEXT.md](CONTEXT.md)), Architecture Decision Records (ADR) ([docs/adr/](docs/adr/)) og verifikationskrav ([gauntlet.toml](gauntlet.toml) & [tasks/](tasks/)) **følger din kildekode i Git**, initialiseres `agent-gauntlet` direkte i projektets rodmappe:
 
 ```bash
 cd /sti/til/dit-projekt
@@ -132,11 +155,13 @@ agent-gauntlet init
 |---|---|
 | [`gauntlet.toml`](gauntlet.toml) | Deklarativ konfiguration af linter, types, tests, mutation testing |
 | [`CONTEXT.md`](CONTEXT.md) | Domæne-glossary for projektet (Aristoteles' genus et differentiam) |
+| [`CODING_STANDARDS.md`](CODING_STANDARDS.md) | Multi-stack kodestandarder (Python, TypeScript, Rust, Go, CSS/Web) |
+| [`spec.md`](spec.md) | Makro-specifikation og system-invarianter |
 | [`tasks/001-bootstrap.md`](tasks/) | Opgavemappe til håndhævelse af task-kontrakter & acceptkriterier |
 | [`docs/adr/`](docs/adr/) | Architecture Decision Records (ADR) til projekt-specifikke beslutninger |
 | [`.agents/AGENTS.md`](.agents/AGENTS.md) | AI-agent retningslinjer, Response HUD og task-management protokoller |
 | [`.agents/hooks.json`](.agents/hooks.json) | Pre-Invocation Hook til Stop/Go gatekeeperen |
-| [`.agents/skills/`](.agents/skills/) | Bundled skills (`old-coder`, `grill-me`, `grill-with-docs`, `diagnose`) |
+| [`.agents/skills/`](.agents/skills/) | Bundled skills (`old-coder`, `grill-me`, `grill-with-docs`, `diagnose`, `code-review`) |
 
 > [!TIP]
 > **🛡️ Ikke-destruktiv garanti (Safety First):**  
@@ -297,7 +322,7 @@ sh tools/gauntlet.sh
 
 `agent-gauntlet` bygger videre på idéer og pionerarbejde inden for agentisk softwareudvikling:
 
-- **[Matt Pocock](https://github.com/mattpocock)**: For skabelsen af workflow-skills (`grill-me`, `grill-with-docs`, `diagnose` m.fl.), som muliggør sokratisk kravsafklaring og domæneforankring.
+- **[Matt Pocock](https://github.com/mattpocock)**: For skabelsen af workflow-skills (`grill-me`, `grill-with-docs`, `diagnose`, `code-review` m.fl.), som muliggør sokratisk kravsafklaring, domæneforankring og uafhængig to-akset kode-granskning.
 - **[amazingang (old-coder)](https://github.com/amazingang/old-coder)**: For formuleringen af Evidence-First filosofien (*"Trust moves from inspection to constraints"*).
 - **[Robert C. Martin ("Uncle Bob")](https://x.com/unclebobmartin/status/2080257779395154409)**: For den oprindelige idé om at erstatte manuel kodeinspektion med en uomgængelig *gauntlet* af tests, typer, mutation testing og invarianter.
 

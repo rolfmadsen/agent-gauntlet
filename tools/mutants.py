@@ -20,6 +20,8 @@ TARGET_GATEKEEPER = ROOT / "src/agent_gauntlet/features/hooks/gatekeeper.py"
 TARGET_SCAFFOLDER = ROOT / "src/agent_gauntlet/features/scaffold/scaffolder.py"
 TARGET_ADAPTER = ROOT / "src/agent_gauntlet/features/adapters/antigravity/adapter.py"
 TARGET_VALIDATOR = ROOT / "src/agent_gauntlet/features/adapters/antigravity/validator.py"
+TARGET_CURSOR_ADAPTER = ROOT / "src/agent_gauntlet/features/adapters/cursor/adapter.py"
+TARGET_CURSOR_VALIDATOR = ROOT / "src/agent_gauntlet/features/adapters/cursor/validator.py"
 TARGET_OKF_VALIDATOR = ROOT / "src/agent_gauntlet/features/okf/validator.py"
 TARGET_OKF_STAMPER = ROOT / "src/agent_gauntlet/features/okf/stamper.py"
 TARGET_CLI = ROOT / "src/agent_gauntlet/cli.py"
@@ -52,6 +54,7 @@ HOOK_TESTS = [
 
 ADAPTER_TESTS = [
     "tests.features.test_adapter_antigravity",
+    "tests.features.test_adapter_cursor",
     "tests.features.test_adapters_base",
 ]
 
@@ -294,6 +297,49 @@ MUTANTS = [
         "                    if False:",
         ADAPTER_TESTS,
     ),
+    # --- cursor adapter mutants ---
+    (
+        TARGET_CURSOR_ADAPTER,
+        "CUR-AD-M1 normalize_tool_call invert command check",
+        '        if tool_name in (\n            "run_terminal_command",\n            "run_command",\n            "terminal",\n            "bash",\n            "execute_command",\n            "command",\n        ):',
+        "        if False:",
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_CURSOR_ADAPTER,
+        "CUR-AD-M2 evaluate_invocation fail-open decision",
+        "            decision=decision.decision,",
+        '            decision="allow",',
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_CURSOR_ADAPTER,
+        "CUR-AD-M3 evaluate_invocation fail-open allowed flag",
+        "            allowed=decision.allowed,",
+        "            allowed=True,",
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_CURSOR_VALIDATOR,
+        "CUR-VAL-M1 validator ignore missing rule files",
+        "        if not rule_files:",
+        "        if False:",
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_CURSOR_VALIDATOR,
+        "CUR-VAL-M2 validator ignore missing alwaysApply",
+        "        if always_apply is None:",
+        "        if False:",
+        ADAPTER_TESTS,
+    ),
+    (
+        TARGET_SCAFFOLDER,
+        "CUR-SCF-M1 ignore cursor harness scaffolding",
+        '        if harness == "cursor":',
+        "        if False:",
+        ADAPTER_TESTS,
+    ),
     # --- cli & verifier mutants ---
     (
         TARGET_VERIFIER,
@@ -489,6 +535,8 @@ def main() -> int:
         TARGET_SCAFFOLDER: TARGET_SCAFFOLDER.read_text(),
         TARGET_ADAPTER: TARGET_ADAPTER.read_text(),
         TARGET_VALIDATOR: TARGET_VALIDATOR.read_text(),
+        TARGET_CURSOR_ADAPTER: TARGET_CURSOR_ADAPTER.read_text(),
+        TARGET_CURSOR_VALIDATOR: TARGET_CURSOR_VALIDATOR.read_text(),
         TARGET_OKF_VALIDATOR: TARGET_OKF_VALIDATOR.read_text(),
         TARGET_OKF_STAMPER: TARGET_OKF_STAMPER.read_text(),
         TARGET_CLI: TARGET_CLI.read_text(),

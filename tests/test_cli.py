@@ -321,6 +321,55 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertEqual(data["verdict"], "PARTIAL")
             self.assertIn("diagnostic_reports", data)
 
+    def test_verify_diagnostics_json_includes_role_and_handoff_prompt(self) -> None:
+        """Scenario CLI-05-ROLE: verify with --diagnostics-json includes next_role and handoff_prompt on pass."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            # Remove bootstrap task so only done task exists
+            if (ws / "tasks/001-bootstrap.md").exists():
+                (ws / "tasks/001-bootstrap.md").unlink()
+            task_file = ws / "tasks/001-done-task.md"
+            task_file.write_text(
+                "---\n"
+                "type: Task Package\n"
+                "title: Done Task\n"
+                "status: draft\n"
+                "---\n"
+                "# Task 001: Done Task\n- [x] All resolved\n",
+                encoding="utf-8",
+            )
+            tests_dir = ws / "tests"
+            tests_dir.mkdir(parents=True, exist_ok=True)
+            (tests_dir / "test_sample.py").write_text(
+                "import unittest\nclass TestS(unittest.TestCase):\n    def test_ok(self): pass\n",
+                encoding="utf-8",
+            )
+            (ws / "gauntlet.toml").write_text(
+                f'stack = "python"\n[[layers]]\nname = "unit"\ncommand = ["{sys.executable}", "-m", "unittest", "discover", "tests"]\noptional = false\n',
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(
+                    [
+                        "verify",
+                        "-w",
+                        str(ws),
+                        "--task-id",
+                        "001-done-task",
+                        "--diagnostics-json",
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            data = json.loads(stdout.getvalue())
+            self.assertEqual(data["verdict"], "PASSED")
+            self.assertIn("next_role", data)
+            self.assertIn("handoff_prompt", data)
+            self.assertEqual(
+                data["next_role"], "Senior Software Engineer (Independent Code Review & Audit)"
+            )
+
     def test_verify_includes_session_handoff_prompt(self) -> None:
         """Scenario CLI-06: Full passing verify prints a clean Session Handoff prompt block."""
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -365,7 +414,8 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertEqual(exit_code, 0)
             output = stdout.getvalue()
             self.assertIn("SESSION HANDOFF", output.upper())
-            self.assertIn("CONTEXT.md", output)
+            self.assertIn("Næste Rolle", output)
+            self.assertIn("Senior Software Engineer", output)
 
     def test_verify_saves_unsigned_report_and_preserves_task_files(self) -> None:
         """Scenario CLI-07: verify writes unsigned verification-report.json and does not mutate task files."""

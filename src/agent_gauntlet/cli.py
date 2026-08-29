@@ -9,7 +9,6 @@ from pathlib import Path
 
 from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES, get_adapter
 from agent_gauntlet.features.evidence.source_state import compute_source_state
-from agent_gauntlet.features.evidence.task_resolver import resolve_task_contract
 from agent_gauntlet.features.evidence.verifier import (
     execute_check_attestation,
     execute_check_evidence,
@@ -20,10 +19,18 @@ from agent_gauntlet.features.okf.validator import validate_okf_workspace
 from agent_gauntlet.features.scaffold.scaffolder import ProjectScaffolder
 from agent_gauntlet.features.stacks.profiles import SUPPORTED_STACKS
 
-_resolve_task_contract = resolve_task_contract
-
 
 def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> int:
+    """Dispatches scaffold/init operations through ProjectScaffolder.
+
+    Args:
+        args: Parsed CLI namespace arguments.
+        workspace: Resolved workspace root path.
+        op: Operation name ('init' or 'scaffold').
+
+    Returns:
+        Exit code: 0 on success.
+    """
     result = ProjectScaffolder().scaffold(
         workspace=workspace,
         stack=args.stack,
@@ -51,6 +58,15 @@ def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> i
 
 
 def _handle_validate_plugin(args: argparse.Namespace, workspace: Path) -> int:
+    """Dispatches plugin validation against harness adapter.
+
+    Args:
+        args: Parsed CLI namespace arguments.
+        workspace: Resolved workspace root path.
+
+    Returns:
+        Exit code: 0 if valid, 1 if invalid.
+    """
     target = Path(args.plugin_dir)
     target_dir = target if target.is_absolute() else (workspace / target).resolve()
     res = get_adapter(args.harness).validate_plugin(target_dir)
@@ -58,17 +74,13 @@ def _handle_validate_plugin(args: argparse.Namespace, workspace: Path) -> int:
         issues = [
             {"severity": i.severity.value, "path": i.path, "message": i.message} for i in res.issues
         ]
-        print(
-            json.dumps(
-                {
-                    "valid": res.valid,
-                    "plugin_dir": str(target_dir),
-                    "harness": args.harness,
-                    "issues": issues,
-                },
-                indent=2,
-            )
-        )
+        payload = {
+            "valid": res.valid,
+            "plugin_dir": str(target_dir),
+            "harness": args.harness,
+            "issues": issues,
+        }
+        print(json.dumps(payload, indent=2))
     else:
         status_label = "VALID" if res.valid else "INVALID"
         print(f"[{status_label}] Plugin validation for '{target_dir}' ({args.harness}):")
@@ -81,6 +93,15 @@ def _handle_validate_plugin(args: argparse.Namespace, workspace: Path) -> int:
 
 
 def _handle_okf(args: argparse.Namespace, workspace: Path) -> int:
+    """Dispatches OKF frontmatter validation and stamping subcommands.
+
+    Args:
+        args: Parsed CLI namespace arguments.
+        workspace: Resolved workspace root path.
+
+    Returns:
+        Exit code: 0 on success, 1 on validation error, 2 on unknown subcommand.
+    """
     if args.okf_subcommand == "validate":
         rep = validate_okf_workspace(workspace, target_paths=args.paths if args.paths else None)
         if args.json:
@@ -94,17 +115,13 @@ def _handle_okf(args: argparse.Namespace, workspace: Path) -> int:
                 }
                 for f in rep.findings
             ]
-            print(
-                json.dumps(
-                    {
-                        "valid": rep.valid,
-                        "total_files": rep.total_files,
-                        "valid_files": rep.valid_files,
-                        "findings": findings,
-                    },
-                    indent=2,
-                )
-            )
+            payload = {
+                "valid": rep.valid,
+                "total_files": rep.total_files,
+                "valid_files": rep.valid_files,
+                "findings": findings,
+            }
+            print(json.dumps(payload, indent=2))
         else:
             tag = "[VALID]" if rep.valid else "[INVALID]"
             print(
@@ -151,7 +168,11 @@ def _handle_okf(args: argparse.Namespace, workspace: Path) -> int:
 
 
 def build_cli_parser() -> argparse.ArgumentParser:
-    """Build and configure the CLI ArgumentParser."""
+    """Build and configure the CLI ArgumentParser.
+
+    Returns:
+        Configured ArgumentParser with all subcommands and options.
+    """
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("-w", "--workspace", default=".", help="Workspace root path")
     common.add_argument("--json", action="store_true", help="Output results as JSON")
@@ -216,7 +237,14 @@ def build_cli_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for agent-gauntlet CLI."""
+    """Entry point for agent-gauntlet CLI.
+
+    Args:
+        argv: Optional list of argument strings. Defaults to sys.argv[1:].
+
+    Returns:
+        Exit code: 0 on success, non-zero on failure or verification defect.
+    """
     args = build_cli_parser().parse_args(argv)
     workspace = Path(args.workspace).resolve()
 

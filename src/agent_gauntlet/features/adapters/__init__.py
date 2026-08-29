@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from agent_gauntlet.features.adapters.antigravity import AntigravityAdapter
+from agent_gauntlet.features.adapters.cursor import CursorAdapter
 from agent_gauntlet.features.adapters.models import (
     AdapterHookVerdict,
     AdapterValidationResult,
@@ -15,6 +16,7 @@ from agent_gauntlet.features.adapters.models import (
 
 SUPPORTED_HARNESSES: list[str] = [
     "antigravity",
+    "cursor",
 ]
 
 
@@ -23,6 +25,8 @@ def get_adapter(harness_name: str) -> HarnessAdapterProtocol:
     normalized = harness_name.strip().lower()
     if normalized == "antigravity":
         return AntigravityAdapter()
+    if normalized == "cursor":
+        return CursorAdapter()
 
     raise ValueError(
         f"Unsupported harness '{harness_name}'. Supported harnesses: {', '.join(SUPPORTED_HARNESSES)}"
@@ -34,6 +38,7 @@ __all__ = [
     "AdapterHookVerdict",
     "AdapterValidationResult",
     "AntigravityAdapter",
+    "CursorAdapter",
     "HarnessAdapterProtocol",
     "NormalizedToolCall",
     "ToolActionType",

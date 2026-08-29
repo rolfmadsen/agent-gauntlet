@@ -13,7 +13,14 @@ from agent_gauntlet.features.tasks.models import (
 
 
 def parse_task_status(content: str) -> TaskStatus:
-    """Extract and normalize task status from task markdown content."""
+    """Extract and normalize task status from task markdown content.
+
+    Args:
+        content: Markdown string content of the task file.
+
+    Returns:
+        The resolved TaskStatus enum member.
+    """
     status_match = re.search(r"\*\*Status\*\*:\s*`?([A-Za-z0-9_-]+)`?", content, re.IGNORECASE)
     if status_match:
         return TaskStatus.from_string(status_match.group(1))
@@ -31,10 +38,16 @@ def parse_task_status(content: str) -> TaskStatus:
 
 
 def is_task_active(content: str) -> bool:
-    """
-    Check if task file content represents an actively approved task.
+    """Check if task file content represents an actively approved task.
+
     Strictly requires an explicit allowed status (ACTIVE, IN_PROGRESS, WIP, TODO, REOPENED)
     AND non-empty acceptance criteria. DRAFT, REJECTED, or missing status are NEVER active.
+
+    Args:
+        content: Markdown string content of the task file.
+
+    Returns:
+        True if the task is actively approved with criteria, False otherwise.
     """
     status = parse_task_status(content)
     if status not in ALLOWED_ACTIVE_STATUSES:
@@ -45,7 +58,14 @@ def is_task_active(content: str) -> bool:
 
 
 def has_active_task(workspace: Path) -> bool:
-    """Determine whether the workspace has at least one active task in tasks/."""
+    """Determine whether the workspace has at least one active task in tasks/.
+
+    Args:
+        workspace: Path to workspace root directory.
+
+    Returns:
+        True if an active task exists in tasks/, False otherwise.
+    """
     tasks_dir = workspace / "tasks"
     if not tasks_dir.is_dir():
         return False
@@ -62,7 +82,14 @@ def has_active_task(workspace: Path) -> bool:
 
 
 def parse_task_file(path: Path) -> TaskPackageInfo:
-    """Parse complete TaskPackageInfo from a markdown task file."""
+    """Parse complete TaskPackageInfo from a markdown task file.
+
+    Args:
+        path: Path to the task markdown file.
+
+    Returns:
+        TaskPackageInfo containing status, title, criteria, and invariants.
+    """
     content = path.read_text(encoding="utf-8")
     status = parse_task_status(content)
     task_id = path.stem
@@ -113,9 +140,14 @@ def parse_task_file(path: Path) -> TaskPackageInfo:
 def resolve_task_contract(
     workspace: Path, explicit_task_id: str = ""
 ) -> tuple[str, str, list[str], list[str]]:
-    """
-    Finds and parses task contract from tasks/.
-    Returns (task_id, task_title, acceptance_criteria, unresolved_criteria).
+    """Finds and parses task contract from tasks/.
+
+    Args:
+        workspace: Path to workspace root directory.
+        explicit_task_id: Optional explicit task ID to search for.
+
+    Returns:
+        A tuple of (task_id, task_title, acceptance_criteria, unresolved_criteria).
     """
     tasks_dir = workspace / "tasks"
     if not tasks_dir.is_dir():

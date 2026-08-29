@@ -163,5 +163,123 @@ class TestVerificationReportEngine(unittest.TestCase):
         self.assertEqual(classification, "LEGACY_UNATTESTED")
 
 
+class TestRoleAwareHandoffEngine(unittest.TestCase):
+    """Black-box acceptance tests for infer_next_session_role and role-aware handoffs."""
+
+    def setUp(self) -> None:
+        import tempfile
+
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.workspace = Path(self.temp_dir.name)
+        self.tasks_dir = self.workspace / "tasks"
+        self.tasks_dir.mkdir(parents=True)
+
+    def tearDown(self) -> None:
+        self.temp_dir.cleanup()
+
+    def test_infer_role_when_next_task_is_draft(self) -> None:
+        """Scenario: Next task is DRAFT -> Returns Senior Software Engineer (System Architecture & Requirements)."""
+        from agent_gauntlet.features.evidence.verifier import infer_next_session_role
+
+        (self.tasks_dir / "001-completed.md").write_text(
+            "# Task 001\n**Status**: `DONE`\n- [x] Done", encoding="utf-8"
+        )
+        (self.tasks_dir / "002-new-idea.md").write_text(
+            "# Task 002\n**Status**: `DRAFT`\n## 🎯 Formål\nNoget nyt", encoding="utf-8"
+        )
+
+        next_role, next_task_id, prompt = infer_next_session_role(self.workspace, "001-completed")
+
+        self.assertEqual(next_role, "Senior Software Engineer (System Architecture & Requirements)")
+        self.assertEqual(next_task_id, "002-new-idea")
+        self.assertIn("System Architecture & Requirements", prompt)
+        self.assertIn("tasks/002-new-idea.md", prompt)
+        self.assertIn("spec.md", prompt)
+        self.assertNotIn("old-coder", prompt.lower())
+
+    def test_infer_role_when_next_task_is_active(self) -> None:
+        """Scenario: Next task is ACTIVE with [ ] -> Returns Senior Software Engineer (Feature Implementation & Testing)."""
+        from agent_gauntlet.features.evidence.verifier import infer_next_session_role
+
+        (self.tasks_dir / "001-completed.md").write_text(
+            "# Task 001\n**Status**: `DONE`\n- [x] Done", encoding="utf-8"
+        )
+        (self.tasks_dir / "002-feature.md").write_text(
+            "# Task 002\n**Status**: `ACTIVE`\n- [ ] Implement feature\n- [ ] Add tests",
+            encoding="utf-8",
+        )
+
+        next_role, next_task_id, prompt = infer_next_session_role(self.workspace, "001-completed")
+
+        self.assertEqual(next_role, "Senior Software Engineer (Feature Implementation & Testing)")
+        self.assertEqual(next_task_id, "002-feature")
+        self.assertIn("Feature Implementation & Testing", prompt)
+        self.assertIn("tasks/002-feature.md", prompt)
+        self.assertIn("Test-Driven Development", prompt)
+        self.assertNotIn("old-coder", prompt.lower())
+
+    def test_infer_role_when_all_tasks_are_done(self) -> None:
+        """Scenario: All feature tasks are DONE (pre-audit) -> Returns Senior Software Engineer (Independent Code Review & Audit)."""
+        from agent_gauntlet.features.evidence.verifier import infer_next_session_role
+
+        (self.tasks_dir / "001-first.md").write_text(
+            "# Task 001\n**Status**: `DONE`\n- [x] Done", encoding="utf-8"
+        )
+        (self.tasks_dir / "002-second.md").write_text(
+            "# Task 002\n**Status**: `DONE`\n- [x] Done", encoding="utf-8"
+        )
+
+        next_role, next_task_id, prompt = infer_next_session_role(self.workspace, "002-second")
+
+        self.assertEqual(next_role, "Senior Software Engineer (Independent Code Review & Audit)")
+        self.assertEqual(next_task_id, "")
+        self.assertIn("Independent Code Review & Audit", prompt)
+        self.assertIn("code-review", prompt.lower())
+        self.assertNotIn("old-coder", prompt.lower())
+
+    def test_infer_role_when_audit_task_is_completed(self) -> None:
+        """Scenario: Audit/review task is completed -> Returns Release & Operations Engineer (Release Attestation & Deployment)."""
+        from agent_gauntlet.features.evidence.verifier import infer_next_session_role
+
+        (self.tasks_dir / "001-feature.md").write_text(
+            "# Task 001\n**Status**: `DONE`\n- [x] Feature done", encoding="utf-8"
+        )
+        (self.tasks_dir / "002-code-review-audit.md").write_text(
+            "# Task 002: Code Review Audit\n**Status**: `DONE`\n- [x] Audit remediated",
+            encoding="utf-8",
+        )
+
+        next_role, next_task_id, prompt = infer_next_session_role(
+            self.workspace, "002-code-review-audit"
+        )
+
+        self.assertEqual(
+            next_role, "Release & Operations Engineer (Release Attestation & Deployment)"
+        )
+        self.assertEqual(next_task_id, "")
+        self.assertIn("Release & Operations Engineer", prompt)
+        self.assertIn("check-attestation", prompt)
+        self.assertIn("ROADMAP.md", prompt)
+
+    def test_infer_role_when_current_task_is_audit_remediation(self) -> None:
+        """Scenario: current_task_id is an audit remediation task and all tasks are DONE -> Returns Release role."""
+        from agent_gauntlet.features.evidence.verifier import infer_next_session_role
+
+        (self.tasks_dir / "028-code-review-audit-remediation.md").write_text(
+            "# Task 028: Code Review Remediation\n**Status**: `DONE`\n- [x] All done",
+            encoding="utf-8",
+        )
+
+        next_role, next_task_id, prompt = infer_next_session_role(
+            self.workspace, "028-code-review-audit-remediation"
+        )
+
+        self.assertEqual(
+            next_role, "Release & Operations Engineer (Release Attestation & Deployment)"
+        )
+        self.assertEqual(next_task_id, "")
+        self.assertIn("Release & Operations Engineer", prompt)
+
+
 if __name__ == "__main__":
     unittest.main()

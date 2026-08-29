@@ -4,48 +4,44 @@
   "execution_origin": "LOCAL",
   "verdict": "PASSED",
   "task_contract": {
-    "task_id": "023-p0-audit-remediation-and-cryptographic-attestation",
-    "task_title": "Task 023: P0 Audit Remediation, Cryptographic Sigstore DSSE & Official Hook Schema",
-    "task_digest": "d0cdbcd88df207a5073db6b73c991fca3f222e7f47337d00da6ab0cdacb1e088",
+    "task_id": "030-cursor-ide-adapter-and-rules-bridge",
+    "task_title": "Task 030: Cursor IDE Adapter and Rules Bridge",
+    "task_digest": "a432995b1fc12219fc3f5139960b9fe94e485653bb763b4d68f016ab09f42a69",
     "acceptance_criteria": [
-      "1. En bundle uden DSSE/cert/timestamps eller med kun opdigtet `status: VALID` afvises som `INVALID`.",
-      "2. En lokalt selvsigneret dummy-bundle afvises under strict trust policy.",
-      "3. CI `attest`-jobbet validerer uafh\u00e6ngigt hele rapportkontrakten (non-empty criteria, non-empty checks, alle obligatoriske PASSED med exit code 0, og alle digests) mod `${{ github.sha }}` f\u00f8r signering.",
-      "4. Nul kriterier, nul checks, manglende digests og task-drift afvises fail-closed gennem CLI- og verifier-entrypoints.",
-      "5. Den legitime CI-rapport kan opn\u00e5 release eligibility via verificeret attestation uden selvangivet `CI_PROTECTED`-felt i rapporten.",
-      "6. Gatekeeperens dokumenterede rolle svarer til dens faktiske kooperative guardrail-model, og `is_task_active` afviser `DRAFT`, `REJECTED` og status-l\u00f8se tasks.",
-      "7. Task-parsing og status-semantik er udtrukket til en selvst\u00e6ndig `features/tasks/` modul uden cirkul\u00e6r afh\u00e6ngighed til gatekeeper.",
-      "8. `AntigravityPluginValidator` accepterer `matcher: \"*\"` og `matcher: \"\"` som gyldige match-all filtre, validerer non-empty root og events, og tjekker positivt integer timeout.",
-      "9. `src/agent_gauntlet/cli.py` er refaktoreret til ren dispatch/orkestrering (< 250 linjer).",
-      "10. `verification-report.json` serialiserer diagnostic findings, `tools/gauntlet.sh` k\u00f8rer `ruff format --check .`, og 0 Pyright/Ruff fejl med 46/46 kuraterede mutanter killed."
+      "Oprette `src/agent_gauntlet/features/adapters/cursor/` vertical slice modul med `CursorAdapter` og regel-skabeloner.",
+      "Implementere scaffolding af `.cursor/rules/agent-gauntlet.mdc` med `description`, `globs: \"*\"` og `alwaysApply: true`, der peger autoritativt p\u00e5 `.agents/AGENTS.md`.",
+      "Udvide `scaffolder.py` og CLI `--harness cursor` flag til at generere Cursor konfiguration deterministisk.",
+      "Tilf\u00f8je sort-boks accepttests i `tests/features/test_adapter_cursor.py` og `tests/test_cli.py`.",
+      "Tilf\u00f8je mutation testing i `tools/mutants.py` til at beskytte Cursor-adapter logik (100% kill-rate).",
+      "`agent-gauntlet okf validate` godkender alle oprettede og modificerede filer."
     ],
     "unresolved_criteria": []
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "5f8ddebc01d12417850a073baffe326362aff8fc06010def116d27cfc6c8cad2",
-    "source_manifest_digest_pre": "2e9740e881adff2e9014f349288b724ba8015153285261dcb725cf2b78b1c56a",
-    "source_manifest_digest_post": "2e9740e881adff2e9014f349288b724ba8015153285261dcb725cf2b78b1c56a",
-    "config_digest": "aff95d54b35fdde4e4cc8ea1a676c9359cf1da0e04aab74c823b51b88b3d8958",
-    "task_digest": "d0cdbcd88df207a5073db6b73c991fca3f222e7f47337d00da6ab0cdacb1e088",
-    "policy_digest": "b8ae5f257b4e55c6b0088e8aa36f9f1456437b86df0841e08bbbb8af91848f14",
+    "source_content_digest": "c0d17b6095738ad740ac084e7046ab057684b8daf793a5a5a15d2b435cd0592f",
+    "source_manifest_digest_pre": "54773f10b1f072f1e58bcc2fafd6a8181db5e133b120afa0676cb134308fd9c7",
+    "source_manifest_digest_post": "54773f10b1f072f1e58bcc2fafd6a8181db5e133b120afa0676cb134308fd9c7",
+    "config_digest": "51ec26e22eaa2addbe080205a2b8b26842492f9a8cbd37018389eb81bc641a8e",
+    "task_digest": "a432995b1fc12219fc3f5139960b9fe94e485653bb763b4d68f016ab09f42a69",
+    "policy_digest": "d10dc637ffc7b049786076b46013e6eba7492c5e1be282aa7330b06409b7d8ff",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
-    "included_files_count": 86,
+    "included_files_count": 91,
     "vcs": {
       "type": "git",
-      "head": "af3e78f",
-      "commit": "c59c885",
+      "head": "61302c0",
+      "commit": "61302c0",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-27T20:50:03Z",
-    "finished_at": "2026-08-27T20:50:29Z",
-    "total_duration_seconds": 26.153,
+    "started_at": "2026-08-29T11:06:30Z",
+    "finished_at": "2026-08-29T11:06:58Z",
+    "total_duration_seconds": 27.554,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
-      "gauntlet_version": "0.2.0"
+      "gauntlet_version": "0.3.0"
     }
   },
   "checks": [
@@ -53,7 +49,7 @@
       "name": "lint",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.02,
+      "duration_seconds": 0.036,
       "optional": true,
       "passed": true,
       "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
@@ -62,7 +58,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.28,
+      "duration_seconds": 1.314,
       "optional": true,
       "passed": true,
       "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
@@ -71,28 +67,28 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.077,
+      "duration_seconds": 1.204,
       "optional": false,
       "passed": true,
-      "log_digest": "94c7f57fbe65b38fa8280e5a6120986c3ff4944cc2b6ef899cf151012f3fae61"
+      "log_digest": "f6228c6f874836de010cb66082c11d132b2514a5486e94d754196871329268a7"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.303,
+      "duration_seconds": 0.3,
       "optional": true,
       "passed": true,
-      "log_digest": "7d8783e9e49dea83ac5b0123f0ca12b0ae68ab486b218ef8c7d3277420b4b9c7"
+      "log_digest": "6f072cc3cb3d73ce47ef168ca96caf5e6924a90a035f777f7c6a7e02caf71816"
     },
     {
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 23.44,
+      "duration_seconds": 24.663,
       "optional": true,
       "passed": true,
-      "log_digest": "2dd3a56b01138f567189d4446c9d487e49cd5b847d19e1424b221cce8a76b667"
+      "log_digest": "b9edc3a73155b512388db5bc252a3a87231331d1c5d77b93bacb151785c42fc9"
     }
   ],
   "diagnostics": []
