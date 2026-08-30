@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.5.0] - 2026-08-30
+
+### 🚀 Added
+- **Plugin Architecture & Recursive Template Scaffolding (`Task 040`)**:
+  - Complete plugin template tree with full skill references under `.agents/plugins/agent-gauntlet/skills/`.
+  - Authoritative reference guides bundled: `verifier.md`, `templates.md`, `gauntlet.md`, and `verifier-case-study.md` (> 200 bytes each).
+  - Recursive template initialization in `agent-gauntlet init` preventing stray root `task.md` creation and standardizing on `tasks/001-bootstrap.md`.
+  - Added authoritative `[paths]` manifest to `gauntlet.toml` schema and template generator.
+- **Read-Only Workspace Doctor & AI Migration Scanner (`agent-gauntlet doctor`)**:
+  - Read-only diagnostics inspecting missing configuration, missing skill references, truncated stubs, shadow specifications, and duplicate skills.
+  - Automated generation of a copy-paste AI Migration Prompt with remediation bash scripts.
+  - Seamless Node.js CLI integration in `@agent-gauntlet/cli` forwarding to Python doctor engine.
+
+---
+
 ## [0.4.0] - 2026-08-30
 
 ### 🚀 Added
