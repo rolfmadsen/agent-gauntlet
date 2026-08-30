@@ -167,7 +167,7 @@ jobs:
       - name: Publish NPM Package (@agent-gauntlet/cli)
         working-directory: ./packages/agent-gauntlet
         run: |
-          npm publish --access public --provenance || echo "Notice: Package publish skipped if already published or token pending."
+          npm publish --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
