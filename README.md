@@ -72,19 +72,19 @@
 
 ```mermaid
 flowchart TD
-    subgraph 1. Forberedelse & Intent Afklaring
+    subgraph SG1 ["1. Forberedelse & Intent Afklaring"]
         Role1["👤 Rolle: Feature Engineer"] --> Intent["🎯 1. SPEC & Intent Afklaring\n(spec.md / CONTEXT.md / grill-me)"]
         Intent --> Appr["📋 2. Menneskelig Godkendelse\n(Gennemgå og frys specifikationen)"]
     end
 
-    subgraph 2. Uncle Bob TDD-Cyklus & WASM Supervisor
+    subgraph SG2 ["2. Uncle Bob TDD-Cyklus & WASM Supervisor"]
         Appr --> Sup["🛡️ Supervisor Session Start\n(Efemert Task-Certifikat & Event Log)"]
         Sup --> Red["🔴 3. RED: Skriv fejlet test\n(WASM evaluerer mutations-kald)"]
         Red --> Green["🟢 4. GREEN: Minimal kode\n(Få testen til at passere)"]
         Green --> Refactor["🔵 5. REFACTOR: Oprydning\n(Bevar frosne assertions)"]
     end
 
-    subgraph 3. Multi-Layer Gauntlet (Bubblewrap Sandbox)
+    subgraph SG3 ["3. Multi-Layer Gauntlet (Bubblewrap Sandbox)"]
         Refactor --> Layer1["🔍 Lag 1: Linter (Ruff / ESLint / Clippy)"]
         Layer1 --> Layer2["📐 Lag 2: Types (Pyright / Mypy / tsc)"]
         Layer2 --> Layer3["🧪 Lag 3: Unit Tests (pytest / unittest / vitest)"]
@@ -92,7 +92,7 @@ flowchart TD
         Layer4 --> Layer5["🧬 Lag 5: Mutations Gauntlet (mutants.py)"]
     end
 
-    subgraph 4. Feedback & Three-Tier Evidens
+    subgraph SG4 ["4. Feedback & Three-Tier Evidens"]
         Layer1 -. Fejl .-> Diag["⚙️ Actionable Diagnostics Engine\n(Parser fil, linje og udbedringsforslag)"]
         Layer2 -. Fejl .-> Diag
         Layer3 -. Fejl .-> Diag
@@ -105,13 +105,13 @@ flowchart TD
         Report --> Ledger["📄 verification-report.json & evidence.md"]
     end
 
-    subgraph 5. To-Akset Code Review & Audit
+    subgraph SG5 ["5. To-Akset Code Review & Audit"]
         Ledger --> Handoff1["🏁 Session Handoff\n(Frisk kontekstvindue)"]
         Handoff1 --> Role2["🧐 Rolle: Independent Code Reviewer"]
         Role2 --> Review["⚖️ To-Akset Granskning (code-review skill)\n• Akse A: Standards (CODING_STANDARDS.md)\n• Akse B: Spec (spec.md / tasks/)"]
     end
 
-    subgraph 6. Release & Operations
+    subgraph SG6 ["6. Release & Operations"]
         Review -->|Audit Godkendt| Handoff2["🏁 Session Handoff\n(Frisk kontekstvindue)"]
         Handoff2 --> Role3["🚀 Rolle: Release & Operations Engineer"]
         Role3 --> Attest["🔏 7. DSSE Attestering & Deployment\n(agent-gauntlet check-attestation &\nSigstore OIDC keyless DSSE bundle i CI)"]
