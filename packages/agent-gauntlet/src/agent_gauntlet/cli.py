@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES, get_adapter
+from agent_gauntlet.features.doctor.checker import DoctorChecker
 from agent_gauntlet.features.evidence.source_state import compute_source_state
 from agent_gauntlet.features.evidence.verifier import (
     execute_check_attestation,
@@ -24,7 +25,7 @@ from agent_gauntlet.features.stacks.profiles import SUPPORTED_STACKS
 
 def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> int:
     """Dispatches scaffold/init operations through ProjectScaffolder."""
-    result = ProjectScaffolder().scaffold(
+    res = ProjectScaffolder().scaffold(
         workspace=workspace,
         stack=args.stack,
         harness=args.harness,
@@ -32,11 +33,11 @@ def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> i
         force=args.force,
     )
     if args.json:
-        print(json.dumps(result.to_dict(), indent=2))
+        print(json.dumps(res.to_dict(), indent=2))
         return 0
     verb = "Initialized" if op == "init" else "Scaffolded"
-    print(f"{verb} agent-gauntlet for '{result.stack}' and '{result.harness}':")
-    for e in result.entries:
+    print(f"{verb} agent-gauntlet for '{res.stack}' and '{res.harness}':")
+    for e in res.entries:
         try:
             rel = Path(e.path).relative_to(workspace)
         except ValueError:
@@ -50,6 +51,13 @@ def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> i
     return 0
 
 
+def _handle_doctor(args: argparse.Namespace, workspace: Path) -> int:
+    """Dispatches workspace integrity and duplicate diagnostics."""
+    report = DoctorChecker().check_workspace(workspace)
+    print(json.dumps(report.to_dict(), indent=2) if args.json else report.format_terminal())
+    return 0 if not report.has_errors else 1
+
+
 def _handle_validate_plugin(args: argparse.Namespace, workspace: Path) -> int:
     """Dispatches plugin validation against harness adapter."""
     target = Path(args.plugin_dir)
@@ -59,13 +67,17 @@ def _handle_validate_plugin(args: argparse.Namespace, workspace: Path) -> int:
         issues = [
             {"severity": i.severity.value, "path": i.path, "message": i.message} for i in res.issues
         ]
-        payload = {
-            "valid": res.valid,
-            "plugin_dir": str(target_dir),
-            "harness": args.harness,
-            "issues": issues,
-        }
-        print(json.dumps(payload, indent=2))
+        print(
+            json.dumps(
+                {
+                    "valid": res.valid,
+                    "plugin_dir": str(target_dir),
+                    "harness": args.harness,
+                    "issues": issues,
+                },
+                indent=2,
+            )
+        )
     else:
         status_label = "VALID" if res.valid else "INVALID"
         print(f"[{status_label}] Plugin validation for '{target_dir}' ({args.harness}):")
@@ -108,16 +120,14 @@ def _handle_okf(args: argparse.Namespace, workspace: Path) -> int:
             print(
                 f"{tag} OKF v0.2 validation: {rep.valid_files}/{rep.total_files} files compliant."
             )
-            if rep.findings:
-                print("\nOKF Findings:")
-                for f in rep.findings:
-                    try:
-                        rel_p = Path(f.file_path).relative_to(workspace)
-                    except ValueError:
-                        rel_p = f.file_path
-                    print(f"  [!] {f.rule} in {rel_p}\n      Message: {f.message}")
-                    if f.remediation_hint:
-                        print(f"      Hint:    {f.remediation_hint}")
+            for f in rep.findings:
+                try:
+                    rel_p = Path(f.file_path).relative_to(workspace)
+                except ValueError:
+                    rel_p = f.file_path
+                print(f"  [!] {f.rule} in {rel_p}\n      Message: {f.message}")
+                if f.remediation_hint:
+                    print(f"      Hint:    {f.remediation_hint}")
         return 0 if rep.valid else 1
 
     if args.okf_subcommand == "stamp":
@@ -149,11 +159,7 @@ def _handle_okf(args: argparse.Namespace, workspace: Path) -> int:
 
 
 def build_cli_parser() -> argparse.ArgumentParser:
-    """Build and configure the CLI ArgumentParser.
-
-    Returns:
-        Configured ArgumentParser with all subcommands and options.
-    """
+    """Build and configure the CLI ArgumentParser."""
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("-w", "--workspace", default=".", help="Workspace root path")
     common.add_argument("--json", action="store_true", help="Output results as JSON")
@@ -170,10 +176,10 @@ def build_cli_parser() -> argparse.ArgumentParser:
         sp.add_argument("-f", "--format", choices=["toml", "json"], default="toml")
         sp.add_argument("--force", action="store_true")
 
+    subs.add_parser("doctor", parents=[common])
     val_p = subs.add_parser("validate-plugin", parents=[common])
     val_p.add_argument("-p", "--plugin-dir", default=".agents")
     val_p.add_argument("--harness", choices=SUPPORTED_HARNESSES, default="antigravity")
-
     subs.add_parser("tree-hash", parents=[common])
 
     chk_ev = subs.add_parser("check-evidence", parents=[common])
@@ -182,9 +188,7 @@ def build_cli_parser() -> argparse.ArgumentParser:
 
     chk_rel = subs.add_parser("check-release", parents=[common])
     chk_rel.add_argument(
-        "--allow-unreleased",
-        action="store_true",
-        help="Allow [Unreleased] changelog section in development",
+        "--allow-unreleased", action="store_true", help="Allow [Unreleased] changelog"
     )
 
     chk_att = subs.add_parser("check-attestation", parents=[common])
@@ -229,31 +233,23 @@ def build_cli_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Entry point for agent-gauntlet CLI.
-
-    Args:
-        argv: Optional list of argument strings. Defaults to sys.argv[1:].
-
-    Returns:
-        Exit code: 0 on success, non-zero on failure or verification defect.
-    """
+    """Entry point for agent-gauntlet CLI."""
     args = build_cli_parser().parse_args(argv)
     workspace = Path(args.workspace).resolve()
 
     if args.command in ("init", "scaffold"):
         return _handle_scaffold_op(args, workspace, args.command)
+    if args.command == "doctor":
+        return _handle_doctor(args, workspace)
     if args.command == "validate-plugin":
         return _handle_validate_plugin(args, workspace)
     if args.command == "tree-hash":
         head, commit, tree = compute_source_state(workspace)
-        if args.json:
-            print(
-                json.dumps(
-                    {"head": head, "source_commit": commit, "source_tree_hash": tree}, indent=2
-                )
-            )
-        else:
-            print(tree)
+        print(
+            json.dumps({"head": head, "source_commit": commit, "source_tree_hash": tree}, indent=2)
+            if args.json
+            else tree
+        )
         return 0
     if args.command == "check-evidence":
         return execute_check_evidence(

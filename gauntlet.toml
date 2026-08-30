@@ -4,6 +4,12 @@ save_evidence = true
 evidence_file = "evidence.json"
 evidence_markdown_file = "evidence.md"
 
+[paths]
+tasks_dir = "tasks"
+spec_file = "spec.md"
+context_file = "CONTEXT.md"
+coding_standards_file = "CODING_STANDARDS.md"
+
 [[layers]]
 name = "lint"
 command = ["python3", "-m", "ruff", "check", "."]

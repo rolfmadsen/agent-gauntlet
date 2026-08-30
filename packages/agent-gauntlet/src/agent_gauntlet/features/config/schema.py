@@ -40,6 +40,10 @@ class GauntletConfig:
     save_evidence: bool = True
     evidence_file: str = "evidence.json"
     evidence_markdown_file: str = "evidence.md"
+    tasks_dir: str = "tasks"
+    spec_file: str = "spec.md"
+    context_file: str = "CONTEXT.md"
+    coding_standards_file: str = "CODING_STANDARDS.md"
     layers: list[LayerConfig] = field(default_factory=list)
 
     def to_layer_definitions(self) -> list[LayerDefinition]:

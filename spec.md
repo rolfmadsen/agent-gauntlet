@@ -53,7 +53,8 @@ src/agent_gauntlet/
     │   ├── core/                 # Portabel forretningslogik, FSM, modeller, snapshot, seams
     │   ├── wasm/                 # WebAssembly component verifier & host integration
     │   └── platform/linux/       # Linux-specifik systemd, Unix socket, bubblewrap & key provider
-    └── okf/                      # OKF v0.2 metadata parsing, validation, tidsinvarianter & stempling
+    ├── okf/                      # OKF v0.2 metadata parsing, validation, tidsinvarianter & stempling
+    └── doctor/                   # Read-only integritets- og dublet-scanner samt AI migration prompt generator
 ```
 
 ---
@@ -77,3 +78,4 @@ src/agent_gauntlet/
 - [ ] Automated mechanical validation of OKF v0.2 frontmatter across all repository documentation via `agent-gauntlet okf validate`.
 - [ ] Automated mechanical validation of release readiness and documentation synchronization via `agent-gauntlet check-release`.
 - [ ] Automated mechanical validation of task specifications and business rules via `agent-gauntlet check-spec`.
+- [ ] Automated mechanical workspace integrity and orphan/duplicate diagnostics via `agent-gauntlet doctor`.

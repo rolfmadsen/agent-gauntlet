@@ -27,6 +27,23 @@ def _parse_dict_config(data: dict[str, Any], fallback_stack: str = "python") -> 
     evidence_file = str(data.get("evidence_file", "evidence.json"))
     evidence_markdown_file = str(data.get("evidence_markdown_file", "evidence.md"))
 
+    paths_data = data.get("paths", {})
+    if isinstance(paths_data, dict):
+        tasks_dir = str(paths_data.get("tasks_dir", data.get("tasks_dir", "tasks")))
+        spec_file = str(paths_data.get("spec_file", data.get("spec_file", "spec.md")))
+        context_file = str(paths_data.get("context_file", data.get("context_file", "CONTEXT.md")))
+        coding_standards_file = str(
+            paths_data.get(
+                "coding_standards_file",
+                data.get("coding_standards_file", "CODING_STANDARDS.md"),
+            )
+        )
+    else:
+        tasks_dir = str(data.get("tasks_dir", "tasks"))
+        spec_file = str(data.get("spec_file", "spec.md"))
+        context_file = str(data.get("context_file", "CONTEXT.md"))
+        coding_standards_file = str(data.get("coding_standards_file", "CODING_STANDARDS.md"))
+
     layers_raw = data.get("layers", [])
     layers: list[LayerConfig] = []
     for l_data in layers_raw:
@@ -57,6 +74,10 @@ def _parse_dict_config(data: dict[str, Any], fallback_stack: str = "python") -> 
         save_evidence=save_evidence,
         evidence_file=evidence_file,
         evidence_markdown_file=evidence_markdown_file,
+        tasks_dir=tasks_dir,
+        spec_file=spec_file,
+        context_file=context_file,
+        coding_standards_file=coding_standards_file,
         layers=layers,
     )
 
@@ -122,6 +143,12 @@ def generate_default_config_toml(stack: str) -> str:
         'evidence_file = "evidence.json"',
         'evidence_markdown_file = "evidence.md"',
         "",
+        "[paths]",
+        'tasks_dir = "tasks"',
+        'spec_file = "spec.md"',
+        'context_file = "CONTEXT.md"',
+        'coding_standards_file = "CODING_STANDARDS.md"',
+        "",
     ]
     for layer in layers:
         lines.append("[[layers]]")
@@ -143,6 +170,12 @@ def generate_default_config_json(stack: str) -> str:
         "save_evidence": True,
         "evidence_file": "evidence.json",
         "evidence_markdown_file": "evidence.md",
+        "paths": {
+            "tasks_dir": "tasks",
+            "spec_file": "spec.md",
+            "context_file": "CONTEXT.md",
+            "coding_standards_file": "CODING_STANDARDS.md",
+        },
         "layers": [
             {
                 "name": layer.name,

@@ -46,12 +46,34 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
         self.assertTrue((self.workspace / ".agents/AGENTS.md").is_file())
         self.assertTrue((self.workspace / ".agents/hooks.json").is_file())
 
-        # Skills
-        self.assertTrue((self.workspace / ".agents/skills/old-coder/SKILL.md").is_file())
-        self.assertTrue((self.workspace / ".agents/skills/grill-me/SKILL.md").is_file())
-        self.assertTrue((self.workspace / ".agents/skills/grill-with-docs/SKILL.md").is_file())
-        self.assertTrue((self.workspace / ".agents/skills/diagnose/SKILL.md").is_file())
-        self.assertTrue((self.workspace / ".agents/skills/code-review/SKILL.md").is_file())
+        # Plugin bundle and skills
+        self.assertTrue((self.workspace / ".agents/plugins/agent-gauntlet/plugin.json").is_file())
+        self.assertTrue((self.workspace / ".agents/plugins/agent-gauntlet/hooks.json").is_file())
+        self.assertTrue(
+            (self.workspace / ".agents/plugins/agent-gauntlet/skills/old-coder/SKILL.md").is_file()
+        )
+        self.assertTrue(
+            (
+                self.workspace
+                / ".agents/plugins/agent-gauntlet/skills/old-coder/references/verifier.md"
+            ).is_file()
+        )
+        self.assertTrue(
+            (self.workspace / ".agents/plugins/agent-gauntlet/skills/grill-me/SKILL.md").is_file()
+        )
+        self.assertTrue(
+            (
+                self.workspace / ".agents/plugins/agent-gauntlet/skills/grill-with-docs/SKILL.md"
+            ).is_file()
+        )
+        self.assertTrue(
+            (self.workspace / ".agents/plugins/agent-gauntlet/skills/diagnose/SKILL.md").is_file()
+        )
+        self.assertTrue(
+            (
+                self.workspace / ".agents/plugins/agent-gauntlet/skills/code-review/SKILL.md"
+            ).is_file()
+        )
 
         # All entries should have CREATED status
         for entry in result.entries:

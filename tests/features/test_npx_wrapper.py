@@ -73,8 +73,17 @@ class TestNpxWrapperAcceptance(unittest.TestCase):
             self.assertTrue((tmp_path / "gauntlet.toml").is_file())
             self.assertTrue((tmp_path / "spec.md").is_file())
             self.assertTrue((tmp_path / "CODING_STANDARDS.md").is_file())
-            self.assertTrue((tmp_path / ".agents" / "AGENTS.md").is_file())
-            self.assertTrue((tmp_path / ".agents" / "skills" / "old-coder" / "SKILL.md").is_file())
+            self.assertTrue(
+                (
+                    tmp_path
+                    / ".agents"
+                    / "plugins"
+                    / "agent-gauntlet"
+                    / "skills"
+                    / "old-coder"
+                    / "SKILL.md"
+                ).is_file()
+            )
 
     def test_wrapper_handles_missing_python(self) -> None:
         """Wrapper gracefully handles systems without Python on PATH."""

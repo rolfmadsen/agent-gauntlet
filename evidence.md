@@ -1,22 +1,40 @@
 # Verification Report
 
-**Task ID**: `031-windsurf-cascade-adapter-and-rules-bridge`  
-**Task Title**: Task 031: Windsurf Cascade Adapter and Rules Bridge  
+**Task ID**: `040-plugin-architecture-complete-template-copy-and-doctor`  
+**Task Title**: Task 040: Plugin Architecture, Complete Template Copy, and Doctor Command  
 **Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `97ff4d4f4ded84a5f28dd1292aeadf94c7907549da2938a2b957c7c78b60c341`  
-**Timestamp**: `2026-08-30T10:05:55Z`  
-**Head**: `73514e2`  
-**Commit**: `73514e2`  
+**Source Manifest Digest**: `208c23580b06f718f335823862c7e93765394144dad4f4fc56df8a73f8c8a7d7`  
+**Timestamp**: `2026-08-30T13:56:27Z`  
+**Head**: `7d305ac`  
+**Commit**: `95e8b6f`  
 
 ## Acceptance Criteria
 
-- [x] Oprette `src/agent_gauntlet/features/adapters/windsurf/` vertical slice modul med `WindsurfAdapter` og regel-skabeloner.
-- [x] Implementere scaffolding af `.windsurfrules` entrypoint-fil med autoritativ reference til `.agents/AGENTS.md`.
-- [x] Udvide `scaffolder.py` og CLI `--harness windsurf` flag.
-- [x] Tilføje sort-boks accepttests i `tests/features/test_adapter_windsurf.py` og `tests/test_cli.py`.
-- [x] Tilføje mutation testing i `tools/mutants.py` til at beskytte Windsurf-adapter logik (100% kill-rate).
-- [x] `agent-gauntlet okf validate` godkender alle oprettede og modificerede filer.
+- [x] **Template Distribution (`templates/plugin/` og `src/agent_gauntlet/templates/`)**:
+- [x] Etablere det fulde plugin template-træ med `plugin.json`, `hooks.json`, `policy.json`, og samtlige 5 skills (`old-coder`, `diagnose`, `grill-me`, `grill-with-docs`, `code-review`).
+- [x] Sikre at alle 4 reference-dokumenter i `old-coder/references/` er inkluderet med fuldt indhold.
+- [x] Sikre at `diagnose/scripts/` og `grill-with-docs/` referencefiler er inkluderet.
+- [x] Etablere standard rod-templates for `gauntlet.toml` med sti-manifest (`[paths]`).
+- [x] **Rekursiv Initiering (`src/agent_gauntlet/features/scaffold/scaffolder.py`)**:
+- [x] `ProjectScaffolder.scaffold()` kopierer det fulde template-træ rekursivt til `.agents/plugins/agent-gauntlet/`.
+- [x] Må IKKE oprette en rod-`task.md` eller `.agents/task.md` (opretter udelukkende `tasks/001-bootstrap.md`).
+- [x] Bevare eksisterende filer i målet, medmindre `force=True` er angivet.
+- [x] **Doctor Feature & AI Migration Prompt (`src/agent_gauntlet/features/doctor/`)**:
+- [x] Implementere `DoctorReport`, `DoctorFinding`, `FindingSeverity` og `DoctorChecker`.
+- [x] Validere integritet af nødvendige rod-filer (`spec.md`, `CONTEXT.md`, `gauntlet.toml`, `CODING_STANDARDS.md`).
+- [x] Validere at `tasks/` eksisterer og flagge stray filer som `task.md` i rod eller `.agents/`.
+- [x] Validere skill-integritet (fange manglende `references/verifier.md`, trunkerede `diagnose` stubs).
+- [x] Detektere dublet-skills mellem `.agents/skills/` og `.agents/plugins/agent-gauntlet/skills/`.
+- [x] Generere en formateret, handlingsorienteret AI migration prompt til automatisk sanering.
+- [x] **CLI Integration (`src/agent_gauntlet/cli.py` & Node bootstrapper)**:
+- [x] Tilføje `doctor` subcommand til Python CLI med `--workspace` og `--json` support.
+- [x] Overholde Slim Dispatcher Contract (`cli.py` under 300 linjer).
+- [x] Opdatere `bin/agent-gauntlet.js` til at viderestille `doctor` til Python-motoren når tilgængelig.
+- [x] **Gauntlet & Mutation Verification**:
+- [x] Tilføje testsuiter i `tests/features/test_doctor.py` og `tests/features/test_template_completeness.py`.
+- [x] Tilføje syntetiske mutanter for doctor og template copy i `tools/mutants.py`.
+- [x] Køre `sh tools/gauntlet.sh` med 100% grøn status og 100% kill-rate.
 
 ---
 
@@ -24,10 +42,10 @@
 
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
-| `lint` | `PASSED` | `0` | `0.034s` |
-| `types` | `PASSED` | `0` | `1.696s` |
-| `unit` | `PASSED` | `0` | `2.222s` |
-| `invariants` | `PASSED` | `0` | `0.303s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `30.117s` |
+| `lint` | `PASSED` | `0` | `0.038s` |
+| `types` | `PASSED` | `0` | `1.658s` |
+| `unit` | `PASSED` | `0` | `2.322s` |
+| `invariants` | `PASSED` | `0` | `0.299s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `27.175s` |
 
 ---

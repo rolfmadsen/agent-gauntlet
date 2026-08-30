@@ -650,8 +650,13 @@ pub fn load_config(path: &Path) -> Result<String, ConfigError> {
 class ProjectScaffolder:
     """Orchestrates non-destructive initialization of an agent-gauntlet workspace."""
 
-    def __init__(self, source_skills_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        source_skills_dir: Path | None = None,
+        source_plugin_dir: Path | None = None,
+    ) -> None:
         self.source_skills_dir = source_skills_dir
+        self.source_plugin_dir = source_plugin_dir
 
     def _write_file_safely(
         self,
@@ -678,6 +683,23 @@ class ProjectScaffolder:
         target_path.parent.mkdir(parents=True, exist_ok=True)
         target_path.write_text(content, encoding="utf-8")
         return ScaffoldEntry(path=rel_path, status=ScaffoldStatus.CREATED, description=description)
+
+    def _resolve_plugin_source(self) -> Path | None:
+        """Resolves the canonical source plugin directory for templates."""
+        if self.source_plugin_dir and self.source_plugin_dir.is_dir():
+            return self.source_plugin_dir
+
+        pkg_root = Path(__file__).resolve().parent.parent.parent
+        repo_root = pkg_root.parent.parent
+        candidates = [
+            pkg_root / "templates" / "plugin" / "agent-gauntlet",
+            repo_root / "templates" / "plugin" / "agent-gauntlet",
+            repo_root / "plugins" / "agent-gauntlet",
+        ]
+        for c in candidates:
+            if c.is_dir():
+                return c
+        return None
 
     def scaffold(
         self,
@@ -767,7 +789,7 @@ class ProjectScaffolder:
             )
         )
 
-        # 3. Tasks directory & initial task
+        # 3. Tasks directory & initial task (Strictly tasks/001-bootstrap.md, NO root task.md)
         result.entries.append(
             self._write_file_safely(
                 workspace / "tasks/001-bootstrap.md",
@@ -832,59 +854,26 @@ class ProjectScaffolder:
                 )
             )
 
-        # 6. Bundled skills in .agents/skills/
-        skills_map = {
-            ".agents/skills/old-coder/SKILL.md": (
-                SKILL_OLD_CODER,
-                "Evidence-first development skill",
-            ),
-            ".agents/skills/grill-me/SKILL.md": (
-                SKILL_GRILL_ME,
-                "Socratic interview sparring skill",
-            ),
-            ".agents/skills/grill-with-docs/SKILL.md": (
-                SKILL_GRILL_WITH_DOCS,
-                "Domain model & ADR sparring skill",
-            ),
-            ".agents/skills/diagnose/SKILL.md": (
-                SKILL_DIAGNOSE,
-                "Disciplined diagnosis loop skill",
-            ),
-            ".agents/skills/code-review/SKILL.md": (
-                SKILL_CODE_REVIEW,
-                "Two-axis code review skill",
-            ),
-        }
+        # 7. Complete recursive plugin copying to .agents/plugins/agent-gauntlet/
+        plugin_source = self._resolve_plugin_source()
+        target_plugin_root = workspace / ".agents" / "plugins" / "agent-gauntlet"
 
-        # If source skills directory is provided or exists in repo, copy them
-        installed_skills_dir = None
-        if self.source_skills_dir and self.source_skills_dir.is_dir():
-            installed_skills_dir = self.source_skills_dir
-        else:
-            repo_skills = Path(__file__).resolve().parent.parent.parent.parent / ".agents/skills"
-            if repo_skills.is_dir():
-                installed_skills_dir = repo_skills
-
-        for skill_rel_path, (default_content, skill_desc) in skills_map.items():
-            target_skill_file = workspace / skill_rel_path
-            content_to_write = default_content
-            if installed_skills_dir:
-                source_file = installed_skills_dir / Path(skill_rel_path).relative_to(
-                    ".agents/skills"
-                )
-                if source_file.is_file():
+        if plugin_source and plugin_source.is_dir():
+            for src_file in sorted(plugin_source.rglob("*")):
+                if src_file.is_file():
+                    rel_p = src_file.relative_to(plugin_source)
+                    dest_file = target_plugin_root / rel_p
                     try:
-                        content_to_write = source_file.read_text(encoding="utf-8")
+                        content = src_file.read_text(encoding="utf-8")
                     except Exception:
-                        content_to_write = default_content
-
-            result.entries.append(
-                self._write_file_safely(
-                    target_skill_file,
-                    content_to_write,
-                    skill_desc,
-                    force,
-                )
-            )
+                        continue
+                    result.entries.append(
+                        self._write_file_safely(
+                            dest_file,
+                            content,
+                            f"Plugin resource '{rel_p}'",
+                            force,
+                        )
+                    )
 
         return result

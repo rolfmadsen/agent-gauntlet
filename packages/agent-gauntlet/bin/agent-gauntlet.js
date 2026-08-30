@@ -35,7 +35,7 @@ function handleStatus() {
   process.exit(0);
 }
 
-function handleDoctor() {
+function handleDoctor(forwardToPython = false, pythonBin = null, srcPath = null, args = []) {
   const info = getPlatformInfo();
   console.log('[agent-gauntlet] Doctor Diagnostics:');
   console.log(`  [+] Node.js runtime: ${process.version} (>=18.0.0 required)`);
@@ -51,6 +51,19 @@ function handleDoctor() {
   } else {
     console.log(`  [!] Platform '${info.platform}' is currently not supported for LOCAL_SUPERVISED mode.`);
     console.log('      Native support is planned under Task 036 (macOS launchd) and Task 037 (Windows Service).');
+  }
+
+  if (forwardToPython && pythonBin) {
+    console.log('\n--- Workspace Integrity Engine ---');
+    const env = { ...process.env };
+    if (srcPath) {
+      env.PYTHONPATH = env.PYTHONPATH ? `${srcPath}:${env.PYTHONPATH}` : srcPath;
+    }
+    const child = spawnSync(pythonBin, ['-m', 'agent_gauntlet.cli', ...args], {
+      stdio: 'inherit',
+      env: env,
+    });
+    process.exit(child.status !== null ? child.status : 0);
   }
   process.exit(0);
 }
@@ -112,21 +125,22 @@ function main() {
   if (command === 'status') {
     handleStatus();
   }
-  if (command === 'doctor') {
-    handleDoctor();
-  }
   if (command === 'uninstall') {
     handleUninstall();
   }
 
   const pythonBin = findPythonBinary();
+  const srcPath = resolvePythonPath();
+
+  if (command === 'doctor') {
+    handleDoctor(true, pythonBin, srcPath, args);
+  }
   if (!pythonBin) {
     console.error('[agent-gauntlet] Error: Python 3.10+ was not found on your system PATH.');
     console.error('[agent-gauntlet] Please ensure Python 3 is installed for full verification engine support.');
     process.exit(1);
   }
 
-  const srcPath = resolvePythonPath();
   const env = { ...process.env };
   if (srcPath) {
     env.PYTHONPATH = env.PYTHONPATH ? `${srcPath}:${env.PYTHONPATH}` : srcPath;

@@ -27,6 +27,7 @@ TARGET_OKF_STAMPER = ROOT / "src/agent_gauntlet/features/okf/stamper.py"
 TARGET_CLI = ROOT / "src/agent_gauntlet/cli.py"
 TARGET_VERIFIER = ROOT / "src/agent_gauntlet/features/evidence/verifier.py"
 TARGET_NPX_WRAPPER = ROOT / "packages/agent-gauntlet/bin/agent-gauntlet.js"
+TARGET_DOCTOR = ROOT / "src/agent_gauntlet/features/doctor/checker.py"
 
 
 def _clean_pycache() -> None:
@@ -65,6 +66,12 @@ OKF_TESTS = [
 
 SCAFFOLD_TESTS = [
     "tests.features.test_scaffold",
+    "tests.features.test_template_completeness",
+]
+
+DOCTOR_TESTS = [
+    "tests.features.test_doctor",
+    "tests.features.test_template_completeness",
 ]
 
 CLI_TESTS = [
@@ -452,6 +459,42 @@ MUTANTS = [
         '    if False:\n        meta["status"] = status',
         OKF_TESTS,
     ),
+    # --- Doctor & Scaffolder mutants ---
+    (
+        TARGET_SCAFFOLDER,
+        "SCF-M3 bypass plugin recursive copying",
+        "        if plugin_source and plugin_source.is_dir():",
+        "        if False and plugin_source and plugin_source.is_dir():",
+        SCAFFOLD_TESTS,
+    ),
+    (
+        TARGET_DOCTOR,
+        "DOC-M1 bypass missing old-coder references error",
+        '                        findings.append(\n                            DoctorFinding(\n                                severity=FindingSeverity.ERROR,\n                                category="SKILL_INCOMPLETE",\n                                path=f"{rel_prefix}/references/{ref_name}",',
+        '                        findings.append(\n                            DoctorFinding(\n                                severity=FindingSeverity.INFO,\n                                category="SKILL_INCOMPLETE",\n                                path=f"{rel_prefix}/references/{ref_name}",',
+        DOCTOR_TESTS,
+    ),
+    (
+        TARGET_DOCTOR,
+        "DOC-M2 bypass stray root task check",
+        '    def _check_stray_and_shadow_files(self, root: Path, findings: list[DoctorFinding]) -> None:\n        """Detects root task.md, .agents/task.md, and shadow specifications."""\n        if (root / "task.md").is_file():',
+        '    def _check_stray_and_shadow_files(self, root: Path, findings: list[DoctorFinding]) -> None:\n        """Detects root task.md, .agents/task.md, and shadow specifications."""\n        if False and (root / "task.md").is_file():',
+        DOCTOR_TESTS,
+    ),
+    (
+        TARGET_DOCTOR,
+        "DOC-M3 bypass duplicate skills detection",
+        "        if plugin_skills_dir.is_dir() and local_skills_dir.is_dir():",
+        "        if False and plugin_skills_dir.is_dir() and local_skills_dir.is_dir():",
+        DOCTOR_TESTS,
+    ),
+    (
+        TARGET_DOCTOR,
+        "DOC-M4 drop migration prompt generation",
+        "        migration_prompt = self._generate_migration_prompt(root, findings)",
+        '        migration_prompt = ""',
+        DOCTOR_TESTS,
+    ),
     # --- NPX wrapper mutants ---
     (
         TARGET_NPX_WRAPPER,
@@ -562,6 +605,7 @@ def main() -> int:
         TARGET_CLI: TARGET_CLI.read_text(),
         TARGET_VERIFIER: TARGET_VERIFIER.read_text(),
         TARGET_NPX_WRAPPER: TARGET_NPX_WRAPPER.read_text(),
+        TARGET_DOCTOR: TARGET_DOCTOR.read_text(),
     }
 
     try:

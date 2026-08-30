@@ -4,40 +4,58 @@
   "execution_origin": "LOCAL",
   "verdict": "PASSED",
   "task_contract": {
-    "task_id": "031-windsurf-cascade-adapter-and-rules-bridge",
-    "task_title": "Task 031: Windsurf Cascade Adapter and Rules Bridge",
-    "task_digest": "fabaa723f7365900c15b6638af650896b2fc883fa8cffa9ace241182f0b123d7",
+    "task_id": "040-plugin-architecture-complete-template-copy-and-doctor",
+    "task_title": "Task 040: Plugin Architecture, Complete Template Copy, and Doctor Command",
+    "task_digest": "d4257d894f4f5e88e3b037bd340ca4c38d004f0df211b74310ae1eeb4d67ef14",
     "acceptance_criteria": [
-      "Oprette `src/agent_gauntlet/features/adapters/windsurf/` vertical slice modul med `WindsurfAdapter` og regel-skabeloner.",
-      "Implementere scaffolding af `.windsurfrules` entrypoint-fil med autoritativ reference til `.agents/AGENTS.md`.",
-      "Udvide `scaffolder.py` og CLI `--harness windsurf` flag.",
-      "Tilf\u00f8je sort-boks accepttests i `tests/features/test_adapter_windsurf.py` og `tests/test_cli.py`.",
-      "Tilf\u00f8je mutation testing i `tools/mutants.py` til at beskytte Windsurf-adapter logik (100% kill-rate).",
-      "`agent-gauntlet okf validate` godkender alle oprettede og modificerede filer."
+      "**Template Distribution (`templates/plugin/` og `src/agent_gauntlet/templates/`)**:",
+      "Etablere det fulde plugin template-tr\u00e6 med `plugin.json`, `hooks.json`, `policy.json`, og samtlige 5 skills (`old-coder`, `diagnose`, `grill-me`, `grill-with-docs`, `code-review`).",
+      "Sikre at alle 4 reference-dokumenter i `old-coder/references/` er inkluderet med fuldt indhold.",
+      "Sikre at `diagnose/scripts/` og `grill-with-docs/` referencefiler er inkluderet.",
+      "Etablere standard rod-templates for `gauntlet.toml` med sti-manifest (`[paths]`).",
+      "**Rekursiv Initiering (`src/agent_gauntlet/features/scaffold/scaffolder.py`)**:",
+      "`ProjectScaffolder.scaffold()` kopierer det fulde template-tr\u00e6 rekursivt til `.agents/plugins/agent-gauntlet/`.",
+      "M\u00e5 IKKE oprette en rod-`task.md` eller `.agents/task.md` (opretter udelukkende `tasks/001-bootstrap.md`).",
+      "Bevare eksisterende filer i m\u00e5let, medmindre `force=True` er angivet.",
+      "**Doctor Feature & AI Migration Prompt (`src/agent_gauntlet/features/doctor/`)**:",
+      "Implementere `DoctorReport`, `DoctorFinding`, `FindingSeverity` og `DoctorChecker`.",
+      "Validere integritet af n\u00f8dvendige rod-filer (`spec.md`, `CONTEXT.md`, `gauntlet.toml`, `CODING_STANDARDS.md`).",
+      "Validere at `tasks/` eksisterer og flagge stray filer som `task.md` i rod eller `.agents/`.",
+      "Validere skill-integritet (fange manglende `references/verifier.md`, trunkerede `diagnose` stubs).",
+      "Detektere dublet-skills mellem `.agents/skills/` og `.agents/plugins/agent-gauntlet/skills/`.",
+      "Generere en formateret, handlingsorienteret AI migration prompt til automatisk sanering.",
+      "**CLI Integration (`src/agent_gauntlet/cli.py` & Node bootstrapper)**:",
+      "Tilf\u00f8je `doctor` subcommand til Python CLI med `--workspace` og `--json` support.",
+      "Overholde Slim Dispatcher Contract (`cli.py` under 300 linjer).",
+      "Opdatere `bin/agent-gauntlet.js` til at viderestille `doctor` til Python-motoren n\u00e5r tilg\u00e6ngelig.",
+      "**Gauntlet & Mutation Verification**:",
+      "Tilf\u00f8je testsuiter i `tests/features/test_doctor.py` og `tests/features/test_template_completeness.py`.",
+      "Tilf\u00f8je syntetiske mutanter for doctor og template copy i `tools/mutants.py`.",
+      "K\u00f8re `sh tools/gauntlet.sh` med 100% gr\u00f8n status og 100% kill-rate."
     ],
     "unresolved_criteria": []
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "7575188cb0d3aaa391f030ad34f94687f2a1c390fbb0e28fc9f48b6eeafe3cc4",
-    "source_manifest_digest_pre": "97ff4d4f4ded84a5f28dd1292aeadf94c7907549da2938a2b957c7c78b60c341",
-    "source_manifest_digest_post": "97ff4d4f4ded84a5f28dd1292aeadf94c7907549da2938a2b957c7c78b60c341",
-    "config_digest": "cb00588e1a88fe82738901ee59b34b2278373eab1cd4d9870e15b8112b63f3fa",
-    "task_digest": "fabaa723f7365900c15b6638af650896b2fc883fa8cffa9ace241182f0b123d7",
-    "policy_digest": "a5793937874d70ca31465b86a1cbba3e06584b17857157ddbc25aa206a7f81ad",
+    "source_content_digest": "e12c09993119ca6352a48c57a51f1c0d53519c48234567d78df66094ed894669",
+    "source_manifest_digest_pre": "208c23580b06f718f335823862c7e93765394144dad4f4fc56df8a73f8c8a7d7",
+    "source_manifest_digest_post": "208c23580b06f718f335823862c7e93765394144dad4f4fc56df8a73f8c8a7d7",
+    "config_digest": "0dd1bdcdce12a05977adc58277f70656cec7525e9bf1eca34b8245b52d6c23d2",
+    "task_digest": "d4257d894f4f5e88e3b037bd340ca4c38d004f0df211b74310ae1eeb4d67ef14",
+    "policy_digest": "4fc979ac14312e5bafb8468a37bbf29c22fabdea2009722a949d00c21ac3e88e",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
-    "included_files_count": 135,
+    "included_files_count": 162,
     "vcs": {
       "type": "git",
-      "head": "73514e2",
-      "commit": "73514e2",
+      "head": "7d305ac",
+      "commit": "95e8b6f",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-30T10:05:21Z",
-    "finished_at": "2026-08-30T10:05:55Z",
-    "total_duration_seconds": 34.413,
+    "started_at": "2026-08-30T13:55:56Z",
+    "finished_at": "2026-08-30T13:56:27Z",
+    "total_duration_seconds": 31.544,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -49,7 +67,7 @@
       "name": "lint",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.034,
+      "duration_seconds": 0.038,
       "optional": true,
       "passed": true,
       "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
@@ -58,7 +76,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.696,
+      "duration_seconds": 1.658,
       "optional": true,
       "passed": true,
       "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
@@ -67,28 +85,28 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 2.222,
+      "duration_seconds": 2.322,
       "optional": false,
       "passed": true,
-      "log_digest": "3ca228eb8bd8d707c80041e86109d67732bdd21e5183e4e4d0be8e627c4392b7"
+      "log_digest": "f5086314d36a9a790dfff2afc28c66a073600010af9b2aff17da19f553713a69"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.303,
+      "duration_seconds": 0.299,
       "optional": true,
       "passed": true,
-      "log_digest": "acb9b79f276daaf02a5973918bcfdf1b4678ea537b80fc17b3468d9416b6c193"
+      "log_digest": "a2399aebf3d8062f16af6ea05927fec9d0d6fa2596bf9d27efb8204749a7c62f"
     },
     {
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 30.117,
+      "duration_seconds": 27.175,
       "optional": true,
       "passed": true,
-      "log_digest": "9b315e9d05ba279a723e9734a4b3dfff97935d5eb7a9bb4de5bd7bea3d0fe3e2"
+      "log_digest": "e5093897b90c758f673625192df2224a81dae7a067a25373531350bb66018dc9"
     }
   ],
   "diagnostics": []
