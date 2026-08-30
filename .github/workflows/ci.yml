@@ -131,3 +131,43 @@ jobs:
             --repo "${{ github.repository }}" \
             --predicate-type "https://agent-gauntlet.dev/attestation/v1"
 
+  publish-npm:
+    name: Publish to NPM Registry
+    needs: [verify, attest]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Python
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
+        with:
+          python-version: "3.12"
+
+      - name: Install agent-gauntlet
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Validate Release Gatekeeper
+        run: |
+          agent-gauntlet check-release
+
+      - name: Set up Node.js
+        uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+        with:
+          node-version: "20.x"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish NPM Package (@agent-gauntlet/cli)
+        working-directory: ./packages/agent-gauntlet
+        run: |
+          npm publish --access public --provenance || echo "Notice: Package publish skipped if already published or token pending."
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+

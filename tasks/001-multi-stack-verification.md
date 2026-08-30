@@ -30,6 +30,10 @@ Udvide `agent-gauntlet` fra kun at være et Python-værktøj til en universel mu
 - [x] Standardprofiler for Tier-1 stacks (`python`, `typescript`, `rust`) med fail-fast rækkefølge.
 - [x] CLI-støtte for `agent-gauntlet init [--stack python|typescript|rust]` til generering af `gauntlet.toml`.
 
+## 🚫 Must NOT
+- Må IKKE fejle hvis ikke-understøttede filtyper er til stede.
+- Må IKKE overskrive eksisterende `gauntlet.toml` uden `--force`.
+
 ## 🧪 Verifikation
 - Tests: `tests/features/test_stacks.py` og `tests/features/test_config.py` (100% pass).
 - Evidens: Blevet verificeret og forseglet i `evidence.json`.

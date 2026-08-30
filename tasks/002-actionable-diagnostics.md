@@ -32,6 +32,10 @@ Implementere en parsing- og feedbackmotor, som omsætter rå stderr/stdout fra l
 - [x] Mutation extractors: mutants.py, Stryker, cargo-mutants.
 - [x] CLI flag `--diagnostics-json` til `agent-gauntlet verify`.
 
+## 🚫 Must NOT
+- Må IKKE fejle hvis ukendte fejlformater modtages (skal falde tilbage til GENERAL_ERROR).
+- Må IKKE sluge rå output ved parsing-fejl.
+
 ## 🧪 Verifikation
 - Tests: `tests/features/test_diagnostics.py` (12 tests bestået).
 - Evidens: Blevet verificeret og forseglet i `evidence.json`.

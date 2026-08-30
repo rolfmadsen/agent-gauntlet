@@ -33,7 +33,7 @@ from agent_gauntlet.features.evidence.trust_policy import (
 from agent_gauntlet.features.gauntlet.models import LayerDefinition, LayerRequirement
 from agent_gauntlet.features.gauntlet.runner import run_gauntlet
 from agent_gauntlet.features.okf.validator import validate_okf_workspace
-from agent_gauntlet.features.tasks import parse_task_file
+from agent_gauntlet.features.tasks import is_task_active, parse_task_file
 from agent_gauntlet.features.tasks.models import ALLOWED_ACTIVE_STATUSES, TaskStatus
 
 
@@ -127,7 +127,8 @@ def infer_next_session_role(workspace: Path, current_task_id: str = "") -> tuple
                             f"Din opgave er at afklare kravene til tasks/{candidate.name}, udfordre antagelser, "
                             f"definere system-invarianter (Must NOT) og formulere eksekverbare acceptkriterier i spec.md og opgavefilen, "
                             f"før kodning påbegyndes.\n"
-                            f"Læs CONTEXT.md, docs/adr/ og spec.md for at sikre overensstemmelse med projektets domænemodel."
+                            f"Læs CONTEXT.md, docs/adr/ og spec.md for at sikre overensstemmelse med projektets domænemodel, "
+                            f"og verificér specifikationen med 'agent-gauntlet check-spec -t {candidate.stem}'."
                         )
                         candidate_draft = (
                             "Senior Software Engineer (System Architecture & Requirements)",
@@ -154,8 +155,8 @@ def infer_next_session_role(workspace: Path, current_task_id: str = "") -> tuple
             "Du agerer som Release & Operations Engineer på dette projekt.\n"
             "Samtlige planlagte opgaver og uafhængige kode-granskninger (code review & audit) er gennemført og godkendt med grønt lys.\n\n"
             "Din opgave er at:\n"
-            "1. Verificere release-eligibility og DSSE-attestering via 'agent-gauntlet check-attestation'.\n"
-            "2. Klargøre release-dokumentation, changelog og versionsopdatering i projektkonfigurationen.\n"
+            "1. Verificere release-readiness og dokumentations-synkronisering via 'agent-gauntlet check-release'.\n"
+            "2. Verificere release-eligibility og DSSE-attestering via 'agent-gauntlet check-attestation'.\n"
             "3. Hvis der skal påbegyndes en ny epoke, definér da næste milepælsopgaver i tasks/ med udgangspunkt i ROADMAP.md."
         )
         return (
@@ -769,3 +770,141 @@ def execute_check_attestation(
                 print(f"  [!] {r}", file=err if not is_success else out)
 
     return 0 if is_success else 1
+
+
+def execute_check_release(
+    workspace: Path,
+    allow_unreleased: bool = False,
+    as_json: bool = False,
+    out: TextIO | None = None,
+    err: TextIO | None = None,
+) -> int:
+    """Executes release readiness and documentation synchronization check.
+
+    Args:
+        workspace: Path to workspace root.
+        allow_unreleased: Whether to permit [Unreleased] sections in CHANGELOG.md.
+        as_json: If True, outputs results in JSON format.
+        out: Optional stdout stream. Defaults to sys.stdout.
+        err: Optional stderr stream. Defaults to sys.stderr.
+
+    Returns:
+        Exit code: 0 if ready for release, 1 if documentation or version defects exist.
+    """
+    out_stream = out or sys.stdout
+    err_stream = err or sys.stderr
+    from agent_gauntlet.features.evidence.release_gate import check_release_readiness
+
+    report = check_release_readiness(workspace, allow_unreleased=allow_unreleased)
+    if as_json:
+        print(json.dumps(report.to_dict(), indent=2), file=out_stream)
+    else:
+        if report.is_ready:
+            print(
+                f"[VALID] Release readiness confirmed for version '{report.declared_version}'.",
+                file=out_stream,
+            )
+            print(
+                f"        CHANGELOG.md, version manifests, and {len(report.inspected_files)} files in sync.",
+                file=out_stream,
+            )
+        else:
+            print(
+                f"[INVALID] Release readiness check failed for version '{report.declared_version}':",
+                file=err_stream,
+            )
+            for d in report.diagnostics:
+                print(
+                    f"  [!] {d.tool_name} in {d.file_path}\n      Message: {d.message}",
+                    file=err_stream,
+                )
+                if d.remediation_hint:
+                    print(f"      Hint:    {d.remediation_hint}", file=err_stream)
+    return 0 if report.is_ready else 1
+
+
+def execute_check_spec(
+    workspace: Path,
+    task_id: str | None = None,
+    check_all: bool = False,
+    as_json: bool = False,
+    out: TextIO | None = None,
+    err: TextIO | None = None,
+) -> int:
+    """Executes early-phase task specification and business rules validation.
+
+    Args:
+        workspace: Path to workspace root.
+        task_id: Optional specific task identifier or filename in tasks/.
+        check_all: If True, validates all tasks in tasks/.
+        as_json: If True, outputs results in JSON format.
+        out: Optional stdout stream. Defaults to sys.stdout.
+        err: Optional stderr stream. Defaults to sys.stderr.
+
+    Returns:
+        Exit code: 0 if valid specification, 1 if business rules or glossary violations exist.
+    """
+    out_stream = out or sys.stdout
+    err_stream = err or sys.stderr
+    from agent_gauntlet.features.tasks.spec_gate import check_task_specification
+
+    tasks_dir = workspace / "tasks"
+    if not tasks_dir.is_dir():
+        print(f"FAILED: Tasks directory '{tasks_dir}' not found.", file=err_stream)
+        return 1
+
+    targets: list[Path] = []
+    if task_id:
+        target = tasks_dir / task_id if task_id.endswith(".md") else tasks_dir / f"{task_id}.md"
+        if not target.is_file():
+            matches = [
+                t
+                for t in sorted(tasks_dir.glob("*.md"))
+                if t.stem == task_id or t.stem.startswith(f"{task_id}-") or t.name == task_id
+            ]
+            if matches:
+                target = matches[0]
+        targets.append(target)
+    elif check_all:
+        targets = sorted(tasks_dir.glob("*.md"))
+    else:
+        all_tasks = sorted(tasks_dir.glob("*.md"))
+        active_tasks = [t for t in all_tasks if is_task_active(t.read_text(encoding="utf-8"))]
+        targets = active_tasks if active_tasks else (all_tasks[-1:] if all_tasks else [])
+
+    if not targets:
+        print(f"FAILED: No tasks found in '{tasks_dir}'.", file=err_stream)
+        return 1
+
+    all_valid = True
+    reports = []
+    for t in targets:
+        rep = check_task_specification(t, workspace)
+        reports.append(rep)
+        if not rep.is_valid:
+            all_valid = False
+
+    if as_json:
+        payload = {
+            "valid": all_valid,
+            "reports": [r.to_dict() for r in reports],
+        }
+        print(json.dumps(payload, indent=2), file=out_stream)
+    else:
+        for r in reports:
+            tag = "[VALID]" if r.is_valid else "[INVALID]"
+            stream = out_stream if r.is_valid else err_stream
+            print(f"{tag} Task specification '{r.task_id}':", file=stream)
+            print(
+                f"        Must NOT rules: {len(r.must_not_rules)}, Acceptance criteria: {len(r.acceptance_criteria)}",
+                file=stream,
+            )
+            if not r.is_valid:
+                for d in r.diagnostics:
+                    print(
+                        f"  [!] {d.tool_name} in {d.file_path}\n      Message: {d.message}",
+                        file=err_stream,
+                    )
+                    if d.remediation_hint:
+                        print(f"      Hint:    {d.remediation_hint}", file=err_stream)
+    return 0 if all_valid else 1

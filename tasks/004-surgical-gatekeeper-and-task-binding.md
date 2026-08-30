@@ -33,6 +33,10 @@ Etablere en hård, ubrydelig Stop/Go gate og task-bundet evidensvalidering, som 
 - [x] Skrive sort-boks tests i `tests/features/test_hooks.py` og opdatere `test_evidence.py` samt `test_cli.py`.
 - [x] 100% test-pass og 100% dræbte mutanter i `tools/mutants.py`.
 
+## 🚫 Must NOT
+- Må IKKE blokere læseoperationer som view_file eller list_dir.
+- Må IKKE tillade skriveadgang til beskyttede mapper uden en aktiv opgave.
+
 ## 🧪 Verifikation
 - Unit & Acceptance: `PYTHONPATH=src python3 -m unittest discover tests` (63 tests bestået)
 - Gauntlet script: `sh tools/gauntlet.sh` (5/5 lag bestået, 21/21 mutanter dræbt)

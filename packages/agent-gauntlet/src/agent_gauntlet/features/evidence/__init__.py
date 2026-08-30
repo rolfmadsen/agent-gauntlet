@@ -20,6 +20,11 @@ from agent_gauntlet.features.evidence.models import (
     VerificationVerdict,
     WorkspaceState,
 )
+from agent_gauntlet.features.evidence.release_gate import (
+    ReleaseReadinessEngine,
+    ReleaseReadinessReport,
+    check_release_readiness,
+)
 from agent_gauntlet.features.evidence.report import VerificationReportEngine
 from agent_gauntlet.features.evidence.source_state import (
     CanonicalWorkspaceManifest,
@@ -46,6 +51,8 @@ __all__ = [
     "EvidenceRecord",
     "ExecutionMetadata",
     "ExecutionOrigin",
+    "ReleaseReadinessEngine",
+    "ReleaseReadinessReport",
     "TaskContract",
     "TrustDecision",
     "TrustEvaluationResult",
@@ -58,6 +65,7 @@ __all__ = [
     "VerificationVerdict",
     "WorkspaceEscapeError",
     "WorkspaceState",
+    "check_release_readiness",
     "compute_source_state",
     "compute_workspace_manifest",
 ]

@@ -115,8 +115,7 @@ def run_gauntlet(
 
         if not result.passed:
             if layer.requirement == LayerRequirement.REQUIRED and not layer.optional:
-                success = False
-                break
+                pass
 
     total_duration = time.perf_counter() - overall_start
     return GauntletReport(

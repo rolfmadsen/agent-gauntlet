@@ -30,6 +30,10 @@ Omlægge hele codebase og testsuite til en ren **Package-by-Feature** mappestruk
 - [x] Opdatering af `tools/mutants.py`, `tools/gauntlet.sh` og `plugin.json` (v0.2.0).
 - [x] 100% test-pass (54/54) og 100% mutations-drab (18/18).
 
+## 🚫 Must NOT
+- Må IKKE introducere cykliske afhængigheder mellem feature-pakker.
+- Må IKKE bryde eksisterende offentlige API-kontrakter.
+
 ## 🧪 Verifikation
 - Gauntlet script: `sh tools/gauntlet.sh` (Alle 5 lag PASSED).
 - Evidens: HMAC-SHA256 forseglet i `evidence.json`.

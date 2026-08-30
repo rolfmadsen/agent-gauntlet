@@ -25,7 +25,7 @@
 <p align="center">
   <a href="https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml"><img src="https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
   <a href="tools/mutants.py"><img src="https://img.shields.io/badge/mutants%20killed-100%25-brightgreen.svg" alt="Mutants Killed" /></a>
-  <a href="docs/adr/0005-two-tier-verification-and-attestation-model.md"><img src="https://img.shields.io/badge/evidence-Two--Tier%20Attestation-blue.svg" alt="Evidence Model" /></a>
+  <a href="docs/adr/0007-local-transparent-supervisor-and-wasm-verifier.md"><img src="https://img.shields.io/badge/evidence-Three--Tier%20Trust%20Model-blue.svg" alt="Evidence Model" /></a>
   <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg" alt="Python Version" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT" /></a>
 </p>
@@ -38,7 +38,7 @@
 
 ---
 
-**agent-gauntlet** omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Linters, Type-checkere, Unit tests, Property- og Invariant-tests, Mutationsafprøvning og To-Tier evidens & attestering jf. [ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md)) og oversætter rå fejludskrifter til **Actionable Diagnostics** i et feedback-loop, som AI-agenter kan handle direkte på.
+**agent-gauntlet** omgiver AI-genereret kode med et kompromisløst verifikations-gauntlet (Linters, Type-checkere, Unit tests, Property- og Invariant-tests, Mutationsafprøvning, privilege-separated Local Supervisor med WASM policy engine og Three-Tier evidens & attestering jf. [ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md) & [ADR 0007](docs/adr/0007-local-transparent-supervisor-and-wasm-verifier.md)) og oversætter rå fejludskrifter til **Actionable Diagnostics** i et feedback-loop, som AI-agenter kan handle direkte på.
 
 ---
 
@@ -54,8 +54,15 @@
    * 🦀 **Rust**: `cargo clippy`, `cargo check`, `cargo test`, `proptest`, `cargo-mutants`.
 4. **Actionable Diagnostics Engine:**
    * Omsætter rå fejludskrifter til strukturerede diagnoser med filstier, linjenumre og præcise udbedringsforslag (`remediation_hint`).
-5. **Two-Tier Evidens & Tillidsmodel ([ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md)):**
-   * Deterministisk `CanonicalWorkspaceManifest` med symlink-flugtbeskyttelse og usignerede `verification-report.json` rapporter til lokal drift-kontrol kombineret med uafhængig, kryptografisk Sigstore OIDC attestering i CI.
+5. **Three-Tier Evidens & Tillidsmodel ([ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md) & [ADR 0007](docs/adr/0007-local-transparent-supervisor-and-wasm-verifier.md)):**
+   * `LOCAL_UNSUPERVISED`: Hurtig lokal feedback og usigneret rapport til kooperativ drift-kontrol.
+   * `LOCAL_SUPERVISED`: Signeret lokal verifikationsrapport udstedt af en privilegie-adskilt supervisor med efemere task-certifikater og hash-kædede session logs.
+   * `CI_ATTESTED`: Uafhængig, kryptografisk Sigstore OIDC keyless DSSE/in-toto attestering i privilegerede CI-workflows.
+6. **Lokal Transparent Supervisor & WASM Verifier ([ADR 0007](docs/adr/0007-local-transparent-supervisor-and-wasm-verifier.md)):**
+   * **Nul Ambient Authority WASM Kerne**: Deterministisk evaluering af agentens handlinger (`wit/gauntlet_policy.wit`) uden filsystem-, netværks- eller procesadgang.
+   * **Linux Systemd Socket Activation**: On-demand start via `agent-gauntlet.socket` uden behov for permanente baggrundsterminaler.
+   * **Bubblewrap (`bwrap`) Isolation**: Kører verifikation mod et frosset, deterministisk workspace-snapshot uden netværksadgang.
+   * **Beskyttet Nøglehåndtering**: Private nøgler opbevares udelukkende af supervisoren uden for projektets workspace (`~/.agent-gauntlet/supervisor/` med `0700`/`0600` rettigheder).
 
 ---
 
@@ -70,13 +77,14 @@ flowchart TD
         Intent --> Appr["📋 2. Menneskelig Godkendelse\n(Gennemgå og frys specifikationen)"]
     end
 
-    subgraph 2. Uncle Bob TDD-Cyklus
-        Appr --> Red["🔴 3. RED: Skriv fejlet test\n(Bevis at testen rent faktisk fejler)"]
+    subgraph 2. Uncle Bob TDD-Cyklus & WASM Supervisor
+        Appr --> Sup["🛡️ Supervisor Session Start\n(Efemert Task-Certifikat & Event Log)"]
+        Sup --> Red["🔴 3. RED: Skriv fejlet test\n(WASM evaluerer mutations-kald)"]
         Red --> Green["🟢 4. GREEN: Minimal kode\n(Få testen til at passere)"]
         Green --> Refactor["🔵 5. REFACTOR: Oprydning\n(Bevar frosne assertions)"]
     end
 
-    subgraph 3. Multi-Layer Gauntlet
+    subgraph 3. Multi-Layer Gauntlet (Bubblewrap Sandbox)
         Refactor --> Layer1["🔍 Lag 1: Linter (Ruff / ESLint / Clippy)"]
         Layer1 --> Layer2["📐 Lag 2: Types (Pyright / Mypy / tsc)"]
         Layer2 --> Layer3["🧪 Lag 3: Unit Tests (pytest / unittest / vitest)"]
@@ -84,7 +92,7 @@ flowchart TD
         Layer4 --> Layer5["🧬 Lag 5: Mutations Gauntlet (mutants.py)"]
     end
 
-    subgraph 4. Feedback & Two-Tier Evidens
+    subgraph 4. Feedback & Three-Tier Evidens
         Layer1 -. Fejl .-> Diag["⚙️ Actionable Diagnostics Engine\n(Parser fil, linje og udbedringsforslag)"]
         Layer2 -. Fejl .-> Diag
         Layer3 -. Fejl .-> Diag
@@ -93,7 +101,7 @@ flowchart TD
         Diag --> FixLoop["🔄 Autonomt Fixer-Loop\n(Fokuseret intervention)"]
         FixLoop --> Red
 
-        Layer5 -->|Alle lag PASSED| Report["📋 6. Lokal Verifikationsrapport\n(Canonical Workspace Digest + Unsigned Report)"]
+        Layer5 -->|Alle lag PASSED| Report["📋 6. Signeret Supervisor Rapport\n(LOCAL_SUPERVISED + Canonical Digest)"]
         Report --> Ledger["📄 verification-report.json & evidence.md"]
     end
 
@@ -131,20 +139,26 @@ For at undgå uendelige review-loops (*bikeshedding*) og bevare et skarpt kontek
 ```text
 agent-gauntlet/
 ├── tasks/                        # Aktive og afsluttede opgavepakker (OKF v0.2)
-├── docs/adr/                     # Arkitekturbeslutninger (ADRs)
+├── docs/adr/                     # Arkitekturbeslutninger (ADRs 0001-0007)
 ├── CONTEXT.md                    # Domæne-glossary (Aristoteles' genus et differentiam)
 ├── CODING_STANDARDS.md           # Multi-stack kodestandarder (Python, TS, Rust, Go, Web)
 ├── spec.md                       # Makro-specifikation & system-invarianter
 ├── CHANGELOG.md                  # Versionshistorik & release notes (Keep a Changelog)
 ├── ROADMAP.md                    # Prioriteret feature-køreplan & udvidelser
 ├── gauntlet.toml                 # Deklarativ multi-stack konfiguration
+├── wit/                          # WebAssembly Interface Types (WIT) specifikationer
+├── crates/                       # Rust WebAssembly policy component source
 ├── packages/agent-gauntlet/      # NPM / NPX distributions-pakke & bin/agent-gauntlet.js wrapper
 ├── plugins/agent-gauntlet/       # Antigravity plugin & skills (old-coder, grill-me, code-review, diagnose)
 ├── src/agent_gauntlet/
 │   ├── __init__.py
 │   ├── cli.py                    # Udvidet CLI (init, verify, check-evidence, check-attestation, okf)
 │   └── features/
-│       ├── adapters/             # Vertikale feature-slices for AI-harnesses (Antigravity, Claude mv.)
+│       ├── adapters/             # Vertikale feature-slices for AI-harnesses (Antigravity shim, Claude mv.)
+│       ├── supervisor/           # Lokal privilege-separated supervisor, FSM, event log & platform seams
+│       │   ├── core/             # Portabel forretningslogik, FSM, modeller, snapshot, seams, engine
+│       │   ├── wasm/             # WebAssembly component verifier & host integration
+│       │   └── platform/linux/   # Linux systemd socket activation, Unix socket, bwrap & key provider
 │       ├── config/               # gauntlet.toml / gauntlet.json loader & schema
 │       ├── diagnostics/          # Actionable LLM feedback engine & extractors
 │       ├── evidence/             # Canonical manifest, verification report, attestation & trust policy
@@ -153,7 +167,7 @@ agent-gauntlet/
 │       ├── okf/                  # OKF v0.2 metadata parsing, validering & stempling
 │       ├── scaffold/             # Ikke-destruktiv bootstrap motor
 │       └── stacks/               # Auto-detektor & standardprofiler (Python, TS, Rust)
-└── tests/features/               # 1:1 testsymmetri mod features
+└── tests/features/               # 1:1 testsymmetri mod features (inkl. tests/features/supervisor/)
 ```
 
 ---
@@ -206,6 +220,12 @@ Når du arbejder på en opgave i dit projekt, afvikles gauntlettet direkte via:
 # Kør gauntlet og forseg evidens for en opgave:
 npx @agent-gauntlet/cli verify --task-id 001-bootstrap
 
+# Tjek supervisor socket og platformstilstand:
+npx @agent-gauntlet/cli status
+
+# Kør host- og isolation-diagnostik (Node, Linux kernel, bwrap):
+npx @agent-gauntlet/cli doctor
+
 # Valider dokumentation & OKF v0.2 metadata:
 npx @agent-gauntlet/cli okf validate
 ```
@@ -230,7 +250,7 @@ agent-gauntlet init --force
 ```
 
 ### 2. Kør Verifikations-Gauntlet (`verify`)
-Kør alle konfigurerede lag, udtræk actionable diagnostics og generer en usigneret verifikationsrapport (`verification-report.json` v2.0 og `evidence.md`):
+Kør alle konfigurerede lag, udtræk actionable diagnostics og generer en usigneret eller supervisor-signeret verifikationsrapport (`verification-report.json` v2.0 og `evidence.md`):
 
 ```bash
 # Standard kørsel bundet til en opgave
@@ -273,12 +293,57 @@ agent-gauntlet check-attestation --attestation attestation.bundle --trust-policy
 agent-gauntlet check-attestation --allow-unattested
 ```
 
-### 5. OKF Metadata Validering (`okf validate`)
+### 5. Release Readiness & Dokumentations-Synkronisering (`check-release`)
+Mekanisk validering af versionsharmoni og dokumentation før release:
+
+```bash
+# Valider at pyproject.toml, package.json, CHANGELOG.md og docs/adr/ er 100% synkroniserede
+agent-gauntlet check-release
+
+# Output resultater som struktureret JSON
+agent-gauntlet check-release --json
+
+# Tillad [Unreleased] sektion under aktiv udvikling
+agent-gauntlet check-release --allow-unreleased
+```
+
+### 6. Early-Phase Spec & Business Rules Gatekeeper (`check-spec`)
+Mekanisk validering af at opgavespecifikationer indeholder eksplicitte forretningsinvarianter (`Must NOT`), eksekverbare acceptkriterier og overholder [CONTEXT.md](CONTEXT.md) ordbogsformatet før kodning påbegyndes:
+
+```bash
+# Valider aktiv opgave eller seneste opgave i tasks/
+agent-gauntlet check-spec
+
+# Valider en specifik opgave
+agent-gauntlet check-spec -t 039-early-phase-specification-and-business-rules-gatekeeper
+
+# Valider samtlige opgaver i tasks/
+agent-gauntlet check-spec --all
+
+# Output resultater som struktureret JSON
+agent-gauntlet check-spec --json
+```
+
+### 7. OKF Metadata Validering (`okf validate`)
 Validerer Open Knowledge Format (OKF v0.2) overensstemmelse for Markdown-dokumenter:
 
 ```bash
 agent-gauntlet okf validate
 # Validerer frontmatter-skemaer, aktører og temporale invarianter (t_verified >= t_generated)
+```
+
+### 8. Supervisor Status & Diagnostik (`status`, `doctor`, `uninstall`)
+Håndter og inspicer den lokale baggrundssupervisor:
+
+```bash
+# Vis platformprofil, socket-sti og dæmonstatus
+agent-gauntlet status
+
+# Diagnosticer miljøkrav (Node.js version, Bubblewrap isolation, systemd)
+agent-gauntlet doctor
+
+# Fjern registrerede systemd user unit filer
+agent-gauntlet uninstall
 ```
 
 ---
@@ -336,7 +401,14 @@ sh tools/gauntlet.sh
 
 ## 🗺️ Arkitektur (ADRs)
 
-- 🏛️ **[docs/adr/](docs/adr/)**: Arkitekturbeslutninger (Architecture Decision Records) der fastlægger projektets invariante tekniske valg og designprincipper.
+Projektets invariante tekniske valg og designprincipper er dokumenteret som uforanderlige Architecture Decision Records i [`docs/adr/`](docs/adr/):
+- 🏛️ **[ADR 0001](docs/adr/0001-package-by-feature-architecture.md)**: Package-by-Feature / Screaming Architecture
+- 🏛️ **[ADR 0002](docs/adr/0002-cryptographic-evidence-authority.md)**: Cryptographic Evidence Authority
+- 🏛️ **[ADR 0003](docs/adr/0003-surgical-gatekeeper-and-no-remote-push.md)**: Surgical Gatekeeper and No Remote Push
+- 🏛️ **[ADR 0004](docs/adr/0004-harness-adapter-slices.md)**: Harness Adapter Slices
+- 🏛️ **[ADR 0005](docs/adr/0005-two-tier-verification-and-attestation-model.md)**: Two-Tier Verification and Attestation Model
+- 🏛️ **[ADR 0006](docs/adr/0006-multi-harness-policy-adapter-contract.md)**: Multi-Harness Policy Adapter Contract
+- 🏛️ **[ADR 0007](docs/adr/0007-local-transparent-supervisor-and-wasm-verifier.md)**: Local Transparent Supervisor and WASM Verifier
 
 ## 🗺️ Roadmap
 

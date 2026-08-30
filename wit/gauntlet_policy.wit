@@ -1,0 +1,46 @@
+package agent-gauntlet:policy@0.4.0;
+
+/// Tool action classification for fine-grained capability evaluation.
+enum tool-action-type {
+    read-file,
+    write-file,
+    execute-command,
+    other
+}
+
+/// Strongly-typed capability request from an agent or harness.
+record capability-request {
+    action-type: tool-action-type,
+    raw-tool-name: string,
+    target-resource: string,
+    payload-json: string
+}
+
+/// Immutable trusted context provided by the supervisor runtime.
+record enforcement-context {
+    workspace-id: string,
+    has-active-task: bool,
+    active-task-id: string,
+    read-only: bool
+}
+
+/// Policy evaluation decision verdict.
+enum decision-verdict {
+    allow,
+    deny,
+    ask,
+    force-ask
+}
+
+/// Strongly-typed policy decision returned by the WASM policy verifier.
+record policy-decision {
+    verdict: decision-verdict,
+    reason: string,
+    reason-code: u32
+}
+
+/// World representing the WebAssembly policy engine component.
+world gauntlet-policy-engine {
+    export evaluate: func(req: capability-request, ctx: enforcement-context) -> policy-decision;
+    export get-policy-version: func() -> string;
+}

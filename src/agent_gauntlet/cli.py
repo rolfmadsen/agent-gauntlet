@@ -12,6 +12,8 @@ from agent_gauntlet.features.evidence.source_state import compute_source_state
 from agent_gauntlet.features.evidence.verifier import (
     execute_check_attestation,
     execute_check_evidence,
+    execute_check_release,
+    execute_check_spec,
     execute_verify,
 )
 from agent_gauntlet.features.okf.stamper import stamp_okf_file
@@ -21,16 +23,7 @@ from agent_gauntlet.features.stacks.profiles import SUPPORTED_STACKS
 
 
 def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> int:
-    """Dispatches scaffold/init operations through ProjectScaffolder.
-
-    Args:
-        args: Parsed CLI namespace arguments.
-        workspace: Resolved workspace root path.
-        op: Operation name ('init' or 'scaffold').
-
-    Returns:
-        Exit code: 0 on success.
-    """
+    """Dispatches scaffold/init operations through ProjectScaffolder."""
     result = ProjectScaffolder().scaffold(
         workspace=workspace,
         stack=args.stack,
@@ -58,15 +51,7 @@ def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> i
 
 
 def _handle_validate_plugin(args: argparse.Namespace, workspace: Path) -> int:
-    """Dispatches plugin validation against harness adapter.
-
-    Args:
-        args: Parsed CLI namespace arguments.
-        workspace: Resolved workspace root path.
-
-    Returns:
-        Exit code: 0 if valid, 1 if invalid.
-    """
+    """Dispatches plugin validation against harness adapter."""
     target = Path(args.plugin_dir)
     target_dir = target if target.is_absolute() else (workspace / target).resolve()
     res = get_adapter(args.harness).validate_plugin(target_dir)
@@ -93,15 +78,7 @@ def _handle_validate_plugin(args: argparse.Namespace, workspace: Path) -> int:
 
 
 def _handle_okf(args: argparse.Namespace, workspace: Path) -> int:
-    """Dispatches OKF frontmatter validation and stamping subcommands.
-
-    Args:
-        args: Parsed CLI namespace arguments.
-        workspace: Resolved workspace root path.
-
-    Returns:
-        Exit code: 0 on success, 1 on validation error, 2 on unknown subcommand.
-    """
+    """Dispatches OKF frontmatter validation and stamping subcommands."""
     if args.okf_subcommand == "validate":
         rep = validate_okf_workspace(workspace, target_paths=args.paths if args.paths else None)
         if args.json:
@@ -115,13 +92,17 @@ def _handle_okf(args: argparse.Namespace, workspace: Path) -> int:
                 }
                 for f in rep.findings
             ]
-            payload = {
-                "valid": rep.valid,
-                "total_files": rep.total_files,
-                "valid_files": rep.valid_files,
-                "findings": findings,
-            }
-            print(json.dumps(payload, indent=2))
+            print(
+                json.dumps(
+                    {
+                        "valid": rep.valid,
+                        "total_files": rep.total_files,
+                        "valid_files": rep.valid_files,
+                        "findings": findings,
+                    },
+                    indent=2,
+                )
+            )
         else:
             tag = "[VALID]" if rep.valid else "[INVALID]"
             print(
@@ -199,11 +180,22 @@ def build_cli_parser() -> argparse.ArgumentParser:
     chk_ev.add_argument("-e", "--evidence-file", default="")
     chk_ev.add_argument("--legacy-advisory", action="store_true")
 
+    chk_rel = subs.add_parser("check-release", parents=[common])
+    chk_rel.add_argument(
+        "--allow-unreleased",
+        action="store_true",
+        help="Allow [Unreleased] changelog section in development",
+    )
+
     chk_att = subs.add_parser("check-attestation", parents=[common])
     chk_att.add_argument("-r", "--report", default="verification-report.json")
     chk_att.add_argument("-a", "--attestation", default="")
     chk_att.add_argument("-p", "--trust-policy", default="")
     chk_att.add_argument("--allow-unattested", action="store_true")
+
+    chk_spec = subs.add_parser("check-spec", parents=[common])
+    chk_spec.add_argument("-t", "--task", dest="task_id", default="")
+    chk_spec.add_argument("--all", dest="check_all", action="store_true")
 
     okf_p = subs.add_parser("okf", parents=[common])
     okf_sub = okf_p.add_subparsers(dest="okf_subcommand", required=True)
@@ -266,6 +258,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "check-evidence":
         return execute_check_evidence(
             workspace, args.evidence_file, args.legacy_advisory, args.json
+        )
+    if args.command == "check-release":
+        return execute_check_release(
+            workspace, allow_unreleased=args.allow_unreleased, as_json=args.json
+        )
+    if args.command == "check-spec":
+        return execute_check_spec(
+            workspace, task_id=args.task_id, check_all=args.check_all, as_json=args.json
         )
     if args.command == "check-attestation":
         return execute_check_attestation(

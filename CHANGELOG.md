@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.4.0] - 2026-08-30
+
+### 🚀 Added
+- **Local Transparent Supervisor & WASM Verifier (`Task 035`, `ADR 0007`)**:
+  - Privilege-separated local background supervisor daemon evaluating capability requests outside the workspace.
+  - Zero ambient authority WebAssembly policy component (`wit/gauntlet_policy.wit`) for deterministic capability evaluation.
+  - Protected Key Provider managing installation identity and ephemeral task keys in `~/.agent-gauntlet/supervisor/` (`0700`/`0600`) issuing signed `LOCAL_SUPERVISED` verification reports.
+  - Append-only hash-chained session event log with rolling SHA-256 root hash and tamper detection.
+  - Task Session Finite State Machine (`DISCOVERED -> ACTIVE -> VERIFYING -> PASSED | FAILED | INVALIDATED -> CLOSED`).
+  - Linux Platform Seam: Systemd socket activation (`agent-gauntlet.socket` & `agent-gauntlet.service` via `SD_LISTEN_FDS_START`), Unix domain socket transport, and unprivileged Bubblewrap (`bwrap`) sandbox runner for frozen workspace verification.
+  - Antigravity IDE IPC Hook Shim (`features/adapters/antigravity/shim.py`) supporting `PreInvocation`, `PreToolUse`, `PostToolUse`, and `Stop` hooks with p95 < 50ms latency.
+  - Offline report verifier validating `LOCAL_SUPERVISED` signatures without private keys.
+- **NPM and NPX Distribution Wrapper (`Task 034`)**:
+  - Published `@agent-gauntlet/cli` / `agent-gauntlet` NPM package (`packages/agent-gauntlet/`) with zero external dependencies.
+  - Native Node.js CLI runner (`bin/agent-gauntlet.js`) with fail-safe Python resolution, process signal forwarding, and status/doctor diagnostics.
+  - Added CLI operational subcommands: `status`, `doctor`, `uninstall`.
+- **Three-Tier Evidence & Trust Boundary Model**:
+  - Formally upgraded trust architecture to Three Tiers: `LOCAL_UNSUPERVISED` (fast feedback), `LOCAL_SUPERVISED` (signed local report via supervisor), and `CI_ATTESTED` (Sigstore OIDC keyless DSSE bundle).
+
+---
+
 ## [0.3.0] - 2026-08-29
 
 ### 🚀 Added
