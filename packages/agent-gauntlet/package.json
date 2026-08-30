@@ -28,9 +28,12 @@
   ],
   "author": "Antigravity Team",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "type": "git",
-    "url": "https://github.com/rolfmadsen/agent-gauntlet.git"
+    "url": "git+https://github.com/rolfmadsen/agent-gauntlet.git"
   },
   "engines": {
     "node": ">=18.0.0"

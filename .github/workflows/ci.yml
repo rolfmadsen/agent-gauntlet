@@ -162,6 +162,7 @@ jobs:
         with:
           node-version: "20.x"
           registry-url: "https://registry.npmjs.org"
+          scope: "@agent-gauntlet"
 
       - name: Publish NPM Package (@agent-gauntlet/cli)
         working-directory: ./packages/agent-gauntlet
