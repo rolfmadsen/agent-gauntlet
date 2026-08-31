@@ -20,7 +20,7 @@ class WasmDigestMismatchError(Exception):
 class WasmPolicyVerifier:
     """Evaluates capability requests deterministically according to the gauntlet-policy-engine contract."""
 
-    POLICY_VERSION = "0.5.0"
+    POLICY_VERSION = "0.6.0"
 
     def __init__(
         self, component_bytes: bytes | None = None, expected_digest: str | None = None

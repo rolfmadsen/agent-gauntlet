@@ -36,7 +36,8 @@ def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> i
         print(json.dumps(res.to_dict(), indent=2))
         return 0
     verb = "Initialized" if op == "init" else "Scaffolded"
-    print(f"{verb} agent-gauntlet for '{res.stack}' and '{res.harness}':")
+    stack_label = ", ".join(res.stacks) if res.stacks else res.stack
+    print(f"{verb} agent-gauntlet for '{stack_label}' and '{res.harness}':")
     for e in res.entries:
         try:
             rel = Path(e.path).relative_to(workspace)
@@ -171,7 +172,7 @@ def build_cli_parser() -> argparse.ArgumentParser:
 
     for cmd in ["init", "scaffold"]:
         sp = subs.add_parser(cmd, parents=[common])
-        sp.add_argument("-s", "--stack", choices=SUPPORTED_STACKS)
+        sp.add_argument("-s", "--stack", "--stacks", dest="stack", help="Target stack(s)")
         sp.add_argument("--harness", choices=SUPPORTED_HARNESSES, default="antigravity")
         sp.add_argument("-f", "--format", choices=["toml", "json"], default="toml")
         sp.add_argument("--force", action="store_true")

@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable, Mapping, Sequence
+from pathlib import Path
 
 from agent_gauntlet.features.gauntlet.models import LayerDefinition
+from agent_gauntlet.features.stacks.detector import get_typescript_typecheck_command
 
 SUPPORTED_STACKS: Sequence[str] = ("python", "typescript", "rust")
 
@@ -55,8 +57,11 @@ def get_python_default_layers() -> list[LayerDefinition]:
     ]
 
 
-def get_typescript_default_layers() -> list[LayerDefinition]:
+def get_typescript_default_layers(
+    workspace_path: Path | str | None = None,
+) -> list[LayerDefinition]:
     """Generate default verification layers for a TypeScript project."""
+    typecheck_cmd = get_typescript_typecheck_command(workspace_path)
     return [
         LayerDefinition(
             name="lint",
@@ -66,7 +71,7 @@ def get_typescript_default_layers() -> list[LayerDefinition]:
         ),
         LayerDefinition(
             name="types",
-            command=["npx", "tsc", "--noEmit"],
+            command=typecheck_cmd,
             optional=True,
             timeout_seconds=60.0,
         ),
@@ -134,9 +139,15 @@ STACK_PROFILE_GENERATORS: Mapping[str, Callable[[], list[LayerDefinition]]] = {
 }
 
 
-def get_default_stack_profile(stack_name: str) -> list[LayerDefinition]:
-    """Retrieve default verification layers for given stack name."""
+def get_default_stack_profile(
+    stack_name: str,
+    workspace_path: Path | str | None = None,
+) -> list[LayerDefinition]:
+    """Retrieve default verification layers for given stack name and optional workspace context."""
     normalized = stack_name.lower().strip()
+    if normalized == "typescript":
+        return get_typescript_default_layers(workspace_path)
+
     generator = STACK_PROFILE_GENERATORS.get(normalized)
     if not generator:
         raise ValueError(

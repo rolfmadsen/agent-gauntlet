@@ -1,6 +1,11 @@
 """Multi-stack discovery and default profile definitions."""
 
-from agent_gauntlet.features.stacks.detector import detect_stack
+from agent_gauntlet.features.stacks.detector import (
+    detect_stack,
+    get_typescript_typecheck_command,
+    has_typescript_project_references,
+    inspect_typescript_tsconfig,
+)
 from agent_gauntlet.features.stacks.profiles import (
     SUPPORTED_STACKS,
     get_default_stack_profile,
@@ -16,4 +21,7 @@ __all__ = [
     "get_python_default_layers",
     "get_rust_default_layers",
     "get_typescript_default_layers",
+    "get_typescript_typecheck_command",
+    "has_typescript_project_references",
+    "inspect_typescript_tsconfig",
 ]

@@ -105,6 +105,53 @@ class TestDoctorDiagnostics(unittest.TestCase):
             ]
             self.assertGreater(len(dup_findings), 0)
 
+    def test_doctor_detects_solution_tsconfig_with_blind_tsc_noemit(self) -> None:
+        """Doctor must warn if TypeScript project has project references but gauntlet runs blind tsc --noEmit."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws = Path(tmp_dir)
+            ProjectScaffolder().scaffold(workspace=ws, stack="typescript")
+
+            # Simulate a solution-style tsconfig with references
+            (ws / "tsconfig.json").write_text(
+                '{\n  "files": [],\n  "references": [\n    { "path": "./tsconfig.app.json" }\n  ]\n}\n',
+                encoding="utf-8",
+            )
+            # Simulate a gauntlet.toml with blind tsc --noEmit without -b or -p
+            (ws / "gauntlet.toml").write_text(
+                'stack = "typescript"\n\n[[layers]]\nname = "types"\ncommand = ["npx", "tsc", "--noEmit"]\n',
+                encoding="utf-8",
+            )
+
+            checker = DoctorChecker()
+            report = checker.check_workspace(ws)
+
+            ts_findings = [f for f in report.findings if f.category == "TSCONFIG_PROJECT_REFERENCES"]
+            self.assertGreater(len(ts_findings), 0)
+            self.assertEqual(ts_findings[0].severity, FindingSeverity.WARNING)
+            self.assertIn("tsc -b", ts_findings[0].remediation)
+            self.assertIn("TSCONFIG_PROJECT_REFERENCES", report.migration_prompt)
+
+    def test_doctor_passes_solution_tsconfig_with_tsc_build(self) -> None:
+        """Doctor must be healthy when solution tsconfig runs tsc -b."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws = Path(tmp_dir)
+            ProjectScaffolder().scaffold(workspace=ws, stack="typescript")
+
+            (ws / "tsconfig.json").write_text(
+                '{\n  "files": [],\n  "references": [\n    { "path": "./tsconfig.app.json" }\n  ]\n}\n',
+                encoding="utf-8",
+            )
+            (ws / "gauntlet.toml").write_text(
+                'stack = "typescript"\n\n[[layers]]\nname = "types"\ncommand = ["npx", "tsc", "-b"]\n',
+                encoding="utf-8",
+            )
+
+            checker = DoctorChecker()
+            report = checker.check_workspace(ws)
+
+            ts_findings = [f for f in report.findings if f.category == "TSCONFIG_PROJECT_REFERENCES"]
+            self.assertEqual(len(ts_findings), 0)
+
     def test_doctor_to_dict_and_json_serialization(self) -> None:
         """Doctor report must serialize cleanly to JSON."""
         with tempfile.TemporaryDirectory() as tmp_dir:
@@ -124,3 +171,4 @@ class TestDoctorDiagnostics(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

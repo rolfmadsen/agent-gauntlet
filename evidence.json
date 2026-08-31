@@ -2,60 +2,53 @@
   "$schema": "https://agent-gauntlet.dev/schemas/v2/verification-report.json",
   "schema_version": "2.0.0",
   "execution_origin": "LOCAL",
-  "verdict": "PASSED",
+  "verdict": "PARTIAL",
   "task_contract": {
-    "task_id": "040-plugin-architecture-complete-template-copy-and-doctor",
-    "task_title": "Task 040: Plugin Architecture, Complete Template Copy, and Doctor Command",
-    "task_digest": "d4257d894f4f5e88e3b037bd340ca4c38d004f0df211b74310ae1eeb4d67ef14",
+    "task_id": "042-polyglot-composite-coding-standards",
+    "task_title": "Task 042: Polyglot Composite Coding Standards Generation",
+    "task_digest": "5c1d3bc08e2ce3ef8d0bda86c570befb4a6f52642b389e091cb874dd2eedebd4",
     "acceptance_criteria": [
-      "**Template Distribution (`templates/plugin/` og `src/agent_gauntlet/templates/`)**:",
-      "Etablere det fulde plugin template-tr\u00e6 med `plugin.json`, `hooks.json`, `policy.json`, og samtlige 5 skills (`old-coder`, `diagnose`, `grill-me`, `grill-with-docs`, `code-review`).",
-      "Sikre at alle 4 reference-dokumenter i `old-coder/references/` er inkluderet med fuldt indhold.",
-      "Sikre at `diagnose/scripts/` og `grill-with-docs/` referencefiler er inkluderet.",
-      "Etablere standard rod-templates for `gauntlet.toml` med sti-manifest (`[paths]`).",
-      "**Rekursiv Initiering (`src/agent_gauntlet/features/scaffold/scaffolder.py`)**:",
-      "`ProjectScaffolder.scaffold()` kopierer det fulde template-tr\u00e6 rekursivt til `.agents/plugins/agent-gauntlet/`.",
-      "M\u00e5 IKKE oprette en rod-`task.md` eller `.agents/task.md` (opretter udelukkende `tasks/001-bootstrap.md`).",
-      "Bevare eksisterende filer i m\u00e5let, medmindre `force=True` er angivet.",
-      "**Doctor Feature & AI Migration Prompt (`src/agent_gauntlet/features/doctor/`)**:",
-      "Implementere `DoctorReport`, `DoctorFinding`, `FindingSeverity` og `DoctorChecker`.",
-      "Validere integritet af n\u00f8dvendige rod-filer (`spec.md`, `CONTEXT.md`, `gauntlet.toml`, `CODING_STANDARDS.md`).",
-      "Validere at `tasks/` eksisterer og flagge stray filer som `task.md` i rod eller `.agents/`.",
-      "Validere skill-integritet (fange manglende `references/verifier.md`, trunkerede `diagnose` stubs).",
-      "Detektere dublet-skills mellem `.agents/skills/` og `.agents/plugins/agent-gauntlet/skills/`.",
-      "Generere en formateret, handlingsorienteret AI migration prompt til automatisk sanering.",
-      "**CLI Integration (`src/agent_gauntlet/cli.py` & Node bootstrapper)**:",
-      "Tilf\u00f8je `doctor` subcommand til Python CLI med `--workspace` og `--json` support.",
-      "Overholde Slim Dispatcher Contract (`cli.py` under 300 linjer).",
-      "Opdatere `bin/agent-gauntlet.js` til at viderestille `doctor` til Python-motoren n\u00e5r tilg\u00e6ngelig.",
-      "**Gauntlet & Mutation Verification**:",
-      "Tilf\u00f8je testsuiter i `tests/features/test_doctor.py` og `tests/features/test_template_completeness.py`.",
-      "Tilf\u00f8je syntetiske mutanter for doctor og template copy i `tools/mutants.py`.",
-      "K\u00f8re `sh tools/gauntlet.sh` med 100% gr\u00f8n status og 100% kill-rate."
+      "**Polyglot Stack Detection (`src/agent_gauntlet/features/stacks/detector.py`)**:",
+      "Implementere `detect_stacks(workspace_path: Path | str) -> list[str]`, der scanner rod og undermapper for sprogindikatorer (`Cargo.toml`, `tsconfig.json`/`package.json`, `pyproject.toml` osv.).",
+      "Bevare bagudkompatibilitet i `detect_stack()`, som returnerer den prim\u00e6re fundne stack.",
+      "**Komposabel Standards Generator (`src/agent_gauntlet/features/scaffold/standards.py`)**:",
+      "Implementere `generate_coding_standards(stacks: list[str] | str) -> str`.",
+      "For enkelt-stack genereres den skr\u00e6ddersyede sprogstandard.",
+      "For polyglot/multi-stack genereres et struktureret dokument med tv\u00e6rg\u00e5ende principper, individuelle sprogsektioner (TypeScript, Python, Rust) og tv\u00e6rg\u00e5ende boundary/interop-regler med ensartet sektionsnummerering.",
+      "**Scaffolder & CLI Integration (`src/agent_gauntlet/features/scaffold/` & `cli.py`)**:",
+      "`ProjectScaffolder.scaffold()` underst\u00f8tter `stacks` (liste eller kommasepareret streng).",
+      "`ScaffoldResult` beriges med `stacks: list[str]`.",
+      "`agent-gauntlet init` og `scaffold` accepterer kommaseparerede stacks via `--stack` / `--stacks`.",
+      "`src/agent_gauntlet/cli.py` overholder invarianten om strengt $< 300$ linjer.",
+      "**Gauntlet & Verification**:",
+      "Acceptance & unit tests i `tests/features/test_scaffold.py` og `tests/features/test_stacks.py`.",
+      "100% gr\u00f8n testsuite (`343/343` tests).",
+      "100% dr\u00e6bte mutanter i `tools/mutants.py` (`65/65` mutanter dr\u00e6bt).",
+      "Best\u00e5et `agent-gauntlet check-release`, `check-spec`, `validate-plugin` og `doctor`."
     ],
     "unresolved_criteria": []
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "6f2fe6b74e0b2d4cd913a3bfc1ac5e923bfd10a03d7b7ae7ecf777404e419a7c",
-    "source_manifest_digest_pre": "d36ed7e7c36c48854b218dcade30a226e41c8bad00a74116fe31bd5f13a18341",
-    "source_manifest_digest_post": "d36ed7e7c36c48854b218dcade30a226e41c8bad00a74116fe31bd5f13a18341",
-    "config_digest": "d5c486874385367b1ec81e0773f7bd7cafbf925803f5b629b111055c34a90a0d",
-    "task_digest": "d4257d894f4f5e88e3b037bd340ca4c38d004f0df211b74310ae1eeb4d67ef14",
-    "policy_digest": "4fc979ac14312e5bafb8468a37bbf29c22fabdea2009722a949d00c21ac3e88e",
+    "source_content_digest": "05bb0d40a316fd25faedef75a3539110607e680ef8e21a92be277ed2eaac4bc4",
+    "source_manifest_digest_pre": "f5b7386dbc23cc3f2fbcfe7da854d22742d824f9bdeb4be52e632919af736891",
+    "source_manifest_digest_post": "f5b7386dbc23cc3f2fbcfe7da854d22742d824f9bdeb4be52e632919af736891",
+    "config_digest": "0bfa6744ae38243278155f84d3dd8b2a5cd4f414288f5a78fdc53d29adb6ff85",
+    "task_digest": "5c1d3bc08e2ce3ef8d0bda86c570befb4a6f52642b389e091cb874dd2eedebd4",
+    "policy_digest": "e3044e1639b31ee1ad322b7da75e5e45be9585c2d5c02ecfd6fd80624d7870be",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
-    "included_files_count": 162,
+    "included_files_count": 163,
     "vcs": {
       "type": "git",
-      "head": "4974c53",
-      "commit": "4974c53",
+      "head": "9fa3c44",
+      "commit": "9fa3c44",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-30T14:03:30Z",
-    "finished_at": "2026-08-30T14:04:03Z",
-    "total_duration_seconds": 32.491,
+    "started_at": "2026-08-31T15:59:25Z",
+    "finished_at": "2026-08-31T15:59:54Z",
+    "total_duration_seconds": 29.148,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -65,49 +58,70 @@
   "checks": [
     {
       "name": "lint",
-      "status": "PASSED",
-      "exit_code": 0,
-      "duration_seconds": 0.028,
+      "status": "FAILED",
+      "exit_code": 1,
+      "duration_seconds": 0.01,
       "optional": true,
-      "passed": true,
-      "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+      "passed": false,
+      "log_digest": "f7758e22376bfe467845958d849344e056856a6d21d36f85204acc8872cfde97"
     },
     {
       "name": "types",
-      "status": "PASSED",
-      "exit_code": 0,
-      "duration_seconds": 1.631,
+      "status": "FAILED",
+      "exit_code": 1,
+      "duration_seconds": 0.009,
       "optional": true,
-      "passed": true,
-      "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
+      "passed": false,
+      "log_digest": "48a503f4a2a4335ca5fc045b32d4173d8a7ae2b889211608bba6612538c3ec47"
     },
     {
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 2.436,
+      "duration_seconds": 2.434,
       "optional": false,
       "passed": true,
-      "log_digest": "c819ca9aedba602de421495c4bb3e5b5ed3bd31323d28270586ad8fc60737391"
+      "log_digest": "dfeebcc839b8861bea1ae7d209a5aa5c428b54984d2149e7dae7606f8cd28879"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.317,
+      "duration_seconds": 0.316,
       "optional": true,
       "passed": true,
-      "log_digest": "7d8783e9e49dea83ac5b0123f0ca12b0ae68ab486b218ef8c7d3277420b4b9c7"
+      "log_digest": "1ec43b37a7f3865f9f12233dcfff3e2295df7c797ddaf4b53294e6c7bdb1bf45"
     },
     {
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 28.033,
+      "duration_seconds": 26.33,
       "optional": true,
       "passed": true,
-      "log_digest": "e5093897b90c758f673625192df2224a81dae7a067a25373531350bb66018dc9"
+      "log_digest": "cdcdd13de4b7fd2d36e71ebc516575f079fa01bf472fd0db7822624428330619"
     }
   ],
-  "diagnostics": []
+  "diagnostics": [
+    {
+      "finding_type": "GENERAL_ERROR",
+      "tool_name": "lint",
+      "file_path": "",
+      "line_number": null,
+      "column_number": null,
+      "message": "Layer 'lint' failed with exit code 1.",
+      "remediation_hint": "Check layer logs and fix underlying command execution failure in 'python3 -m ruff check .'.",
+      "raw_context": "/usr/bin/python3: No module named ruff"
+    },
+    {
+      "finding_type": "GENERAL_ERROR",
+      "tool_name": "types",
+      "file_path": "",
+      "line_number": null,
+      "column_number": null,
+      "message": "Layer 'types' failed with exit code 1.",
+      "remediation_hint": "Check layer logs and fix underlying command execution failure in 'python3 -m pyright src tests tools'.",
+      "raw_context": "/usr/bin/python3: No module named pyright"
+    }
+  ]
 }

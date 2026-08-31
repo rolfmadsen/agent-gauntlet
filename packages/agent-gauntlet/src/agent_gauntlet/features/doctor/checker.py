@@ -5,11 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Sequence
 
+from agent_gauntlet.features.config.loader import load_config
 from agent_gauntlet.features.doctor.models import (
     DoctorFinding,
     DoctorReport,
     FindingSeverity,
 )
+from agent_gauntlet.features.stacks.detector import has_typescript_project_references
 
 REQUIRED_OLD_CODER_REFS: Sequence[str] = (
     "verifier.md",
@@ -45,6 +47,9 @@ class DoctorChecker:
 
         # 4. Duplicate skills & third-party stubs
         self._check_duplicate_skills(root, findings)
+
+        # 5. TypeScript project references & typecheck layer validation
+        self._check_typescript_configuration(root, findings)
 
         has_errors = any(f.severity == FindingSeverity.ERROR for f in findings)
         healthy = len(findings) == 0
@@ -314,6 +319,49 @@ class DoctorChecker:
                         )
                     )
 
+    def _check_typescript_configuration(self, root: Path, findings: list[DoctorFinding]) -> None:
+        """Validates TypeScript project reference settings and typecheck commands."""
+        if not has_typescript_project_references(root):
+            return
+
+        config_path = (
+            root / "gauntlet.toml"
+            if (root / "gauntlet.toml").is_file()
+            else (root / "gauntlet.json" if (root / "gauntlet.json").is_file() else None)
+        )
+        if not config_path:
+            return
+
+        try:
+            cfg = load_config(root)
+        except Exception:
+            return
+
+        for layer in cfg.layers:
+            cmd = layer.command
+            is_tsc = any("tsc" in str(part) for part in cmd)
+            if is_tsc:
+                has_no_emit = any("--noEmit" == str(part) for part in cmd)
+                has_build = any(part in ("-b", "--build") for part in cmd)
+                has_project = any(part in ("-p", "--project") for part in cmd)
+                if has_no_emit and not has_build and not has_project:
+                    findings.append(
+                        DoctorFinding(
+                            severity=FindingSeverity.WARNING,
+                            category="TSCONFIG_PROJECT_REFERENCES",
+                            path=str(config_path.relative_to(root)),
+                            message=(
+                                f"TypeScript project references detected in tsconfig, but gauntlet layer "
+                                f"'{layer.name}' runs 'tsc --noEmit' without '-b' or '-p'. "
+                                "In solution-style tsconfigs, 'tsc --noEmit' exits with code 0 without checking source files."
+                            ),
+                            remediation=(
+                                "Update the 'types' layer command in gauntlet.toml to '[\"npx\", \"tsc\", \"-b\"]' "
+                                "(tsc -b build mode) or '[\"npx\", \"tsc\", \"--noEmit\", \"-p\", \"tsconfig.app.json\"]'."
+                            ),
+                        )
+                    )
+
     def _generate_migration_prompt(self, root: Path, findings: list[DoctorFinding]) -> str:
         """Generates a tailored AI migration and remediation prompt."""
         if not findings:
@@ -363,6 +411,13 @@ class DoctorChecker:
             )
             for df in dup_findings:
                 commands.append(f"rm -rf {df.path}")
+
+        # TypeScript solution typecheck fixes
+        ts_findings = [f for f in findings if f.category == "TSCONFIG_PROJECT_REFERENCES"]
+        if ts_findings:
+            instructions.append(
+                "6. **Fix TypeScript Typecheck Layer (TSCONFIG_PROJECT_REFERENCES)**: Update `gauntlet.toml` layer `types` to use `[\"npx\", \"tsc\", \"-b\"]` instead of blind `tsc --noEmit` (which silently skips source files in solution tsconfigs)."
+            )
 
         prompt_lines = [
             "# AI Migration & Clean-up Plan for agent-gauntlet",

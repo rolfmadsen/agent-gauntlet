@@ -59,6 +59,23 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertTrue(created_file.exists())
             self.assertIn('"stack": "typescript"', created_file.read_text())
 
+    def test_init_command_polyglot_stacks(self) -> None:
+        """Scenario CLI-INIT-POLYGLOT: init accepts comma-separated stacks and generates composite standards."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["init", "-w", tmpdir, "--stacks", "typescript,python"])
+            self.assertEqual(exit_code, 0)
+            output = stdout.getvalue()
+            self.assertIn("typescript, python", output)
+            standards_file = Path(tmpdir) / "CODING_STANDARDS.md"
+            self.assertTrue(standards_file.exists())
+            content = standards_file.read_text(encoding="utf-8")
+            self.assertIn("Polyglot", content)
+            self.assertIn("TypeScript", content)
+            self.assertIn("Python", content)
+
+
     def test_tree_hash_command(self) -> None:
         """Scenario CLI-01: tree-hash prints tree hash and returns 0."""
         with tempfile.TemporaryDirectory() as tmpdir:

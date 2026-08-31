@@ -30,6 +30,8 @@ tags: [specification, architecture, gauntlet, okf, verification, supervisor, was
    - Rich LLM remediation hints and location reporting.
 5. **Standardized Knowledge Metadata & Gatekeeping (OKF v0.2):**
    - Strict frontmatter schema, ISO 8601 UTC timestamps, temporal invariants ($t_{verified} \ge t_{generated}$), and actor enforcement (`human:<id>`, `<agent>/<ver>`, `process:<id>`).
+6. **Polyglot & Multi-Stack Scaffolding:**
+   - Composable coding standards generation for multi-language workspaces (TypeScript/React + Python/Rust) with uniform section numbering and transversal boundary invariants.
 
 ---
 

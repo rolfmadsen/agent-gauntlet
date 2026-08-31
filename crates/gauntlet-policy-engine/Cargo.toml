@@ -1,6 +1,6 @@
 [package]
 name = "gauntlet-policy-engine"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 description = "Deterministic zero-authority WebAssembly policy verifier component for Agent Gauntlet"
 license = "MIT"

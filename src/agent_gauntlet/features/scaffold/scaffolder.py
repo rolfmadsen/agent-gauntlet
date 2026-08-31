@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 
 from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES
@@ -14,7 +15,15 @@ from agent_gauntlet.features.scaffold.models import (
     ScaffoldResult,
     ScaffoldStatus,
 )
-from agent_gauntlet.features.stacks.detector import detect_stack
+from agent_gauntlet.features.scaffold.standards import (
+    CODING_STANDARDS_PYTHON,
+    CODING_STANDARDS_RUST,
+    CODING_STANDARDS_TYPESCRIPT,
+    generate_coding_standards,
+    normalize_stacks,
+)
+from agent_gauntlet.features.stacks.detector import detect_stack, detect_stacks
+
 
 DEFAULT_CONTEXT_MD = """---
 type: Knowledge Bundle Index
@@ -334,317 +343,7 @@ description: Review the changes since a fixed point (commit, branch, tag, or mer
 # Code Review
 Two-axis review of the diff between HEAD and a fixed point (Standards vs Spec).
 """
-
-CODING_STANDARDS_PYTHON = '''# Coding Standards: Python
-
-This repository follows the **Google Python Style Guide** and **PEP 8 / PEP 484** type conventions, tailored for high-assurance, testable, and AI-navigable architectures.
-
----
-
-## 1. Type Annotations & Static Analysis
-- **Strict Typing:** All function and method signatures MUST have explicit argument and return type annotations.
-- **Modern Syntax:** Use Python 3.10+ native type syntax (`list[str]`, `dict[str, Any]`, `X | None` instead of `Optional[X]`, `Union[X, Y]`).
-- **No Untyped Any:** Avoid bare `Any` in public signatures; use concrete types, type variables, or `object` with runtime type guards.
-
-## 2. Immutability & Data Modeling
-- **Value Objects:** Prefer `@dataclass(frozen=True)` or Pydantic `BaseModel(frozen=True)` for domain models and data transfer objects (DTOs).
-- **Pure Functions:** Prefer stateless, side-effect-free pure functions where practical. Avoid mutable global or module-level state.
-- **Default Arguments:** Never use mutable default arguments (`def foo(items=[])` is strictly forbidden; use `def foo(items: list[str] | None = None)`).
-
-## 3. Architecture & Package Structure
-- **Package-by-Feature (Screaming Architecture):** Colocate related business logic, models, services, and repositories within cohesive feature directories (`features/<feature_name>/`).
-- **Dependency Inversion:** High-level policy modules must not depend directly on low-level detail/I/O modules; depend on abstractions/protocols (`typing.Protocol`).
-- **No Circular Imports:** Architecture must be strictly acyclic.
-
-## 4. Error Handling & Exceptions
-- **Domain Exceptions:** Define explicit, domain-specific exception hierarchies deriving from a base project exception (`class DomainError(Exception): pass`).
-- **No Bare Excepts:** Catching bare `except:` or broad `except Exception:` without re-raising or structured logging is strictly forbidden.
-- **Fail-Closed:** In security or verification boundaries, unexpected states must fail closed (deny/abort) rather than swallow errors.
-
-## 5. Documentation & Google Docstrings
-- **AI-Native Documentation:** Document *Why* (invariants, architectural boundaries, edge cases) rather than restating *What* the code does. Avoid noisy line-by-line comments.
-- **Module Docstrings:** Every Python module MUST start with a top-level docstring summarizing its responsibility and boundary invariants.
-- **Google Docstrings Standard:** All public functions, classes, and methods MUST use structured Google-style docstrings with explicit `Args:`, `Returns:`, and `Raises:` sections.
-
-## 6. Concrete DO / DON'T Examples
-
-### ❌ DON'T (Anti-pattern: Untyped, mutable defaults, swallowed exceptions, noisy comments)
-```python
-# bad_module.py
-# loop over users and get data
-def get_user_data(user_id, cache={}):  # ❌ Mutable default argument
-    # check if user is in cache
-    try:
-        return cache[user_id]
-    except:  # ❌ Bare except masks bugs
-        return None
-```
-
-### ✅ DO (Idiomatic: Strict types, frozen dataclass, Google docstrings, domain exceptions)
-```python
-"""User data access and cache management feature."""
-
-from collections.abc import Mapping
-from dataclasses import dataclass
-
-
-class UserNotFoundError(Exception):
-    """Raised when the requested user profile cannot be located."""
-
-
-@dataclass(frozen=True)
-class UserProfile:
-    """Immutable domain representation of a user profile."""
-
-    user_id: str
-    email: str
-    is_active: bool = True
-
-
-def get_user_data(
-    user_id: str,
-    cache: Mapping[str, UserProfile] | None = None,
-) -> UserProfile:
-    """Retrieves user profile data from cache or repository.
-
-    Args:
-        user_id: Unique string identifier for the user.
-        cache: Optional pre-warmed cache map. Defaults to None.
-
-    Returns:
-        The resolved immutable UserProfile.
-
-    Raises:
-        ValueError: If user_id is empty or malformed.
-        UserNotFoundError: If the user profile does not exist.
-    """
-    if not user_id.strip():
-        raise ValueError("user_id cannot be empty")
-
-    local_cache = cache or {}
-    if user_id not in local_cache:
-        raise UserNotFoundError(f"User '{user_id}' not found in cache")
-
-    return local_cache[user_id]
-```
-'''
-
-CODING_STANDARDS_TYPESCRIPT = """# Coding Standards: TypeScript & React
-
-This repository follows the **Google TypeScript Style Guide** and modern **Functional React & Clean Architecture** principles.
-
----
-
-## 1. Type Safety & TypeScript Disciplines
-- **Strict Mode:** Code must compile with `strict: true` and zero compiler warnings.
-- **No `any`:** `any` is strictly prohibited. Use `unknown` combined with type narrowing, type predicates (`is`), or validation libraries (`zod`) at runtime I/O boundaries.
-- **Interfaces vs Types:** Use `interface` for public API object shapes and extensible contracts; use `type` for unions, intersections, tuple types, and utility types.
-- **Discriminated Unions:** Model state machines and mutually exclusive states using discriminated unions (e.g. `{ status: 'success'; data: T } | { status: 'error'; error: Error }`) rather than parallel optional boolean flags.
-
-## 2. React & Component Architecture
-- **Functional Components:** All components must be pure functional components with explicit props interfaces (`interface ButtonProps { ... }`).
-- **Custom Hooks for Logic:** JSX templates must remain declarative presentation layers. Extract non-trivial business logic, asynchronous state, and side-effects into custom hooks (`use[Feature]`).
-- **Component File Budget:** Components should stay focused and ideally under 150 lines. Decompose complex UIs into smaller, single-responsibility sub-components.
-- **Pure Render & Side-Effects:** Avoid side-effects during render. All side-effects belong in `useEffect` or event handlers.
-
-## 3. Immutability & State Management
-- **Immutability First:** Prefer `const` over `let`. Never mutate props or state objects directly; use shallow copies or immutable updates.
-- **Explicit Exports:** Use explicit named exports for components, functions, and types. Avoid `export default` except where required by file-system routing.
-- **Readonly Parameters:** Mark parameters as `readonly` when they are not intended to be mutated.
-
-## 4. Error Handling & Async
-- **Predictable Async:** Always handle Promise rejections. Avoid unhandled floating promises (`void asyncFn()`).
-- **Error Boundaries:** Wrap component sub-trees in Error Boundaries to gracefully catch rendering crashes without bringing down the entire application.
-
-## 5. Documentation & TSDoc Standards
-- **TSDoc Documentation Standard:** All exported functions, hooks, interfaces, and component props MUST be documented with TSDoc tags (`@param`, `@returns`, `@throws`, `@example`).
-- **Self-Documenting Types:** Do not write comments that merely rephrase type signatures. Document semantic invariants and edge-case behavior.
-
-## 6. Concrete DO / DON'T Examples
-
-### ❌ DON'T (Anti-pattern: `any`, bloated component with inline async side-effects)
-```tsx
-// ❌ any type, mutable let, unhandled async in render
-export default function UserCard(props: any) {
-  let [data, setData] = React.useState<any>(null);
-  React.useEffect(() => {
-    fetch('/api/user/' + props.id).then(r => r.json()).then(d => setData(d));
-  }, [props.id]);
-  return <div>{data?.name}</div>;
-}
-```
-
-### ✅ DO (Idiomatic: Typed props interface, custom hook, TSDoc, discriminated union)
-```tsx
-import React from 'react';
-
-/** State model for asynchronous user profile loading. */
-export type UserState =
-  | { status: 'idle' | 'loading' }
-  | { status: 'success'; profile: UserProfile }
-  | { status: 'error'; error: Error };
-
-export interface UserProfile {
-  readonly id: string;
-  readonly name: string;
-  readonly email: string;
-}
-
-export interface UserCardProps {
-  /** The unique user identifier to display. */
-  readonly userId: string;
-  /** Optional callback fired when the profile card is clicked. */
-  readonly onSelect?: (userId: string) => void;
-}
-
-/**
- * Custom hook to manage user profile fetching and lifecycle state.
- *
- * @param userId - Unique identifier for the user.
- * @returns Discriminated union state representing loading, success, or error.
- */
-export function useUserProfile(userId: string): UserState {
-  const [state, setState] = React.useState<UserState>({ status: 'idle' });
-
-  React.useEffect(() => {
-    let isMounted = true;
-    setState({ status: 'loading' });
-
-    fetch(`/api/users/${encodeURIComponent(userId)}`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`Failed to load user: ${res.statusText}`);
-        return res.json();
-      })
-      .then((profile: UserProfile) => {
-        if (isMounted) setState({ status: 'success', profile });
-      })
-      .catch((error: Error) => {
-        if (isMounted) setState({ status: 'error', error });
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [userId]);
-
-  return state;
-}
-
-/**
- * Presentational component rendering user profile details.
- */
-export const UserCard: React.FC<UserCardProps> = ({ userId, onSelect }) => {
-  const state = useUserProfile(userId);
-
-  if (state.status === 'loading') return <div>Loading profile...</div>;
-  if (state.status === 'error') return <div role="alert">{state.error.message}</div>;
-  if (state.status !== 'success') return null;
-
-  return (
-    <article onClick={() => onSelect?.(userId)} className="user-card">
-      <h3>{state.profile.name}</h3>
-      <p>{state.profile.email}</p>
-    </article>
-  );
-};
-```
-"""
-
-CODING_STANDARDS_RUST = """# Coding Standards: Rust
-
-This repository follows the **Official Rust API Guidelines (C-API-GUIDELINES)** and idiomatic Clean Rust principles.
-
----
-
-## 1. Naming & Case Conventions (C-CASE)
-- **Naming Conventions:**
-  - `UpperCamelCase` for types and traits (e.g., `VerificationReport`, `TaskContract`).
-  - `snake_case` for functions, methods, and modules (e.g., `execute_verify`, `parse_task_file`).
-  - `SCREAMING_SNAKE_CASE` for constants and statics.
-- **Constructors:** Use `new()` or `with_capacity()` as standard constructor names.
-
-## 2. Error Handling & Invariants (C-GOOD-ERR)
-- **Error Handling:**
-  - `unwrap()` and `expect()` are strictly forbidden in production code. Use `?` operator for clean error propagation.
-  - Libraries must define structured, strongly-typed errors implementing `std::error::Error` (via `thiserror`). Application binaries may use `anyhow` for top-level context.
-  - Panics are acceptable only in test assertions and invariant property tests.
-
-## 3. Ergonomics & Ownership (C-CONV, C-GENERIC)
-- **Borrowing over Cloning:** Pass shared references (`&str`, `&[T]`) instead of owned types (`&String`, `&Vec<T>`) in function arguments.
-- **Standard Conversions:** Implement standard conversion traits (`From`, `TryFrom`, `AsRef`) where natural conversions exist.
-- **Newtype Pattern (C-NEWTYPE):** Wrap primitive types in lightweight domain structs (e.g., `struct UserId(String);`) to prevent *Primitive Obsession*.
-
-## 4. Documentation & Tests (C-DOC)
-- **Rustdoc Documentation Standard:** All public items MUST have `///` doc comments detailing purpose, `# Arguments`, `# Returns`, `# Errors`, `# Panics`, and `# Examples`.
-- **Clippy Strictness:** Code must pass `cargo clippy -- -D warnings` with zero warnings.
-
-## 5. Concrete DO / DON'T Examples
-
-### ❌ DON'T (Anti-pattern: Production `unwrap()`, excessive cloning, primitive obsession)
-```rust
-// ❌ unwrap in production, taking &String instead of &str, cloning everywhere
-pub fn fetch_user_name(id: &String) -> String {
-    let db = open_connection().unwrap(); // ❌ Panic in production
-    let user = db.query(id.clone()).unwrap();
-    user.name
-}
-```
-
-### ✅ DO (Idiomatic: Newtype pattern, `thiserror`, borrowing, standard doc comments)
-```rust
-use std::path::Path;
-use thiserror::Error;
-
-/// Structured domain error hierarchy.
-#[derive(Debug, Error)]
-pub enum ConfigError {
-    #[error("Configuration file not found at '{0}'")]
-    NotFound(String),
-    #[error("Failed to parse configuration: {0}")]
-    ParseError(#[from] toml::de::Error),
-}
-
-/// Strongly-typed identifier for configuration scopes.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ScopeId(String);
-
-impl ScopeId {
-    /// Creates a validated ScopeId.
-    pub fn new(id: impl Into<String>) -> Result<Self, &'static str> {
-        let val = id.into();
-        if val.is_empty() {
-            return Err("ScopeId cannot be empty");
-        }
-        Ok(Self(val))
-    }
-
-    /// Accesses the underlying string slice.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-/// Loads and validates configuration from the specified workspace path.
-///
-/// # Arguments
-/// * `path` - Path reference to configuration file.
-///
-/// # Errors
-/// Returns [`ConfigError::NotFound`] if the file does not exist, or
-/// [`ConfigError::ParseError`] if TOML syntax is invalid.
-///
-/// # Examples
-/// ```rust
-/// let cfg = load_config(Path::new("gauntlet.toml"))?;
-/// ```
-pub fn load_config(path: &Path) -> Result<String, ConfigError> {
-    if !path.exists() {
-        return Err(ConfigError::NotFound(path.display().to_string()));
-    }
-    std::fs::read_to_string(path).map_err(Into::into)
-}
-```
-"""
+# Coding standards are imported from agent_gauntlet.features.scaffold.standards
 
 
 class ProjectScaffolder:
@@ -705,6 +404,7 @@ class ProjectScaffolder:
         self,
         workspace: Path,
         stack: str | None = None,
+        stacks: Sequence[str] | str | None = None,
         harness: str = "antigravity",
         config_format: str = "toml",
         force: bool = False,
@@ -713,7 +413,8 @@ class ProjectScaffolder:
 
         Args:
             workspace: Target root directory for scaffolding.
-            stack: Optional explicit stack name ('python', 'typescript', 'rust'). Defaults to auto-detection.
+            stack: Optional explicit single stack name or comma-separated string ('python', 'typescript', 'rust').
+            stacks: Optional sequence or comma-separated string of stack names.
             harness: Target AI agent harness ('antigravity' or 'claude-code'). Defaults to 'antigravity'.
             config_format: Gauntlet config format ('toml' or 'json'). Defaults to 'toml'.
             force: If True, overwrites existing files. Defaults to False.
@@ -729,21 +430,33 @@ class ProjectScaffolder:
                 f"Unsupported harness '{harness}'. Supported harnesses: {', '.join(SUPPORTED_HARNESSES)}"
             )
 
-        chosen_stack = stack or detect_stack(workspace) or "python"
-        result = ScaffoldResult(workspace=workspace, stack=chosen_stack, harness=harness)
+        raw_input = stacks if stacks is not None else stack
+        resolved_stacks = normalize_stacks(raw_input)
+        if not resolved_stacks:
+            resolved_stacks = detect_stacks(workspace)
+        if not resolved_stacks:
+            resolved_stacks = ["python"]
+
+        primary_stack = resolved_stacks[0]
+        result = ScaffoldResult(
+            workspace=workspace,
+            stack=primary_stack,
+            stacks=resolved_stacks,
+            harness=harness,
+        )
 
         # 1. Config file
         config_name = f"gauntlet.{config_format}"
         config_content = (
-            generate_default_config_json(chosen_stack)
+            generate_default_config_json(primary_stack, workspace_path=workspace)
             if config_format == "json"
-            else generate_default_config_toml(chosen_stack)
+            else generate_default_config_toml(primary_stack, workspace_path=workspace)
         )
         result.entries.append(
             self._write_file_safely(
                 workspace / config_name,
                 config_content,
-                f"Multi-stack gauntlet configuration for '{chosen_stack}'",
+                f"Multi-stack gauntlet configuration for '{primary_stack}'",
                 force,
             )
         )
@@ -773,18 +486,17 @@ class ProjectScaffolder:
                 force,
             )
         )
-        standards_map = {
-            "python": CODING_STANDARDS_PYTHON,
-            "typescript": CODING_STANDARDS_TYPESCRIPT,
-            "rust": CODING_STANDARDS_RUST,
-        }
-        stack_key = chosen_stack.lower().strip()
-        active_standards = standards_map.get(stack_key, CODING_STANDARDS_PYTHON)
+        active_standards = generate_coding_standards(resolved_stacks)
+        stack_desc = (
+            f"Polyglot coding standards for '{', '.join(resolved_stacks)}'"
+            if len(resolved_stacks) > 1
+            else f"Coding standards based on authoritative guidelines for '{primary_stack}'"
+        )
         result.entries.append(
             self._write_file_safely(
                 workspace / "CODING_STANDARDS.md",
                 active_standards,
-                f"Coding standards based on authoritative guidelines for '{stack_key}'",
+                stack_desc,
                 force,
             )
         )

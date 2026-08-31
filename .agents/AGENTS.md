@@ -83,7 +83,7 @@ SPEC / GRILL → (Human Approval) → RED → GREEN → REFACTOR → GAUNTLET �
 4. **REFACTOR**: Clean up code while assertions remain frozen.
 5. **GAUNTLET**: Execute multi-layer verification via `agent-gauntlet verify` / `sh tools/gauntlet.sh`:
    - Linters & Static Analysis
-   - Type Checks (`pyright`, `tsc`, `cargo check`)
+   - Type Checks (`pyright`, `tsc` / `tsc -b`, `cargo check`)
    - Acceptance & Unit Tests
    - Invariant & Property Tests (`hypothesis`, `proptest`)
    - Mutation Testing Gauntlet (`mutants.py`)

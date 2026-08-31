@@ -19,11 +19,13 @@ Makefile / CI config first). These are the defaults when nothing exists.
 | Layer | Tool | Command |
 |---|---|---|
 | Tests | vitest / jest | `npx vitest run` / `npx jest` |
-| Types | tsc | `npx tsc --noEmit` |
+| Types | tsc | `npx tsc --noEmit` (single project) / `npx tsc -b` (project references & solution style configs) / `npx tsc --noEmit -p tsconfig.app.json` |
 | Lint | eslint | `npx eslint .` |
 | Changed-line coverage | vitest/jest coverage | `npx vitest run --coverage` (v8, per-file report); check touched files |
 | Mutation | Stryker | `npx stryker run` (scope with `mutate: [<changed files>]` — full-project runs are slow) |
 | Property-based | fast-check | `fc.assert(fc.property(...))` |
+
+> **⚠️ TypeScript Project References Trap**: In modern solution-style setups (Vite, monorepos, where root `tsconfig.json` contains `"files": []` and `"references": [...]`), running `npx tsc --noEmit` checks only root files (empty) and exits 0 on 0 ms without typechecking `src/`. Always use `npx tsc -b` (build mode) or target the specific app tsconfig (`npx tsc --noEmit -p tsconfig.app.json`).
 
 ## Go
 

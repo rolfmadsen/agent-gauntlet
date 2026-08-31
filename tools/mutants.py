@@ -28,6 +28,8 @@ TARGET_CLI = ROOT / "src/agent_gauntlet/cli.py"
 TARGET_VERIFIER = ROOT / "src/agent_gauntlet/features/evidence/verifier.py"
 TARGET_NPX_WRAPPER = ROOT / "packages/agent-gauntlet/bin/agent-gauntlet.js"
 TARGET_DOCTOR = ROOT / "src/agent_gauntlet/features/doctor/checker.py"
+TARGET_DETECTOR = ROOT / "src/agent_gauntlet/features/stacks/detector.py"
+TARGET_STANDARDS = ROOT / "src/agent_gauntlet/features/scaffold/standards.py"
 
 
 def _clean_pycache() -> None:
@@ -72,6 +74,11 @@ SCAFFOLD_TESTS = [
 DOCTOR_TESTS = [
     "tests.features.test_doctor",
     "tests.features.test_template_completeness",
+]
+
+STACK_TESTS = [
+    "tests.features.test_stacks",
+    "tests.features.test_scaffold",
 ]
 
 CLI_TESTS = [
@@ -510,6 +517,51 @@ MUTANTS = [
         "  const args = [];",
         NPX_TESTS,
     ),
+    # --- TypeScript detector mutants ---
+    (
+        TARGET_DETECTOR,
+        "TS-M1 disable project references detection",
+        '            return ["npx", "tsc", "-b"]',
+        '            return ["npx", "tsc", "--noEmit"]',
+        STACK_TESTS,
+    ),
+    (
+        TARGET_DETECTOR,
+        "TS-M2 tsconfig.app.json fallback to default tsc",
+        '            return ["npx", "tsc", "--noEmit", "-p", "tsconfig.app.json"]',
+        '            return ["npx", "tsc", "--noEmit"]',
+        STACK_TESTS,
+    ),
+    # --- Doctor TypeScript mutants ---
+    (
+        TARGET_DOCTOR,
+        "DOC-M5 bypass TypeScript project references warning",
+        '                            category="TSCONFIG_PROJECT_REFERENCES",',
+        '                            category="IGNORED_CATEGORY",',
+        DOCTOR_TESTS,
+    ),
+    # --- Polyglot & Standards mutants ---
+    (
+        TARGET_DETECTOR,
+        "DET-POLY-M1 detect_stacks drop subdirectory scanning",
+        "    for sub in SCAN_SUBDIRS:",
+        "    for sub in ():",
+        STACK_TESTS,
+    ),
+    (
+        TARGET_STANDARDS,
+        "POLY-M1 generate_coding_standards drop transversal principles",
+        "        UNIVERSAL_PRINCIPLES,",
+        '        "<!-- omitted principles -->",',
+        SCAFFOLD_TESTS,
+    ),
+    (
+        TARGET_STANDARDS,
+        "POLY-M2 generate_coding_standards always return python standalone",
+        "    if len(normalized) == 1:",
+        "    if len(normalized) >= 1:",
+        SCAFFOLD_TESTS,
+    ),
 ]
 
 
@@ -606,6 +658,8 @@ def main() -> int:
         TARGET_VERIFIER: TARGET_VERIFIER.read_text(),
         TARGET_NPX_WRAPPER: TARGET_NPX_WRAPPER.read_text(),
         TARGET_DOCTOR: TARGET_DOCTOR.read_text(),
+        TARGET_DETECTOR: TARGET_DETECTOR.read_text(),
+        TARGET_STANDARDS: TARGET_STANDARDS.read_text(),
     }
 
     try:

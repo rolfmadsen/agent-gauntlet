@@ -127,3 +127,7 @@ _Avoid_: Verification script, runner config, calculation function.
 A pre-flight verification contract, that evaluates version harmony across project manifests, changelog synchronization, and architecture decision record coverage prior to software publication.
 _Avoid_: Release check, version linter, publication script.
 
+**Composite Coding Standards**:
+A unified guidelines document, that combines language-specific conventions and transversal engineering invariants across multiple programming stacks within a polyglot workspace.
+_Avoid_: Merged docs, mixed styleguide, combined rules.
+

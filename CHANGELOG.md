@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.6.0] - 2026-08-31
+
+### 🚀 Added
+- **Smart TypeScript Project References & Full Typecheck Detection (`Task 041`)**:
+  - Comment- and trailing-comma-tolerant JSONC parser (`inspect_typescript_tsconfig`) for safe inspection of TypeScript configuration files.
+  - Automatic detection of Project References / Solution Style tsconfigs (`tsconfig.app.json`, `tsconfig.node.json`, `"references": [...]`).
+  - Dynamic generation of authoritative typecheck commands (`npx tsc -b` / `npx tsc --noEmit -p tsconfig.app.json`) in stack profiles, configuration loaders, and project scaffolding.
+  - Doctor Integrity Check (`TSCONFIG_PROJECT_REFERENCES` warning) in `agent-gauntlet doctor` flagging silent false-positive `tsc --noEmit` executions on solution tsconfigs with automatic AI migration prompts and bash remediation.
+  - Updated multi-stack coding standards (`CODING_STANDARDS.md`, `CODING_STANDARDS_TYPESCRIPT`) and bundled skill reference guides (`old-coder/references/gauntlet.md`) highlighting the Project References trap and full typecheck invariants.
+
+---
+
 ## [0.5.0] - 2026-08-30
 
 ### 🚀 Added

@@ -1,6 +1,6 @@
 {
   "project_name": "agent-gauntlet",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "layers": [
     {
       "name": "core",

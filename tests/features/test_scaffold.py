@@ -172,6 +172,72 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
         self.assertIn("Google TypeScript Style Guide", auto_ts_standards)
         self.assertIn("TSDoc Documentation Standard", auto_ts_standards)
 
+    def test_scaffold_typescript_solution_project_generates_tsc_b(self) -> None:
+        """Scaffolding an existing solution tsconfig workspace must configure tsc -b."""
+        (self.workspace / "tsconfig.json").write_text(
+            '{\n  "files": [],\n  "references": [{ "path": "./tsconfig.app.json" }]\n}\n',
+            encoding="utf-8",
+        )
+        result = self.scaffolder.scaffold(
+            self.workspace, stack="typescript", config_format="toml", force=True
+        )
+        self.assertTrue(result.success)
+
+        gauntlet_toml = (self.workspace / "gauntlet.toml").read_text(encoding="utf-8")
+        self.assertIn('command = ["npx", "tsc", "-b"]', gauntlet_toml)
+
+    def test_scaffold_polyglot_explicit_stacks_list(self) -> None:
+        """Scenario SC-06: Scaffolding with multiple stacks produces composite CODING_STANDARDS.md."""
+        result = self.scaffolder.scaffold(
+            self.workspace, stacks=["typescript", "python"], config_format="toml", force=True
+        )
+        self.assertTrue(result.success)
+        self.assertEqual(result.stacks, ["typescript", "python"])
+
+        standards = (self.workspace / "CODING_STANDARDS.md").read_text(encoding="utf-8")
+        self.assertIn("Polyglot", standards)
+        self.assertIn("Transversal Engineering", standards)
+        self.assertIn("TypeScript", standards)
+        self.assertIn("Python", standards)
+        self.assertIn("Cross-Stack Boundary", standards)
+        self.assertIn("Google TypeScript Style Guide", standards)
+        self.assertIn("Google Python Style Guide", standards)
+
+    def test_scaffold_polyglot_explicit_comma_string(self) -> None:
+        """Scenario SC-07: Comma-separated stack argument parses and builds composite standards."""
+        result = self.scaffolder.scaffold(
+            self.workspace, stack="typescript,rust", config_format="toml", force=True
+        )
+        self.assertTrue(result.success)
+        self.assertEqual(result.stacks, ["typescript", "rust"])
+
+        standards = (self.workspace / "CODING_STANDARDS.md").read_text(encoding="utf-8")
+        self.assertIn("Polyglot", standards)
+        self.assertIn("TypeScript", standards)
+        self.assertIn("Rust", standards)
+        self.assertIn("Official Rust API Guidelines", standards)
+
+    def test_scaffold_polyglot_auto_detection(self) -> None:
+        """Scenario SC-08: Auto-detecting multiple stacks in subdirectories generates composite standards."""
+        (self.workspace / "frontend").mkdir()
+        (self.workspace / "frontend/tsconfig.json").touch()
+        (self.workspace / "backend").mkdir()
+        (self.workspace / "backend/pyproject.toml").touch()
+
+        result = self.scaffolder.scaffold(
+            self.workspace, stack=None, config_format="toml", force=True
+        )
+        self.assertTrue(result.success)
+        self.assertIn("typescript", result.stacks)
+        self.assertIn("python", result.stacks)
+
+        standards = (self.workspace / "CODING_STANDARDS.md").read_text(encoding="utf-8")
+        self.assertIn("Polyglot", standards)
+        self.assertIn("TypeScript", standards)
+        self.assertIn("Python", standards)
+
 
 if __name__ == "__main__":
     unittest.main()
+
+

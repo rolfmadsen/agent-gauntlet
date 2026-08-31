@@ -20,7 +20,11 @@ from agent_gauntlet.features.stacks.detector import detect_stack
 from agent_gauntlet.features.stacks.profiles import get_default_stack_profile
 
 
-def _parse_dict_config(data: dict[str, Any], fallback_stack: str = "python") -> GauntletConfig:
+def _parse_dict_config(
+    data: dict[str, Any],
+    fallback_stack: str = "python",
+    workspace_path: Path | str | None = None,
+) -> GauntletConfig:
     """Parse dictionary data into GauntletConfig."""
     stack = str(data.get("stack", fallback_stack))
     save_evidence = bool(data.get("save_evidence", True))
@@ -58,7 +62,7 @@ def _parse_dict_config(data: dict[str, Any], fallback_stack: str = "python") -> 
 
     # If no layers specified, fallback to default stack profile
     if not layers:
-        default_layers = get_default_stack_profile(stack)
+        default_layers = get_default_stack_profile(stack, workspace_path=workspace_path)
         layers = [
             LayerConfig(
                 name=layer.name,
@@ -86,8 +90,8 @@ def load_config(
     workspace_path: Path | str,
     explicit_stack: str | None = None,
 ) -> GauntletConfig:
-    """
-    Load gauntlet configuration from workspace.
+    """Load gauntlet configuration from workspace.
+
     Priority:
     1. gauntlet.toml in workspace root
     2. gauntlet.json in workspace root
@@ -104,16 +108,20 @@ def load_config(
             raise RuntimeError("TOML parser not available. Please install tomli for Python < 3.11")
         with open(toml_path, "rb") as f:
             data = tomllib.load(f)
-            return _parse_dict_config(data, fallback_stack=detected_or_fallback)
+            return _parse_dict_config(
+                data, fallback_stack=detected_or_fallback, workspace_path=root
+            )
 
     if json_path.exists():
         with open(json_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-            return _parse_dict_config(data, fallback_stack=detected_or_fallback)
+            return _parse_dict_config(
+                data, fallback_stack=detected_or_fallback, workspace_path=root
+            )
 
     # Auto-detection fallback
     stack = explicit_stack or detect_stack(root) or "python"
-    default_layers = get_default_stack_profile(stack)
+    default_layers = get_default_stack_profile(stack, workspace_path=root)
     layers = [
         LayerConfig(
             name=layer.name,
@@ -133,9 +141,9 @@ def load_config(
     )
 
 
-def generate_default_config_toml(stack: str) -> str:
+def generate_default_config_toml(stack: str, workspace_path: Path | str | None = None) -> str:
     """Generate default gauntlet.toml file content for a given stack."""
-    layers = get_default_stack_profile(stack)
+    layers = get_default_stack_profile(stack, workspace_path=workspace_path)
     lines = [
         f"# agent-gauntlet configuration for {stack}",
         f'stack = "{stack}"',
@@ -162,9 +170,9 @@ def generate_default_config_toml(stack: str) -> str:
     return "\n".join(lines)
 
 
-def generate_default_config_json(stack: str) -> str:
+def generate_default_config_json(stack: str, workspace_path: Path | str | None = None) -> str:
     """Generate default gauntlet.json file content for a given stack."""
-    layers = get_default_stack_profile(stack)
+    layers = get_default_stack_profile(stack, workspace_path=workspace_path)
     data = {
         "stack": stack,
         "save_evidence": True,

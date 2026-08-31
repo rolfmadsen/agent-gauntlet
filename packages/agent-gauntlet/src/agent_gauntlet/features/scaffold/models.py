@@ -30,15 +30,18 @@ class ScaffoldResult:
 
     workspace: Path
     stack: str
+    stacks: list[str] = field(default_factory=list)
     harness: str = "antigravity"
     entries: list[ScaffoldEntry] = field(default_factory=list)
     success: bool = True
 
     def to_dict(self) -> dict[str, object]:
         """Serialize result to dictionary."""
+        effective_stacks = self.stacks if self.stacks else ([self.stack] if self.stack else [])
         return {
             "workspace": str(self.workspace),
             "stack": self.stack,
+            "stacks": effective_stacks,
             "harness": self.harness,
             "success": self.success,
             "created": [e.path for e in self.entries if e.status == ScaffoldStatus.CREATED],
@@ -49,3 +52,4 @@ class ScaffoldResult:
                 for e in self.entries
             ],
         }
+
