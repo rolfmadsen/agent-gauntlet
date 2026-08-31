@@ -2,7 +2,8 @@
 //!
 //! Evaluates strongly-typed capability requests against an immutable trusted context.
 
-pub const POLICY_VERSION: &str = "0.6.0";
+pub const POLICY_VERSION: &str = "0.7.0";
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolActionType {

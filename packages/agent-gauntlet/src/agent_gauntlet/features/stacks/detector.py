@@ -109,6 +109,11 @@ SCAN_SUBDIRS = (
     "services",
     "crates",
     "src",
+    "wasm",
+    "rust",
+    "native",
+    "src-wasm",
+    "core",
 )
 
 
@@ -152,8 +157,8 @@ def detect_stacks(workspace_path: Path | str) -> list[str]:
             continue
         _add_stack(_detect_stack_in_dir(sub_path))
 
-        # Check 1 level deeper for container folders (e.g. apps/*, packages/*, services/*, crates/*)
-        if sub in ("apps", "packages", "services", "crates"):
+        # Check 1 level deeper for container folders (e.g. apps/*, packages/*, services/*, crates/*, wasm/*)
+        if sub in ("apps", "packages", "services", "crates", "wasm", "rust", "native"):
             try:
                 for child in sub_path.iterdir():
                     if child.is_dir():

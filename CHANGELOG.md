@@ -7,7 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.7.0] - 2026-08-31
+
+### 🚀 Added
+- **Polyglot Composite Coding Standards & Multi-Stack Detection (`Task 042`)**:
+  - Recursive stack detector `detect_stacks()` scanning root and standard subdirectories (`frontend/`, `backend/`, `web/`, `api/`, `apps/*`, `packages/*`, `crates/*`, `wasm/`, `rust/`, `native/`, `src-wasm/`, `services/*`).
+  - Modular composable coding standards generator (`src/agent_gauntlet/features/scaffold/standards.py`) synthesizing transversal engineering principles, idiomatic language standards (TypeScript/React, Python, Rust), and cross-stack boundary & interop invariants (OpenAPI, zero untyped JSON bridges, error envelopes).
+  - Multi-stack scaffolding support (`--stacks typescript,python` / `--stack typescript,rust`) across `agent-gauntlet init`, `scaffold`, and `ProjectScaffolder`.
+  - Added mutation testing coverage for polyglot composite generation and stack detection in `tools/mutants.py` (65/65 mutants killed).
+
+---
+
 ## [0.6.0] - 2026-08-31
+
 
 ### 🚀 Added
 - **Smart TypeScript Project References & Full Typecheck Detection (`Task 041`)**:

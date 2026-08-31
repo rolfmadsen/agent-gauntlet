@@ -86,6 +86,18 @@ class TestStackDetector(unittest.TestCase):
             self.assertIn("python", detected)
             self.assertEqual(len(detected), 3)
 
+    def test_detect_stacks_wasm_and_typescript_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ws = Path(tmpdir)
+            (ws / "package.json").touch()
+            (ws / "wasm").mkdir()
+            (ws / "wasm/Cargo.toml").touch()
+
+            detected = detect_stacks(ws)
+            self.assertIn("typescript", detected)
+            self.assertIn("rust", detected)
+            self.assertEqual(len(detected), 2)
+
 
 class TestTypeScriptProjectReferencesDetector(unittest.TestCase):
     """Tests for smart TypeScript project references / solution style detection."""
