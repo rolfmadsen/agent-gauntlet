@@ -125,7 +125,9 @@ class TestDoctorDiagnostics(unittest.TestCase):
             checker = DoctorChecker()
             report = checker.check_workspace(ws)
 
-            ts_findings = [f for f in report.findings if f.category == "TSCONFIG_PROJECT_REFERENCES"]
+            ts_findings = [
+                f for f in report.findings if f.category == "TSCONFIG_PROJECT_REFERENCES"
+            ]
             self.assertGreater(len(ts_findings), 0)
             self.assertEqual(ts_findings[0].severity, FindingSeverity.WARNING)
             self.assertIn("tsc -b", ts_findings[0].remediation)
@@ -149,7 +151,9 @@ class TestDoctorDiagnostics(unittest.TestCase):
             checker = DoctorChecker()
             report = checker.check_workspace(ws)
 
-            ts_findings = [f for f in report.findings if f.category == "TSCONFIG_PROJECT_REFERENCES"]
+            ts_findings = [
+                f for f in report.findings if f.category == "TSCONFIG_PROJECT_REFERENCES"
+            ]
             self.assertEqual(len(ts_findings), 0)
 
     def test_doctor_to_dict_and_json_serialization(self) -> None:
@@ -171,4 +175,3 @@ class TestDoctorDiagnostics(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

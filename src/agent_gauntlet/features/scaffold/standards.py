@@ -271,7 +271,7 @@ CROSS_STACK_INVARIANTS = """In polyglot repositories where multiple languages co
 - **Deterministic Serialization:** Invariant round-trip tests must guarantee that data serialized in one stack deserializes identically in other stacks without precision or field loss."""
 
 # Standalone single-stack standards (Backward-compatible format)
-CODING_STANDARDS_PYTHON = f"""# Coding Standards: Python
+CODING_STANDARDS_PYTHON = """# Coding Standards: Python
 
 This repository follows the **Google Python Style Guide** and **PEP 8 / PEP 484** type conventions, tailored for high-assurance, testable, and AI-navigable architectures.
 
@@ -308,7 +308,7 @@ This repository follows the **Google Python Style Guide** and **PEP 8 / PEP 484*
 ```python
 # bad_module.py
 # loop over users and get data
-def get_user_data(user_id, cache={{}}):  # ❌ Mutable default argument
+def get_user_data(user_id, cache={}):  # ❌ Mutable default argument
     # check if user is in cache
     try:
         return cache[user_id]
@@ -357,9 +357,9 @@ def get_user_data(
     if not user_id.strip():
         raise ValueError("user_id cannot be empty")
 
-    local_cache = cache or {{}}
+    local_cache = cache or {}
     if user_id not in local_cache:
-        raise UserNotFoundError(f"User '{{user_id}}' not found in cache")
+        raise UserNotFoundError(f"User '{user_id}' not found in cache")
 
     return local_cache[user_id]
 ```

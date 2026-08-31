@@ -75,7 +75,6 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertIn("TypeScript", content)
             self.assertIn("Python", content)
 
-
     def test_tree_hash_command(self) -> None:
         """Scenario CLI-01: tree-hash prints tree hash and returns 0."""
         with tempfile.TemporaryDirectory() as tmpdir:

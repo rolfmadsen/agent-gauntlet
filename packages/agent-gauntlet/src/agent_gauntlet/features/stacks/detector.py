@@ -168,4 +168,3 @@ def detect_stack(workspace_path: Path | str) -> str | None:
     """Detect programming stack of a workspace by checking standard project indicator files."""
     stacks = detect_stacks(workspace_path)
     return stacks[0] if stacks else None
-

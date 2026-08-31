@@ -16,14 +16,10 @@ from agent_gauntlet.features.scaffold.models import (
     ScaffoldStatus,
 )
 from agent_gauntlet.features.scaffold.standards import (
-    CODING_STANDARDS_PYTHON,
-    CODING_STANDARDS_RUST,
-    CODING_STANDARDS_TYPESCRIPT,
     generate_coding_standards,
     normalize_stacks,
 )
-from agent_gauntlet.features.stacks.detector import detect_stack, detect_stacks
-
+from agent_gauntlet.features.stacks.detector import detect_stacks
 
 DEFAULT_CONTEXT_MD = """---
 type: Knowledge Bundle Index

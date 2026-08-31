@@ -356,8 +356,8 @@ class DoctorChecker:
                                 "In solution-style tsconfigs, 'tsc --noEmit' exits with code 0 without checking source files."
                             ),
                             remediation=(
-                                "Update the 'types' layer command in gauntlet.toml to '[\"npx\", \"tsc\", \"-b\"]' "
-                                "(tsc -b build mode) or '[\"npx\", \"tsc\", \"--noEmit\", \"-p\", \"tsconfig.app.json\"]'."
+                                'Update the \'types\' layer command in gauntlet.toml to \'["npx", "tsc", "-b"]\' '
+                                '(tsc -b build mode) or \'["npx", "tsc", "--noEmit", "-p", "tsconfig.app.json"]\'.'
                             ),
                         )
                     )
@@ -416,7 +416,7 @@ class DoctorChecker:
         ts_findings = [f for f in findings if f.category == "TSCONFIG_PROJECT_REFERENCES"]
         if ts_findings:
             instructions.append(
-                "6. **Fix TypeScript Typecheck Layer (TSCONFIG_PROJECT_REFERENCES)**: Update `gauntlet.toml` layer `types` to use `[\"npx\", \"tsc\", \"-b\"]` instead of blind `tsc --noEmit` (which silently skips source files in solution tsconfigs)."
+                '6. **Fix TypeScript Typecheck Layer (TSCONFIG_PROJECT_REFERENCES)**: Update `gauntlet.toml` layer `types` to use `["npx", "tsc", "-b"]` instead of blind `tsc --noEmit` (which silently skips source files in solution tsconfigs).'
             )
 
         prompt_lines = [

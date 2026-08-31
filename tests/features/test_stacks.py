@@ -184,7 +184,7 @@ class TestStackProfiles(unittest.TestCase):
         self.assertIn("lint", names)
         self.assertIn("types", names)
         self.assertIn("unit", names)
-        types_layer = next(l for l in layers if l.name == "types")
+        types_layer = next(layer for layer in layers if layer.name == "types")
         self.assertEqual(types_layer.command, ["npx", "tsc", "--noEmit"])
 
     def test_typescript_default_profile_with_solution_workspace(self) -> None:
@@ -195,11 +195,11 @@ class TestStackProfiles(unittest.TestCase):
                 encoding="utf-8",
             )
             layers = get_typescript_default_layers(workspace_path=ws)
-            types_layer = next(l for l in layers if l.name == "types")
+            types_layer = next(layer for layer in layers if layer.name == "types")
             self.assertEqual(types_layer.command, ["npx", "tsc", "-b"])
 
             profile_layers = get_default_stack_profile("typescript", workspace_path=ws)
-            p_types_layer = next(l for l in profile_layers if l.name == "types")
+            p_types_layer = next(layer for layer in profile_layers if layer.name == "types")
             self.assertEqual(p_types_layer.command, ["npx", "tsc", "-b"])
 
     def test_rust_default_profile(self) -> None:
@@ -216,4 +216,3 @@ class TestStackProfiles(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

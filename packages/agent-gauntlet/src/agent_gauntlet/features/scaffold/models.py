@@ -52,4 +52,3 @@ class ScaffoldResult:
                 for e in self.entries
             ],
         }
-
