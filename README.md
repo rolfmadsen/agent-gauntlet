@@ -23,6 +23,7 @@
 </p>
 
 <p align="center">
+  <a href="https://www.npmjs.com/package/@agent-gauntlet/cli"><img src="https://img.shields.io/npm/v/@agent-gauntlet/cli.svg?color=blue" alt="NPM Version" /></a>
   <a href="https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml"><img src="https://github.com/rolfmadsen/agent-gauntlet/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI" /></a>
   <a href="tools/mutants.py"><img src="https://img.shields.io/badge/mutants%20killed-100%25-brightgreen.svg" alt="Mutants Killed" /></a>
   <a href="docs/adr/0007-local-transparent-supervisor-and-wasm-verifier.md"><img src="https://img.shields.io/badge/evidence-Three--Tier%20Trust%20Model-blue.svg" alt="Evidence Model" /></a>
@@ -192,17 +193,17 @@ npx @agent-gauntlet/cli init
 |---|---|
 | [`gauntlet.toml`](gauntlet.toml) | Deklarativ konfiguration af linter, types, tests, mutation testing |
 | [`CONTEXT.md`](CONTEXT.md) | Domæne-glossary for projektet (Aristoteles' *definitio per genus et differentiam*) |
-| [`CODING_STANDARDS.md`](CODING_STANDARDS.md) | Multi-stack kodestandarder (Python, TypeScript, Rust, Go, CSS/Web) |
+| [`CODING_STANDARDS.md`](CODING_STANDARDS.md) | Multi-stack kodestandarder (Python, TypeScript & React, Rust og Cross-Stack Boundary Invariants) |
 | [`spec.md`](spec.md) | Makro-specifikation og system-invarianter |
-| [`tasks/001-bootstrap.md`](tasks/) | Opgavemappe til håndhævelse af task-kontrakter & acceptkriterier |
-| [`docs/adr/`](docs/adr/) | Architecture Decision Records (ADR) til projekt-specifikke beslutninger |
+| [`tasks/001-bootstrap.md`](tasks/) | Opgavemappe til håndhævelse af task-kontrakter & acceptkriterier (springes over hvis `tasks/` allerede indeholder opgaver) |
+| [`docs/adr/`](docs/adr/) | Architecture Decision Records (ADR) til projekt-specifikke beslutninger (springes over hvis `docs/adr/` allerede har beslutninger) |
 | [`.agents/AGENTS.md`](.agents/AGENTS.md) | AI-agent retningslinjer, Response HUD og task-management protokoller |
 | [`.agents/hooks.json`](.agents/hooks.json) | Pre-Invocation Hook til Stop/Go gatekeeperen |
 | [`.agents/skills/`](.agents/skills/) | Bundled skills (`old-coder`, `grill-me`, `grill-with-docs`, `diagnose`, `code-review`) |
 
 > [!TIP]
-> **🛡️ Ikke-destruktiv garanti (Safety First):**  
-> `agent-gauntlet init` overskriver **aldrig** eksisterende filer i dit projekt, medmindre du udtrykkeligt angiver `--force`.
+> **🛡️ Ikke-destruktiv & Kontekstbevidst Garanti (Safety First):**  
+> `agent-gauntlet init` overskriver **aldrig** eksisterende filer i dit projekt, medmindre du udtrykkeligt angiver `--force`. Modne projekter forurenes ikke med starter-skabeloner, når eksisterende opgaver eller ADR'er allerede er til stede.
 
 > [!IMPORTANT]
 > **🚪 Zero Lock-in & Ren Afinstallation (Clean Uninstall):**  
@@ -220,10 +221,13 @@ Når du arbejder på en opgave i dit projekt, afvikles gauntlettet direkte via:
 # Kør gauntlet og forseg evidens for en opgave:
 npx @agent-gauntlet/cli verify --task-id 001-bootstrap
 
-# Tjek supervisor socket og platformstilstand:
-npx @agent-gauntlet/cli status
+# Start den lokale supervisor i baggrunden:
+npx @agent-gauntlet/cli supervisor start --daemon
 
-# Kør host- og isolation-diagnostik (Node, Linux kernel, bwrap):
+# Tjek supervisor socket og dæmonstatus:
+npx @agent-gauntlet/cli supervisor status
+
+# Kør host- og isolation-diagnostik (Node, Rust/Cargo, bwrap, tsconfig):
 npx @agent-gauntlet/cli doctor
 
 # Valider dokumentation & OKF v0.2 metadata:
@@ -332,18 +336,26 @@ agent-gauntlet okf validate
 # Validerer frontmatter-skemaer, aktører og temporale invarianter (t_verified >= t_generated)
 ```
 
-### 8. Supervisor Status & Diagnostik (`status`, `doctor`, `uninstall`)
-Håndter og inspicer den lokale baggrundssupervisor:
+### 8. Supervisor Daemon & WebAssembly Evaluator (`supervisor`)
+Håndter og inspicer den lokale privilege-adskilte supervisor daemon:
 
 ```bash
-# Vis platformprofil, socket-sti og dæmonstatus
-agent-gauntlet status
+# Start supervisoren som baggrundstjeneste (aktiverer WASM evaluering og Unix socket)
+agent-gauntlet supervisor start --daemon
 
-# Diagnosticer miljøkrav (Node.js version, Bubblewrap isolation, systemd)
+# Vis supervisor status, aktiv socket og installationsnøgle
+agent-gauntlet supervisor status
+
+# Stop den kørende supervisor dæmon
+agent-gauntlet supervisor stop
+```
+
+### 9. Workspace Diagnostic & Multi-Stack Integrity (`doctor`)
+Undersøg workspace-konfiguration, stakke og miljøforudsætninger:
+
+```bash
+# Udfør fuld sundhedsdiagnostik (Node.js, TypeScript Project References, Cargo overvågning, Systemd)
 agent-gauntlet doctor
-
-# Fjern registrerede systemd user unit filer
-agent-gauntlet uninstall
 ```
 
 ---
