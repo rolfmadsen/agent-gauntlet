@@ -236,6 +236,38 @@ class TestProjectScaffolderAcceptance(unittest.TestCase):
         self.assertIn("TypeScript", standards)
         self.assertIn("Python", standards)
 
+    def test_scaffold_skips_bootstrap_task_when_existing_tasks_present(self) -> None:
+        """Scenario SC-09: Scaffolding a workspace with existing tasks does NOT create 001-bootstrap.md."""
+        tasks_dir = self.workspace / "tasks"
+        tasks_dir.mkdir(parents=True, exist_ok=True)
+        (tasks_dir / "043-wasm-engine.md").write_text("# Task 043", encoding="utf-8")
+
+        result = self.scaffolder.scaffold(self.workspace, stack="python")
+        self.assertTrue(result.success)
+
+        # 001-bootstrap.md must NOT exist
+        self.assertFalse((tasks_dir / "001-bootstrap.md").exists())
+        # The entry in result.entries must be marked as SKIPPED
+        bootstrap_entries = [e for e in result.entries if "001-bootstrap.md" in e.path]
+        self.assertEqual(len(bootstrap_entries), 1)
+        self.assertEqual(bootstrap_entries[0].status, ScaffoldStatus.SKIPPED)
+
+    def test_scaffold_skips_initial_adr_when_existing_adrs_present(self) -> None:
+        """Scenario SC-10: Scaffolding a workspace with existing ADRs does NOT create 0001-initial-architecture.md."""
+        adr_dir = self.workspace / "docs/adr"
+        adr_dir.mkdir(parents=True, exist_ok=True)
+        (adr_dir / "0003-surgical-gatekeeper.md").write_text("# ADR 0003", encoding="utf-8")
+
+        result = self.scaffolder.scaffold(self.workspace, stack="python")
+        self.assertTrue(result.success)
+
+        # 0001-initial-architecture.md must NOT exist
+        self.assertFalse((adr_dir / "0001-initial-architecture.md").exists())
+        # The entry in result.entries must be marked as SKIPPED
+        adr_entries = [e for e in result.entries if "0001-initial-architecture.md" in e.path]
+        self.assertEqual(len(adr_entries), 1)
+        self.assertEqual(adr_entries[0].status, ScaffoldStatus.SKIPPED)
+
 
 if __name__ == "__main__":
     unittest.main()

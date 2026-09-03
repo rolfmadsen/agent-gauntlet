@@ -4,41 +4,49 @@
   "execution_origin": "LOCAL",
   "verdict": "PASSED",
   "task_contract": {
-    "task_id": "043-real-wasm-policy-engine-and-supervisor-daemon",
-    "task_title": "Task 043: Real WASM Policy Engine & Supervisor Daemon",
-    "task_digest": "58a903bac285932d082b5f0e4f19c9a87d724c3c064d472843b87186a935481f",
+    "task_id": "044-smart-scaffolding-non-destructive-init",
+    "task_title": "Task 044: Context-Aware Smart Scaffolding and Non-Destructive Init",
+    "task_digest": "dcccd05204da7061844a4d52e09118a3c6b77cf0dd74e2b7eeb866ab4c301b5a",
     "acceptance_criteria": [
-      "`TaskStatus.TODO` er fjernet fra `ALLOWED_ACTIVE_STATUSES`.",
-      "`crates/gauntlet-policy-engine` har `evaluate_json` C-ABI og kompilerer fejlfrit til `policy_engine.wasm`.",
-      "`WasmPolicyVerifier` afvikler den kompilerede WASM-bin\u00e6r og validerer dens SHA-256 digest.",
-      "`SupervisorServer` lytter p\u00e5 Unix domain socket og besvarer RPC'er (`GetStatus`, `EvaluateToolCall` m.fl.).",
-      "`AntigravityHookShim` evaluerer tool-kald via supervisor IPC og fejler lukket (fail-closed) ved fejl.",
-      "`agent-gauntlet supervisor start` og `agent-gauntlet supervisor status` virker fra CLI.",
-      "Alle unit-, integration- og gauntlet-tests passerer 100% (inkl. mutationstests)."
+      "**Smart Task Scaffolding i `ProjectScaffolder`**:",
+      "Hvis `workspace / \"tasks\"` indeholder mindst \u00e9n `.md`-fil, oprettes `tasks/001-bootstrap.md` IKKE, men registreres som `ScaffoldStatus.SKIPPED`.",
+      "Hvis `tasks/` er tom eller ikke findes, oprettes `tasks/001-bootstrap.md` normalt som `ScaffoldStatus.CREATED`.",
+      "**Smart ADR Scaffolding i `ProjectScaffolder`**:",
+      "Hvis `workspace / \"docs/adr\"` indeholder mindst \u00e9n anden markdown-fil end `README.md`, oprettes `docs/adr/0001-initial-architecture.md` IKKE, men registreres som `ScaffoldStatus.SKIPPED`.",
+      "Hvis `docs/adr/` kun indeholder `README.md` eller er tom, oprettes `docs/adr/0001-initial-architecture.md` normalt.",
+      "**Dobbelt-Tr\u00e6 Konsistens**:",
+      "\u00c6ndringerne i `scaffolder.py` synkroniseres til b\u00e5de `src/agent_gauntlet/` og `packages/agent-gauntlet/src/`.",
+      "**Enhedstest i `tests/features/test_scaffold.py`**:",
+      "Tilf\u00f8j test der beviser, at eksisterende tasks blokerer for dannelsen af `001-bootstrap.md`.",
+      "Tilf\u00f8j test der beviser, at eksisterende ADRs blokerer for dannelsen af `0001-initial-architecture.md`.",
+      "**Opdatering af repositoryets `CODING_STANDARDS.md`**:",
+      "Opdater `CODING_STANDARDS.md` til fulde polyglot standarder via generatoren (`Python + TypeScript + Rust`).",
+      "**Gauntlet Verifikation**:",
+      "Alle 7 lag i `tools/gauntlet.sh` passerer 100% (65/65 mutanter dr\u00e6bt)."
     ],
     "unresolved_criteria": []
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "73a310828b04df70af1e02919e71923e7ef95d4490d32eb2ef18daa38d2d2ead",
-    "source_manifest_digest_pre": "d35cb38232eb194a1fa423e7e1fc903fd9cef46c36af12a215af47b36e42aadd",
-    "source_manifest_digest_post": "d35cb38232eb194a1fa423e7e1fc903fd9cef46c36af12a215af47b36e42aadd",
+    "source_content_digest": "775695362da41acaced191cf640ad00168674a197f50bac30c13601955211c8d",
+    "source_manifest_digest_pre": "a42a8624a4e49e73b17e8e9a4c4d7552c88b31fb5f377aaf4a4e7a59a62090d0",
+    "source_manifest_digest_post": "a42a8624a4e49e73b17e8e9a4c4d7552c88b31fb5f377aaf4a4e7a59a62090d0",
     "config_digest": "b7fddbddb7ab6de5e8d03e8266e76ce5b9f0fc8bb1c884555ed7ec68976af789",
-    "task_digest": "58a903bac285932d082b5f0e4f19c9a87d724c3c064d472843b87186a935481f",
-    "policy_digest": "3b2b4d33573dc4f380847fbd8e5b77ea26e6cad14a40d51a7e60fd92a4dc1698",
+    "task_digest": "dcccd05204da7061844a4d52e09118a3c6b77cf0dd74e2b7eeb866ab4c301b5a",
+    "policy_digest": "0a8fef1de2adec1843881749e8cdd7b0bd0509250a813c811654dc41ce61b22d",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
     "included_files_count": 170,
     "vcs": {
       "type": "git",
-      "head": "2f582a7",
-      "commit": "3d73717",
+      "head": "47e0699",
+      "commit": "2bab4fa",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-09-03T18:50:11Z",
-    "finished_at": "2026-09-03T18:50:58Z",
-    "total_duration_seconds": 46.606,
+    "started_at": "2026-09-03T19:19:51Z",
+    "finished_at": "2026-09-03T19:20:38Z",
+    "total_duration_seconds": 46.983,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -50,7 +58,7 @@
       "name": "lint",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.024,
+      "duration_seconds": 0.019,
       "optional": true,
       "passed": true,
       "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
@@ -59,7 +67,7 @@
       "name": "types",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 1.962,
+      "duration_seconds": 1.797,
       "optional": true,
       "passed": true,
       "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
@@ -68,25 +76,25 @@
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 6.768,
+      "duration_seconds": 7.465,
       "optional": false,
       "passed": true,
-      "log_digest": "ed014be22dc502fdfb90d07a9bb0f659eb04dad2f642a1b2afa8c14c6b64f475"
+      "log_digest": "2b23b99af7705975320791c9799b0f2d952ffb12766ae58b54939c8f01abd462"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.303,
+      "duration_seconds": 0.295,
       "optional": true,
       "passed": true,
-      "log_digest": "c7f765c1b30d30d1ba25b738fc51c8a23e8a437be057a5578db42742c6588ec4"
+      "log_digest": "ef08e6c84f0e738d04a4398dc26ff91be159913fd8de8eddda454d53f4d3f435"
     },
     {
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 37.488,
+      "duration_seconds": 37.349,
       "optional": true,
       "passed": true,
       "log_digest": "cdcdd13de4b7fd2d36e71ebc516575f079fa01bf472fd0db7822624428330619"

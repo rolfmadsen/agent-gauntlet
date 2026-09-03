@@ -498,16 +498,28 @@ class ProjectScaffolder:
         )
 
         # 3. Tasks directory & initial task (Strictly tasks/001-bootstrap.md, NO root task.md)
-        result.entries.append(
-            self._write_file_safely(
-                workspace / "tasks/001-bootstrap.md",
-                DEFAULT_BOOTSTRAP_TASK,
-                "Starter task template",
-                force,
+        tasks_dir = workspace / "tasks"
+        has_existing_tasks = tasks_dir.is_dir() and any(tasks_dir.glob("*.md"))
+        if not has_existing_tasks:
+            result.entries.append(
+                self._write_file_safely(
+                    workspace / "tasks/001-bootstrap.md",
+                    DEFAULT_BOOTSTRAP_TASK,
+                    "Starter task template",
+                    force,
+                )
             )
-        )
+        else:
+            result.entries.append(
+                ScaffoldEntry(
+                    path=str(workspace / "tasks/001-bootstrap.md"),
+                    status=ScaffoldStatus.SKIPPED,
+                    description="Starter task template (existing tasks found in tasks/)",
+                )
+            )
 
         # 4. ADR directory & initial ADR
+        adr_dir = workspace / "docs/adr"
         result.entries.append(
             self._write_file_safely(
                 workspace / "docs/adr/README.md",
@@ -516,14 +528,26 @@ class ProjectScaffolder:
                 force,
             )
         )
-        result.entries.append(
-            self._write_file_safely(
-                workspace / "docs/adr/0001-initial-architecture.md",
-                DEFAULT_ADR_0001,
-                "Initial architectural baseline record",
-                force,
-            )
+        has_existing_adrs = adr_dir.is_dir() and any(
+            f.name != "README.md" for f in adr_dir.glob("*.md")
         )
+        if not has_existing_adrs:
+            result.entries.append(
+                self._write_file_safely(
+                    workspace / "docs/adr/0001-initial-architecture.md",
+                    DEFAULT_ADR_0001,
+                    "Initial architectural baseline record",
+                    force,
+                )
+            )
+        else:
+            result.entries.append(
+                ScaffoldEntry(
+                    path=str(workspace / "docs/adr/0001-initial-architecture.md"),
+                    status=ScaffoldStatus.SKIPPED,
+                    description="Initial architectural baseline record (existing ADRs found in docs/adr/)",
+                )
+            )
 
         # 5. .agents/AGENTS.md & hooks.json
         result.entries.append(
