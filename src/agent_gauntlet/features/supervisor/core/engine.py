@@ -24,7 +24,7 @@ from agent_gauntlet.features.supervisor.wasm.verifier import WasmPolicyVerifier
 class SupervisorEngine:
     """Central daemon engine managing workspaces, active sessions, WASM verification, and RPCs."""
 
-    VERSION = "0.8.0"
+    VERSION = "0.8.1"
 
     def __init__(
         self,

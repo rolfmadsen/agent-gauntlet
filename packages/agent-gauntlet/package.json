@@ -1,6 +1,6 @@
 {
   "name": "@agent-gauntlet/cli",
-  "version": "0.8.0",
+  "version": "0.8.1",
 
   "description": "Universal multi-stack verification gauntlet & tamper-proof evidence authority for AI coding agents",
   "bin": {

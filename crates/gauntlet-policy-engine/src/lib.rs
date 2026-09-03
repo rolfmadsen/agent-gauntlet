@@ -2,7 +2,7 @@
 //!
 //! Evaluates strongly-typed capability requests against an immutable trusted context.
 
-pub const POLICY_VERSION: &str = "0.8.0";
+pub const POLICY_VERSION: &str = "0.8.1";
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

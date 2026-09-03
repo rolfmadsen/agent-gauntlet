@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.1] - 2026-09-03
+
+### 🚀 Added
+- **Context-Aware Smart Scaffolding & Non-Destructive Init (`Task 044`)**:
+  - Prevented template pollution in mature workspaces: `agent-gauntlet init` now inspects `tasks/` and skips creating `001-bootstrap.md` when tasks already exist, and skips `0001-initial-architecture.md` when ADRs are already present.
+  - Root `CODING_STANDARDS.md` updated to authoritative polyglot standards (Python, TypeScript, React, Rust, and Cross-Stack Boundary Invariants).
+- **Native Rust Verification Layer & Doctor Detection**:
+  - Added dedicated `rust` layer executing `cargo test` on `crates/gauntlet-policy-engine` to `gauntlet.toml`, `tools/gauntlet.sh` and pre-build checks.
+  - Added unmonitored stack detection to `agent-gauntlet doctor` (`UNMONITORED_STACK`), ensuring workspaces with Rust crates (`Cargo.toml`) always have corresponding gauntlet layers.
+
+---
+
 ## [0.8.0] - 2026-09-03
 
 ### 🚀 Added

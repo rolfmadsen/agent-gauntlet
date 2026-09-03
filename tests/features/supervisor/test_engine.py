@@ -40,7 +40,7 @@ class TestSupervisorEngine(unittest.TestCase):
         self.assertIsNotNone(res.result)
         assert res.result is not None
         self.assertEqual(res.result["status"], "HEALTHY")
-        self.assertEqual(res.result["version"], "0.8.0")
+        self.assertEqual(res.result["version"], "0.8.1")
         self.assertTrue("installation_public_key" in res.result)
 
     def test_register_workspace_and_begin_session(self) -> None:

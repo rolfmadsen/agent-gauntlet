@@ -32,7 +32,7 @@ class WasmPolicyVerifier:
     3. In-process Python verification fallback when binary artifacts are absent.
     """
 
-    POLICY_VERSION = "0.8.0"
+    POLICY_VERSION = "0.8.1"
 
     def __init__(
         self,
