@@ -11,7 +11,10 @@ from agent_gauntlet.features.doctor.models import (
     DoctorReport,
     FindingSeverity,
 )
-from agent_gauntlet.features.stacks.detector import has_typescript_project_references
+from agent_gauntlet.features.stacks.detector import (
+    detect_stacks,
+    has_typescript_project_references,
+)
 
 REQUIRED_OLD_CODER_REFS: Sequence[str] = (
     "verifier.md",
@@ -50,6 +53,9 @@ class DoctorChecker:
 
         # 5. TypeScript project references & typecheck layer validation
         self._check_typescript_configuration(root, findings)
+
+        # 6. Unmonitored multi-stack coverage (e.g. Rust Cargo.toml)
+        self._check_unmonitored_stacks(root, findings)
 
         has_errors = any(f.severity == FindingSeverity.ERROR for f in findings)
         healthy = len(findings) == 0
@@ -361,6 +367,45 @@ class DoctorChecker:
                             ),
                         )
                     )
+
+    def _check_unmonitored_stacks(self, root: Path, findings: list[DoctorFinding]) -> None:
+        """Detects if codebase contains languages/subsystems (e.g. Rust Cargo.toml) that lack gauntlet layers."""
+        detected = detect_stacks(root)
+        config_path = (
+            root / "gauntlet.toml"
+            if (root / "gauntlet.toml").is_file()
+            else (root / "gauntlet.json" if (root / "gauntlet.json").is_file() else None)
+        )
+        if not config_path:
+            return
+
+        try:
+            cfg = load_config(root)
+        except Exception:
+            return
+
+        all_commands_str = " ".join(
+            " ".join(str(part) for part in layer.command) for layer in cfg.layers
+        )
+
+        if "rust" in detected and "cargo" not in all_commands_str:
+            cargo_files = list(root.glob("**/Cargo.toml"))
+            rel_cargo = str(cargo_files[0].relative_to(root)) if cargo_files else "Cargo.toml"
+            findings.append(
+                DoctorFinding(
+                    severity=FindingSeverity.WARNING,
+                    category="UNMONITORED_STACK",
+                    path=str(config_path.relative_to(root)),
+                    message=(
+                        f"Rust subsystem detected at '{rel_cargo}', but '{config_path.name}' "
+                        f"contains no verification layer running 'cargo test' or 'cargo clippy'."
+                    ),
+                    remediation=(
+                        f"Add a 'rust' verification layer to {config_path.name}: "
+                        f'[[layers]] name = "rust" command = ["cargo", "test", "--manifest-path", "{rel_cargo}"]'
+                    ),
+                )
+            )
 
     def _generate_migration_prompt(self, root: Path, findings: list[DoctorFinding]) -> str:
         """Generates a tailored AI migration and remediation prompt."""

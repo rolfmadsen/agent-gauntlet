@@ -172,6 +172,30 @@ class TestDoctorDiagnostics(unittest.TestCase):
             dumped = json.dumps(d)
             self.assertIsInstance(dumped, str)
 
+    def test_doctor_warns_on_unmonitored_rust_stack(self) -> None:
+        """Doctor must warn when Cargo.toml exists but gauntlet.toml lacks cargo verification layer."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            ws = Path(tmp_dir)
+            ProjectScaffolder().scaffold(workspace=ws, stack="python")
+
+            # Add a Rust crate directory
+            crate_dir = ws / "crates" / "my-engine"
+            crate_dir.mkdir(parents=True, exist_ok=True)
+            (crate_dir / "Cargo.toml").write_text(
+                '[package]\nname = "my-engine"\nversion = "0.1.0"\n', encoding="utf-8"
+            )
+
+            # gauntlet.toml only has python layers
+            checker = DoctorChecker()
+            report = checker.check_workspace(ws)
+
+            rust_findings = [f for f in report.findings if f.category == "UNMONITORED_STACK"]
+            self.assertEqual(len(rust_findings), 1)
+            self.assertEqual(rust_findings[0].severity, FindingSeverity.WARNING)
+            self.assertIn("Cargo.toml", rust_findings[0].message)
+            self.assertIn('"cargo"', rust_findings[0].remediation)
+            self.assertIn('"test"', rust_findings[0].remediation)
+
 
 if __name__ == "__main__":
     unittest.main()

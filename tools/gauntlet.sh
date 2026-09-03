@@ -25,6 +25,10 @@ $PYTHON_BIN -m pyright src tests tools
 echo "=== Layer 3: Unit & Acceptance Tests ==="
 $PYTHON_BIN -m unittest discover tests
 
+echo "=== Layer 3b: Rust Policy Engine Tests (Cargo) ==="
+cargo test --manifest-path crates/gauntlet-policy-engine/Cargo.toml
+
+
 echo "=== Layer 4: Property & Invariant Tests ==="
 $PYTHON_BIN -m unittest tests/features/test_gauntlet_properties.py
 

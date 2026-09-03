@@ -6,6 +6,9 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 OUTPUT_DIR="${REPO_ROOT}/src/agent_gauntlet/features/supervisor/wasm"
 PKG_OUTPUT_DIR="${REPO_ROOT}/packages/agent-gauntlet/src/agent_gauntlet/features/supervisor/wasm"
 
+echo "==> Running gauntlet-policy-engine unit tests..."
+cargo test --manifest-path "${SCRIPT_DIR}/Cargo.toml"
+
 echo "==> Building gauntlet-policy-engine (native & wasm32)..."
 cargo build --release --manifest-path "${SCRIPT_DIR}/Cargo.toml"
 cargo build --target wasm32-unknown-unknown --release --manifest-path "${SCRIPT_DIR}/Cargo.toml"
