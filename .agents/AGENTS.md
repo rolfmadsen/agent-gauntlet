@@ -98,3 +98,9 @@ SPEC / GRILL → (Human Approval) → RED → GREEN → REFACTOR → GAUNTLET �
    > <handoff_prompt>
    > ```
 
+---
+
+## 🚀 Release & Remote Push Protocol
+1. **Lokal Git Konfiguration (`push.followTags`):** Repositoryet konfigureres med `git config push.followTags true`, så standard `git push` altid automatisk medtager annoterede release-tags til remote.
+2. **Release Forberedelse & Bump:** AI-agenten udfører versionsbump på tværs af manifests, opdaterer `CHANGELOG.md`, verificerer med `agent-gauntlet check-release`, afvikler gauntlet og opretter et annoteret lokalt tag (`git tag -a vX.Y.Z -m "..."`).
+3. **Menneskelig Push-Barriere (ADR 0003):** AI-agenten foretager ALDRIG remote push. Agenten instruerer brugeren i at køre `git push` (hvor `push.followTags` automatisk medtager tagget), hvilket triggerer GitHub Actions til at bygge, attestere og publicere til npmjs.
