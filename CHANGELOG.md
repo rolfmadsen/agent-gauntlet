@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.0] - 2026-09-03
+
+### 🚀 Added
+- **Real WebAssembly Policy Engine & Local Transparent Supervisor Daemon (`Task 043`)**:
+  - Standalone Rust WebAssembly policy engine (`crates/gauntlet-policy-engine`) compiled to `wasm32-unknown-unknown` and native shared library (`.so`), evaluating tool invocation policies in linear WebAssembly memory via Node.js V8 and ctypes.
+  - Zero-dependency depth-aware top-level JSON parser in Rust preventing action spoofing through nested payload structures.
+  - Cryptographic verification of WASM binaries using embedded SHA-256 digests with fail-closed defense against tampering (`WasmDigestMismatchError`).
+  - Stdin streaming in WASM runner eliminating `ARG_MAX` limits and protecting code payloads from process table leaks.
+  - Local transparent supervisor daemon (`agent-gauntlet supervisor start --daemon|status`) communicating over Unix Domain Sockets with systemd socket activation compatibility.
+  - Re-entrant locking (`RLock`) in `SupervisorEngine` for race-free concurrent RPC execution.
+  - Secure ephemeral key storage with `0700` POSIX directory isolation and per-session certificate issuance.
+  - Transparent IDE hook integration for Google Antigravity with fail-closed security and stale socket fallback.
+
+---
+
 ## [0.7.0] - 2026-08-31
 
 ### 🚀 Added

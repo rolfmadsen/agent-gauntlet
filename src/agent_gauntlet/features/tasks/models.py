@@ -37,7 +37,6 @@ ALLOWED_ACTIVE_STATUSES = {
     TaskStatus.ACTIVE,
     TaskStatus.IN_PROGRESS,
     TaskStatus.WIP,
-    TaskStatus.TODO,
     TaskStatus.REOPENED,
 }
 

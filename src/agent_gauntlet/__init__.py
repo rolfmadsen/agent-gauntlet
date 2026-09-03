@@ -20,7 +20,7 @@ from agent_gauntlet.features.gauntlet import (
 )
 from agent_gauntlet.features.stacks import detect_stack, get_default_stack_profile
 
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 
 __all__ = [

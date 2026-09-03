@@ -14,6 +14,7 @@ from tests.features.supervisor.test_key_provider import TestLinuxKeyProvider
 from tests.features.supervisor.test_offline_verifier import TestOfflineReportVerifier
 from tests.features.supervisor.test_sandbox import TestBubblewrapSandboxRunner
 from tests.features.supervisor.test_seams import TestPlatformSeams
+from tests.features.supervisor.test_server import TestSupervisorServer
 from tests.features.supervisor.test_service import TestSystemdServiceManager
 from tests.features.supervisor.test_snapshot import TestPortableSnapshot
 from tests.features.supervisor.test_wasm_policy import TestWasmPolicyVerifier
@@ -27,6 +28,7 @@ __all__ = [
     "TestLinuxKeyProvider",
     "TestSessionEventLog",
     "TestSupervisorEngine",
+    "TestSupervisorServer",
     "TestBubblewrapSandboxRunner",
     "TestSystemdServiceManager",
     "TestUnixDomainSocketTransport",

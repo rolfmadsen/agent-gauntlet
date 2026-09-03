@@ -2,53 +2,43 @@
   "$schema": "https://agent-gauntlet.dev/schemas/v2/verification-report.json",
   "schema_version": "2.0.0",
   "execution_origin": "LOCAL",
-  "verdict": "PARTIAL",
+  "verdict": "PASSED",
   "task_contract": {
-    "task_id": "042-polyglot-composite-coding-standards",
-    "task_title": "Task 042: Polyglot Composite Coding Standards Generation",
-    "task_digest": "5c1d3bc08e2ce3ef8d0bda86c570befb4a6f52642b389e091cb874dd2eedebd4",
+    "task_id": "043-real-wasm-policy-engine-and-supervisor-daemon",
+    "task_title": "Task 043: Real WASM Policy Engine & Supervisor Daemon",
+    "task_digest": "58a903bac285932d082b5f0e4f19c9a87d724c3c064d472843b87186a935481f",
     "acceptance_criteria": [
-      "**Polyglot Stack Detection (`src/agent_gauntlet/features/stacks/detector.py`)**:",
-      "Implementere `detect_stacks(workspace_path: Path | str) -> list[str]`, der scanner rod og undermapper for sprogindikatorer (`Cargo.toml`, `tsconfig.json`/`package.json`, `pyproject.toml` osv.).",
-      "Bevare bagudkompatibilitet i `detect_stack()`, som returnerer den prim\u00e6re fundne stack.",
-      "**Komposabel Standards Generator (`src/agent_gauntlet/features/scaffold/standards.py`)**:",
-      "Implementere `generate_coding_standards(stacks: list[str] | str) -> str`.",
-      "For enkelt-stack genereres den skr\u00e6ddersyede sprogstandard.",
-      "For polyglot/multi-stack genereres et struktureret dokument med tv\u00e6rg\u00e5ende principper, individuelle sprogsektioner (TypeScript, Python, Rust) og tv\u00e6rg\u00e5ende boundary/interop-regler med ensartet sektionsnummerering.",
-      "**Scaffolder & CLI Integration (`src/agent_gauntlet/features/scaffold/` & `cli.py`)**:",
-      "`ProjectScaffolder.scaffold()` underst\u00f8tter `stacks` (liste eller kommasepareret streng).",
-      "`ScaffoldResult` beriges med `stacks: list[str]`.",
-      "`agent-gauntlet init` og `scaffold` accepterer kommaseparerede stacks via `--stack` / `--stacks`.",
-      "`src/agent_gauntlet/cli.py` overholder invarianten om strengt $< 300$ linjer.",
-      "**Gauntlet & Verification**:",
-      "Acceptance & unit tests i `tests/features/test_scaffold.py` og `tests/features/test_stacks.py`.",
-      "100% gr\u00f8n testsuite (`343/343` tests).",
-      "100% dr\u00e6bte mutanter i `tools/mutants.py` (`65/65` mutanter dr\u00e6bt).",
-      "Best\u00e5et `agent-gauntlet check-release`, `check-spec`, `validate-plugin` og `doctor`."
+      "`TaskStatus.TODO` er fjernet fra `ALLOWED_ACTIVE_STATUSES`.",
+      "`crates/gauntlet-policy-engine` har `evaluate_json` C-ABI og kompilerer fejlfrit til `policy_engine.wasm`.",
+      "`WasmPolicyVerifier` afvikler den kompilerede WASM-bin\u00e6r og validerer dens SHA-256 digest.",
+      "`SupervisorServer` lytter p\u00e5 Unix domain socket og besvarer RPC'er (`GetStatus`, `EvaluateToolCall` m.fl.).",
+      "`AntigravityHookShim` evaluerer tool-kald via supervisor IPC og fejler lukket (fail-closed) ved fejl.",
+      "`agent-gauntlet supervisor start` og `agent-gauntlet supervisor status` virker fra CLI.",
+      "Alle unit-, integration- og gauntlet-tests passerer 100% (inkl. mutationstests)."
     ],
     "unresolved_criteria": []
   },
   "workspace_state": {
     "manifest_version": "1.0",
-    "source_content_digest": "05bb0d40a316fd25faedef75a3539110607e680ef8e21a92be277ed2eaac4bc4",
-    "source_manifest_digest_pre": "f5b7386dbc23cc3f2fbcfe7da854d22742d824f9bdeb4be52e632919af736891",
-    "source_manifest_digest_post": "f5b7386dbc23cc3f2fbcfe7da854d22742d824f9bdeb4be52e632919af736891",
-    "config_digest": "0bfa6744ae38243278155f84d3dd8b2a5cd4f414288f5a78fdc53d29adb6ff85",
-    "task_digest": "5c1d3bc08e2ce3ef8d0bda86c570befb4a6f52642b389e091cb874dd2eedebd4",
-    "policy_digest": "e3044e1639b31ee1ad322b7da75e5e45be9585c2d5c02ecfd6fd80624d7870be",
+    "source_content_digest": "73a310828b04df70af1e02919e71923e7ef95d4490d32eb2ef18daa38d2d2ead",
+    "source_manifest_digest_pre": "d35cb38232eb194a1fa423e7e1fc903fd9cef46c36af12a215af47b36e42aadd",
+    "source_manifest_digest_post": "d35cb38232eb194a1fa423e7e1fc903fd9cef46c36af12a215af47b36e42aadd",
+    "config_digest": "b7fddbddb7ab6de5e8d03e8266e76ce5b9f0fc8bb1c884555ed7ec68976af789",
+    "task_digest": "58a903bac285932d082b5f0e4f19c9a87d724c3c064d472843b87186a935481f",
+    "policy_digest": "3b2b4d33573dc4f380847fbd8e5b77ea26e6cad14a40d51a7e60fd92a4dc1698",
     "check_definitions_digest": "0d848543ef325c5ac6c4ed5c3ecd22ef05944a55ddbd80e4d77c480c0ab62729",
-    "included_files_count": 163,
+    "included_files_count": 170,
     "vcs": {
       "type": "git",
-      "head": "9fa3c44",
-      "commit": "9fa3c44",
+      "head": "2f582a7",
+      "commit": "3d73717",
       "is_dirty": true
     }
   },
   "execution_metadata": {
-    "started_at": "2026-08-31T15:59:25Z",
-    "finished_at": "2026-08-31T15:59:54Z",
-    "total_duration_seconds": 29.148,
+    "started_at": "2026-09-03T18:50:11Z",
+    "finished_at": "2026-09-03T18:50:58Z",
+    "total_duration_seconds": 46.606,
     "environment": {
       "python_version": "3.12.3",
       "platform": "linux",
@@ -58,70 +48,49 @@
   "checks": [
     {
       "name": "lint",
-      "status": "FAILED",
-      "exit_code": 1,
-      "duration_seconds": 0.01,
+      "status": "PASSED",
+      "exit_code": 0,
+      "duration_seconds": 0.024,
       "optional": true,
-      "passed": false,
-      "log_digest": "f7758e22376bfe467845958d849344e056856a6d21d36f85204acc8872cfde97"
+      "passed": true,
+      "log_digest": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
     },
     {
       "name": "types",
-      "status": "FAILED",
-      "exit_code": 1,
-      "duration_seconds": 0.009,
+      "status": "PASSED",
+      "exit_code": 0,
+      "duration_seconds": 1.962,
       "optional": true,
-      "passed": false,
-      "log_digest": "48a503f4a2a4335ca5fc045b32d4173d8a7ae2b889211608bba6612538c3ec47"
+      "passed": true,
+      "log_digest": "6d88a1b220adb7a3d62092b6e38431f0b3fe8babe9864fab90e5849766260332"
     },
     {
       "name": "unit",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 2.434,
+      "duration_seconds": 6.768,
       "optional": false,
       "passed": true,
-      "log_digest": "dfeebcc839b8861bea1ae7d209a5aa5c428b54984d2149e7dae7606f8cd28879"
+      "log_digest": "ed014be22dc502fdfb90d07a9bb0f659eb04dad2f642a1b2afa8c14c6b64f475"
     },
     {
       "name": "invariants",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 0.316,
+      "duration_seconds": 0.303,
       "optional": true,
       "passed": true,
-      "log_digest": "1ec43b37a7f3865f9f12233dcfff3e2295df7c797ddaf4b53294e6c7bdb1bf45"
+      "log_digest": "c7f765c1b30d30d1ba25b738fc51c8a23e8a437be057a5578db42742c6588ec4"
     },
     {
       "name": "mutation-testing-gauntlet",
       "status": "PASSED",
       "exit_code": 0,
-      "duration_seconds": 26.33,
+      "duration_seconds": 37.488,
       "optional": true,
       "passed": true,
       "log_digest": "cdcdd13de4b7fd2d36e71ebc516575f079fa01bf472fd0db7822624428330619"
     }
   ],
-  "diagnostics": [
-    {
-      "finding_type": "GENERAL_ERROR",
-      "tool_name": "lint",
-      "file_path": "",
-      "line_number": null,
-      "column_number": null,
-      "message": "Layer 'lint' failed with exit code 1.",
-      "remediation_hint": "Check layer logs and fix underlying command execution failure in 'python3 -m ruff check .'.",
-      "raw_context": "/usr/bin/python3: No module named ruff"
-    },
-    {
-      "finding_type": "GENERAL_ERROR",
-      "tool_name": "types",
-      "file_path": "",
-      "line_number": null,
-      "column_number": null,
-      "message": "Layer 'types' failed with exit code 1.",
-      "remediation_hint": "Check layer logs and fix underlying command execution failure in 'python3 -m pyright src tests tools'.",
-      "raw_context": "/usr/bin/python3: No module named pyright"
-    }
-  ]
+  "diagnostics": []
 }

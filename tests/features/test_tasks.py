@@ -36,7 +36,7 @@ class TestTaskDomain(unittest.TestCase):
         self.assertEqual(parse_task_status("No status here"), TaskStatus.UNKNOWN)
 
     def test_is_task_active_only_allowed_statuses(self) -> None:
-        # Allowed active statuses: ACTIVE, IN_PROGRESS, IN-PROGRESS, WIP, TODO, REOPENED
+        # Allowed active statuses: ACTIVE, IN_PROGRESS, IN-PROGRESS, WIP, REOPENED
         active_doc = "# Task 001\n**Status**: `ACTIVE`\n\n- [ ] criterion 1"
         self.assertTrue(is_task_active(active_doc))
 
@@ -44,6 +44,8 @@ class TestTaskDomain(unittest.TestCase):
         self.assertTrue(is_task_active(reopened_doc))
 
         # Disallowed/inactive statuses must NOT be active even if they contain checkboxes
+        todo_doc = "# Task 001\n**Status**: `TODO`\n\n- [ ] criterion 1"
+        self.assertFalse(is_task_active(todo_doc))
         draft_doc = "# Task 001\n**Status**: `DRAFT`\n\n- [ ] criterion 1"
         self.assertFalse(is_task_active(draft_doc))
 

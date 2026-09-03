@@ -97,10 +97,12 @@ class AntigravityHookShim:
                 return {
                     "decision": "allow",
                     "reason": "Supervisor IPC unavailable; safe read operation permitted.",
+                    "offline": True,
                 }
             return {
                 "decision": "deny",
                 "reason": "Supervisor daemon is unavailable. Modifying operations are blocked fail-closed.",
+                "offline": True,
             }
 
         try:
@@ -129,8 +131,10 @@ class AntigravityHookShim:
                 return {
                     "decision": "allow",
                     "reason": f"Supervisor IPC communication error ({exc}); safe read permitted.",
+                    "offline": True,
                 }
             return {
                 "decision": "deny",
                 "reason": f"Supervisor IPC failed: {exc}. Writes blocked fail-closed.",
+                "offline": True,
             }

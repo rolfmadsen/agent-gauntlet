@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 from agent_gauntlet.features.adapters.antigravity.adapter import AntigravityAdapter
 from agent_gauntlet.features.adapters.antigravity.hook import main_hook_entrypoint
@@ -464,6 +465,149 @@ class TestAntigravityHookCli(unittest.TestCase):
         self.assertEqual(code, 1)
         out = json.loads(stdout_stream.getvalue().strip())
         self.assertEqual(out["decision"], "deny")
+
+    def test_hook_cli_evaluates_via_supervisor_ipc(self) -> None:
+        """Hook CLI routes evaluation through supervisor daemon when socket is available."""
+        import os
+
+        from agent_gauntlet.features.supervisor.core.engine import SupervisorEngine
+        from agent_gauntlet.features.supervisor.platform.linux.keys import LinuxKeyProvider
+        from agent_gauntlet.features.supervisor.platform.linux.server import SupervisorServer
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            sock_path = tmp_path / "supervisor_hook.sock"
+            key_dir = tmp_path / "keys"
+            key_provider = LinuxKeyProvider(key_storage_dir=key_dir)
+            engine = SupervisorEngine(key_provider=key_provider)
+            server = SupervisorServer(engine=engine, socket_path=sock_path)
+            server.start()
+
+            old_env = os.environ.get("AGENT_GAUNTLET_SUPERVISOR_SOCKET")
+            os.environ["AGENT_GAUNTLET_SUPERVISOR_SOCKET"] = str(sock_path)
+            try:
+                # 1. Without active task -> deny write
+                stdin_data = json.dumps(
+                    {
+                        "toolCall": {
+                            "name": "write_to_file",
+                            "args": {"TargetFile": "src/app.py", "CodeContent": "x = 1"},
+                        }
+                    }
+                )
+                stdout_stream = io.StringIO()
+                stderr_stream = io.StringIO()
+
+                code = main_hook_entrypoint(
+                    argv=[],
+                    stdin=io.StringIO(stdin_data),
+                    stdout=stdout_stream,
+                    stderr=stderr_stream,
+                    workspace=tmp_path,
+                )
+                self.assertEqual(code, 1)
+                out = json.loads(stdout_stream.getvalue().strip())
+                self.assertEqual(out["decision"], "deny")
+
+                # 2. Register workspace and start session
+                engine.register_workspace(str(tmp_path), str(tmp_path))
+                engine.begin_or_resume_session(str(tmp_path), "043-wasm")
+
+                stdout_stream_ok = io.StringIO()
+                stderr_stream_ok = io.StringIO()
+                code_ok = main_hook_entrypoint(
+                    argv=[],
+                    stdin=io.StringIO(stdin_data),
+                    stdout=stdout_stream_ok,
+                    stderr=stderr_stream_ok,
+                    workspace=tmp_path,
+                )
+                self.assertEqual(code_ok, 0)
+                out_ok = json.loads(stdout_stream_ok.getvalue().strip())
+                self.assertEqual(out_ok["decision"], "allow")
+            finally:
+                if old_env is None:
+                    os.environ.pop("AGENT_GAUNTLET_SUPERVISOR_SOCKET", None)
+                else:
+                    os.environ["AGENT_GAUNTLET_SUPERVISOR_SOCKET"] = old_env
+                server.stop()
+
+    def test_hook_cli_stale_socket_falls_back_to_in_process_adapter(self) -> None:
+        """When a stale socket file exists without a running supervisor, falls back to in-process adapter."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            stale_sock = tmp_path / "stale_supervisor.sock"
+            stale_sock.touch()
+
+            stdin_data = json.dumps(
+                {
+                    "toolCall": {
+                        "name": "view_file",
+                        "args": {"AbsolutePath": "src/app.py"},
+                    }
+                }
+            )
+            stdout_stream = io.StringIO()
+            stderr_stream = io.StringIO()
+
+            with patch(
+                "agent_gauntlet.features.adapters.antigravity.hook.UnixDomainSocketTransport"
+            ) as mock_transport_cls:
+                mock_inst = MagicMock()
+                mock_inst.socket_path = stale_sock
+                mock_inst.send_rpc.side_effect = ConnectionRefusedError(111, "Connection refused")
+                mock_transport_cls.return_value = mock_inst
+
+                code = main_hook_entrypoint(
+                    argv=[],
+                    stdin=io.StringIO(stdin_data),
+                    stdout=stdout_stream,
+                    stderr=stderr_stream,
+                    workspace=tmp_path,
+                )
+                self.assertEqual(code, 0)
+                out = json.loads(stdout_stream.getvalue().strip())
+                self.assertEqual(out["decision"], "allow")
+
+    def test_hook_cli_stale_socket_fails_closed_in_strict_mode(self) -> None:
+        """When AGENT_GAUNTLET_STRICT_SUPERVISOR=1, an unreachable supervisor fails closed."""
+        import os
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            stale_sock = tmp_path / "stale_supervisor.sock"
+            stale_sock.touch()
+
+            stdin_data = json.dumps(
+                {
+                    "toolCall": {
+                        "name": "write_to_file",
+                        "args": {"TargetFile": "src/app.py", "CodeContent": "x = 1"},
+                    }
+                }
+            )
+            stdout_stream = io.StringIO()
+            stderr_stream = io.StringIO()
+
+            with patch(
+                "agent_gauntlet.features.adapters.antigravity.hook.UnixDomainSocketTransport"
+            ) as mock_transport_cls:
+                mock_inst = MagicMock()
+                mock_inst.socket_path = stale_sock
+                mock_inst.send_rpc.side_effect = ConnectionRefusedError(111, "Connection refused")
+                mock_transport_cls.return_value = mock_inst
+
+                with patch.dict(os.environ, {"AGENT_GAUNTLET_STRICT_SUPERVISOR": "1"}):
+                    code = main_hook_entrypoint(
+                        argv=[],
+                        stdin=io.StringIO(stdin_data),
+                        stdout=stdout_stream,
+                        stderr=stderr_stream,
+                        workspace=tmp_path,
+                    )
+                    self.assertEqual(code, 1)
+                    out = json.loads(stdout_stream.getvalue().strip())
+                    self.assertEqual(out["decision"], "deny")
 
 
 if __name__ == "__main__":

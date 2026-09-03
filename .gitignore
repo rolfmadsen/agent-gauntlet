@@ -10,4 +10,5 @@ coverage.xml
 .mypy_cache/
 dist/
 build/
+target/
 *.egg-info/

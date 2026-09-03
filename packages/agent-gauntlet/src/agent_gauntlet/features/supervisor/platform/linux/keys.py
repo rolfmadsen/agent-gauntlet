@@ -50,6 +50,8 @@ class LinuxKeyProvider:
     def __init__(self, key_storage_dir: Path | None = None) -> None:
         if key_storage_dir:
             self.storage_dir = Path(key_storage_dir).resolve()
+        elif os.environ.get("AGENT_GAUNTLET_KEY_DIR"):
+            self.storage_dir = Path(os.environ["AGENT_GAUNTLET_KEY_DIR"]).resolve()
         else:
             base = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share"))
             self.storage_dir = (base / "agent-gauntlet" / "keys").resolve()
@@ -64,11 +66,22 @@ class LinuxKeyProvider:
 
     def _ensure_storage_dir(self) -> None:
         """Creates directory with strict 0700 permissions."""
-        self.storage_dir.mkdir(parents=True, exist_ok=True)
         try:
-            os.chmod(self.storage_dir, 0o700)
+            self.storage_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                os.chmod(self.storage_dir, 0o700)
+            except OSError:
+                pass
         except OSError:
-            pass
+            import tempfile
+
+            # Use a secure, uniquely generated private directory to prevent symlink/squatting vulnerabilities
+            secure_tmp = Path(tempfile.mkdtemp(prefix="agent-gauntlet-keys-"))
+            try:
+                os.chmod(secure_tmp, 0o700)
+            except OSError:
+                pass
+            self.storage_dir = secure_tmp
 
     def _load_or_create_installation_secret(self) -> bytes:
         """Loads or creates persistent 256-bit installation secret with 0600 permissions."""

@@ -1,33 +1,23 @@
 # Verification Report
 
-**Task ID**: `042-polyglot-composite-coding-standards`  
-**Task Title**: Task 042: Polyglot Composite Coding Standards Generation  
-**Verdict**: `PARTIAL`  
+**Task ID**: `043-real-wasm-policy-engine-and-supervisor-daemon`  
+**Task Title**: Task 043: Real WASM Policy Engine & Supervisor Daemon  
+**Verdict**: `PASSED`  
 **Execution Origin**: `LOCAL`  
-**Source Manifest Digest**: `f5b7386dbc23cc3f2fbcfe7da854d22742d824f9bdeb4be52e632919af736891`  
-**Timestamp**: `2026-08-31T15:59:54Z`  
-**Head**: `9fa3c44`  
-**Commit**: `9fa3c44`  
+**Source Manifest Digest**: `d35cb38232eb194a1fa423e7e1fc903fd9cef46c36af12a215af47b36e42aadd`  
+**Timestamp**: `2026-09-03T18:50:58Z`  
+**Head**: `2f582a7`  
+**Commit**: `3d73717`  
 
 ## Acceptance Criteria
 
-- [x] **Polyglot Stack Detection (`src/agent_gauntlet/features/stacks/detector.py`)**:
-- [x] Implementere `detect_stacks(workspace_path: Path | str) -> list[str]`, der scanner rod og undermapper for sprogindikatorer (`Cargo.toml`, `tsconfig.json`/`package.json`, `pyproject.toml` osv.).
-- [x] Bevare bagudkompatibilitet i `detect_stack()`, som returnerer den primære fundne stack.
-- [x] **Komposabel Standards Generator (`src/agent_gauntlet/features/scaffold/standards.py`)**:
-- [x] Implementere `generate_coding_standards(stacks: list[str] | str) -> str`.
-- [x] For enkelt-stack genereres den skræddersyede sprogstandard.
-- [x] For polyglot/multi-stack genereres et struktureret dokument med tværgående principper, individuelle sprogsektioner (TypeScript, Python, Rust) og tværgående boundary/interop-regler med ensartet sektionsnummerering.
-- [x] **Scaffolder & CLI Integration (`src/agent_gauntlet/features/scaffold/` & `cli.py`)**:
-- [x] `ProjectScaffolder.scaffold()` understøtter `stacks` (liste eller kommasepareret streng).
-- [x] `ScaffoldResult` beriges med `stacks: list[str]`.
-- [x] `agent-gauntlet init` og `scaffold` accepterer kommaseparerede stacks via `--stack` / `--stacks`.
-- [x] `src/agent_gauntlet/cli.py` overholder invarianten om strengt $< 300$ linjer.
-- [x] **Gauntlet & Verification**:
-- [x] Acceptance & unit tests i `tests/features/test_scaffold.py` og `tests/features/test_stacks.py`.
-- [x] 100% grøn testsuite (`343/343` tests).
-- [x] 100% dræbte mutanter i `tools/mutants.py` (`65/65` mutanter dræbt).
-- [x] Bestået `agent-gauntlet check-release`, `check-spec`, `validate-plugin` og `doctor`.
+- [x] `TaskStatus.TODO` er fjernet fra `ALLOWED_ACTIVE_STATUSES`.
+- [x] `crates/gauntlet-policy-engine` har `evaluate_json` C-ABI og kompilerer fejlfrit til `policy_engine.wasm`.
+- [x] `WasmPolicyVerifier` afvikler den kompilerede WASM-binær og validerer dens SHA-256 digest.
+- [x] `SupervisorServer` lytter på Unix domain socket og besvarer RPC'er (`GetStatus`, `EvaluateToolCall` m.fl.).
+- [x] `AntigravityHookShim` evaluerer tool-kald via supervisor IPC og fejler lukket (fail-closed) ved fejl.
+- [x] `agent-gauntlet supervisor start` og `agent-gauntlet supervisor status` virker fra CLI.
+- [x] Alle unit-, integration- og gauntlet-tests passerer 100% (inkl. mutationstests).
 
 ---
 
@@ -35,10 +25,10 @@
 
 | Check Name | Status | Exit Code | Duration (s) |
 |---|---|---|---|
-| `lint` | `FAILED` | `1` | `0.010s` |
-| `types` | `FAILED` | `1` | `0.009s` |
-| `unit` | `PASSED` | `0` | `2.434s` |
-| `invariants` | `PASSED` | `0` | `0.316s` |
-| `mutation-testing-gauntlet` | `PASSED` | `0` | `26.330s` |
+| `lint` | `PASSED` | `0` | `0.024s` |
+| `types` | `PASSED` | `0` | `1.962s` |
+| `unit` | `PASSED` | `0` | `6.768s` |
+| `invariants` | `PASSED` | `0` | `0.303s` |
+| `mutation-testing-gauntlet` | `PASSED` | `0` | `37.488s` |
 
 ---

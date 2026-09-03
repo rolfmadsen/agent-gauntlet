@@ -129,6 +129,87 @@ class TestWasmPolicyVerifier(unittest.TestCase):
         d2 = self.verifier.evaluate(req, ctx)
         self.assertEqual(d1, d2)
 
+    def test_real_native_and_wasm_execution(self) -> None:
+        """Tests that native .so and wasm runtimes execute and produce identical verdicts."""
+        self.assertTrue(self.verifier.is_native_loaded)
+        self.assertTrue(self.verifier.is_wasm_loaded)
+        self.assertTrue(self.verifier.loaded_digest.startswith("sha256:"))
+
+        req_deny = CapabilityRequest(
+            action_type=ToolActionType.WRITE_FILE,
+            raw_tool_name="write_to_file",
+            target_resource="src/app.py",
+        )
+        ctx_no_task = EnforcementContext(
+            workspace_id="ws-1",
+            has_active_task=False,
+            active_task_id="",
+            read_only=False,
+        )
+        native_dec = self.verifier.evaluate_native(req_deny, ctx_no_task)
+        wasm_dec = self.verifier.evaluate_wasm(req_deny, ctx_no_task)
+        self.assertEqual(native_dec.verdict, DecisionVerdict.DENY)
+        self.assertEqual(native_dec.reason_code, 4031)
+        self.assertEqual(wasm_dec.verdict, DecisionVerdict.DENY)
+        self.assertEqual(wasm_dec.reason_code, 4031)
+        self.assertEqual(native_dec, wasm_dec)
+
+        ctx_active = EnforcementContext(
+            workspace_id="ws-1",
+            has_active_task=True,
+            active_task_id="043-wasm",
+            read_only=False,
+        )
+        native_allow = self.verifier.evaluate_native(req_deny, ctx_active)
+        wasm_allow = self.verifier.evaluate_wasm(req_deny, ctx_active)
+        self.assertEqual(native_allow.verdict, DecisionVerdict.ALLOW)
+        self.assertEqual(native_allow.reason_code, 2002)
+        self.assertEqual(wasm_allow.verdict, DecisionVerdict.ALLOW)
+        self.assertEqual(wasm_allow.reason_code, 2002)
+
+    def test_wasm_stdin_streaming_large_payload(self) -> None:
+        """Tests that WASM runner handles large payloads via stdin streaming without E2BIG errors."""
+        large_content = "x" * 200_000
+        req = CapabilityRequest(
+            action_type=ToolActionType.WRITE_FILE,
+            raw_tool_name="write_to_file",
+            target_resource="src/big_file.py",
+            payload_json=f'{{"content":"{large_content}"}}',
+        )
+        ctx = EnforcementContext(
+            workspace_id="ws-1",
+            has_active_task=True,
+            active_task_id="043-wasm",
+            read_only=False,
+        )
+        dec = self.verifier.evaluate_wasm(req, ctx)
+        self.assertEqual(dec.verdict, DecisionVerdict.ALLOW)
+
+    def test_wasm_failure_fails_closed(self) -> None:
+        """Verifies that when WASM execution fails or encounters error, it fails closed."""
+        from unittest.mock import patch
+
+        req = CapabilityRequest(
+            action_type=ToolActionType.WRITE_FILE,
+            raw_tool_name="write_to_file",
+            target_resource="src/test.py",
+        )
+        ctx = EnforcementContext(
+            workspace_id="ws-1",
+            has_active_task=True,
+            active_task_id="043-wasm",
+            read_only=False,
+        )
+        # Force evaluate_wasm to raise an unexpected runtime exception
+        with patch.object(self.verifier, "_cdll", None):
+            with patch.object(
+                self.verifier, "evaluate_wasm", side_effect=RuntimeError("V8 Engine Crashed")
+            ):
+                dec = self.verifier.evaluate(req, ctx)
+                self.assertEqual(dec.verdict, DecisionVerdict.DENY)
+                self.assertEqual(dec.reason_code, 4030)
+                self.assertIn("failed closed", dec.reason.lower())
+
 
 if __name__ == "__main__":
     unittest.main()

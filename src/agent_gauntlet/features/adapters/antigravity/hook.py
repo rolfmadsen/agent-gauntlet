@@ -9,6 +9,8 @@ from pathlib import Path
 from typing import TextIO
 
 from agent_gauntlet.features.adapters.antigravity.adapter import AntigravityAdapter
+from agent_gauntlet.features.adapters.antigravity.shim import AntigravityHookShim
+from agent_gauntlet.features.supervisor.platform.linux.ipc import UnixDomainSocketTransport
 
 
 def main_hook_entrypoint(
@@ -35,6 +37,28 @@ def main_hook_entrypoint(
         stderr.write(f"\n🛑 Gatekeeper: Corrupt JSON payload on stdin: {exc}\n")
         return 1
 
+    # 1. Attempt evaluation via supervisor over IPC if socket exists or configured
+    socket_override = os.environ.get("AGENT_GAUNTLET_SUPERVISOR_SOCKET")
+    strict_supervisor = os.environ.get("AGENT_GAUNTLET_STRICT_SUPERVISOR") == "1"
+    transport = UnixDomainSocketTransport(Path(socket_override) if socket_override else None)
+    if transport.socket_path.exists():
+        shim = AntigravityHookShim(transport=transport)
+        workspace_id = str(active_workspace)
+        hook_res = shim.handle_hook(payload=payload, workspace_id=workspace_id)
+        if hook_res.get("offline", False) and not strict_supervisor and not socket_override:
+            # Stale socket detected while in unsupervised local mode: fall back to in-process adapter
+            pass
+        else:
+            if hook_res.get("decision") != "allow":
+                reason = str(hook_res.get("reason", "Denied by supervisor daemon."))
+                output_payload = {"decision": "deny", "reason": reason}
+                stdout.write(json.dumps(output_payload) + "\n")
+                stderr.write(f"\n{reason}\n")
+                return 1
+            stdout.write(json.dumps({"decision": "allow"}) + "\n")
+            return 0
+
+    # 2. Fallback to in-process AntigravityAdapter evaluation
     adapter = AntigravityAdapter()
     verdict = adapter.evaluate_invocation(workspace=active_workspace, payload=payload)
 

@@ -1196,6 +1196,75 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertEqual(exit_code, 1)
             self.assertIn("drift detected", stderr.getvalue().lower())
 
+    def test_supervisor_status_offline(self) -> None:
+        """CLI supervisor status returns 1 when daemon is offline."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sock = Path(tmpdir) / "nonexistent.sock"
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                code = main(["supervisor", "status", "--socket-path", str(sock)])
+            self.assertEqual(code, 1)
+            self.assertIn("offline", stdout.getvalue().lower())
+
+            # JSON mode
+            stdout_json = io.StringIO()
+            with redirect_stdout(stdout_json):
+                code_json = main(["supervisor", "status", "--socket-path", str(sock), "--json"])
+            self.assertEqual(code_json, 1)
+            data = json.loads(stdout_json.getvalue())
+            self.assertFalse(data["running"])
+
+    def test_supervisor_start_daemon_and_status(self) -> None:
+        """CLI supervisor start --daemon starts server and status responds with details."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            sock = Path(tmpdir) / "sup.sock"
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                code = main(
+                    [
+                        "supervisor",
+                        "start",
+                        "-w",
+                        tmpdir,
+                        "--socket-path",
+                        str(sock),
+                        "--daemon",
+                        "-t",
+                        "043-task",
+                        "--json",
+                    ]
+                )
+            self.assertEqual(code, 0)
+            start_data = json.loads(stdout.getvalue())
+            self.assertEqual(start_data["status"], "STARTED")
+            daemon_pid = start_data.get("pid")
+            self.assertIsNotNone(daemon_pid)
+
+            try:
+                # Query status via CLI
+                status_stdout = io.StringIO()
+                with redirect_stdout(status_stdout):
+                    stat_code = main(["supervisor", "status", "--socket-path", str(sock), "--json"])
+                self.assertEqual(stat_code, 0)
+                stat_data = json.loads(status_stdout.getvalue())
+                self.assertTrue(stat_data["running"])
+                self.assertEqual(stat_data["details"]["status"], "HEALTHY")
+            finally:
+                if daemon_pid:
+                    import os
+                    import signal
+
+                    try:
+                        os.kill(daemon_pid, signal.SIGTERM)
+                        os.waitpid(daemon_pid, 0)
+                    except OSError:
+                        pass
+                if sock.exists():
+                    try:
+                        sock.unlink()
+                    except OSError:
+                        pass
+
     def test_cli_line_count_under_300(self) -> None:
         """Architectural Invariant: cli.py must remain a slim dispatcher under 300 lines."""
         cli_file = Path(__file__).resolve().parent.parent / "src" / "agent_gauntlet" / "cli.py"
