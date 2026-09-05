@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 
 from agent_gauntlet.features.adapters import SUPPORTED_HARNESSES, get_adapter
@@ -16,15 +17,28 @@ from agent_gauntlet.features.evidence.verifier import (
     execute_check_spec,
     execute_verify,
 )
+from agent_gauntlet.features.scaffold.prompt import resolve_scaffold_stack
 from agent_gauntlet.features.scaffold.scaffolder import ProjectScaffolder
 from agent_gauntlet.features.stacks.profiles import SUPPORTED_STACKS
 
 
 def _handle_scaffold_op(args: argparse.Namespace, workspace: Path, op: str) -> int:
     """Dispatches scaffold/init operations through ProjectScaffolder."""
+    no_input = getattr(args, "no_input", False)
+    is_interactive = sys.stdin.isatty() and not no_input
+    try:
+        resolved_stacks = resolve_scaffold_stack(
+            explicit_stack=args.stack,
+            workspace=workspace,
+            interactive=is_interactive,
+        )
+    except InterruptedError as exc:
+        print(f"\n[!] Afbrudt: {exc}", file=sys.stderr)
+        return 130
+
     res = ProjectScaffolder().scaffold(
         workspace=workspace,
-        stack=args.stack,
+        stacks=resolved_stacks,
         harness=args.harness,
         config_format=args.format,
         force=args.force,
@@ -118,6 +132,11 @@ def build_cli_parser() -> argparse.ArgumentParser:
         sp.add_argument("--harness", choices=SUPPORTED_HARNESSES, default="antigravity")
         sp.add_argument("-f", "--format", choices=["toml", "json"], default="toml")
         sp.add_argument("--force", action="store_true")
+        sp.add_argument(
+            "--no-input",
+            action="store_true",
+            help="Do not prompt for input in empty workspaces",
+        )
 
     subs.add_parser("doctor", parents=[common])
     val_p = subs.add_parser("validate-plugin", parents=[common])

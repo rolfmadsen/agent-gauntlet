@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
 from agent_gauntlet.cli import main
 from agent_gauntlet.features.evidence import (
@@ -74,6 +75,63 @@ class TestCliAcceptance(unittest.TestCase):
             self.assertIn("Polyglot", content)
             self.assertIn("TypeScript", content)
             self.assertIn("Python", content)
+
+    def test_init_command_interactive_selection_in_empty_workspace(self) -> None:
+        """Scenario CLI-INIT-INTERACTIVE: init in empty workspace prompts user when stdin is TTY."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_stdin = io.StringIO("2\n")
+            fake_stdin.isatty = lambda: True  # type: ignore[assignment]
+            stdout = io.StringIO()
+            with patch("sys.stdin", fake_stdin), redirect_stdout(stdout):
+                exit_code = main(["init", "-w", tmpdir])
+            self.assertEqual(exit_code, 0)
+            created_file = Path(tmpdir) / "gauntlet.toml"
+            self.assertTrue(created_file.exists())
+            self.assertIn('stack = "typescript"', created_file.read_text())
+            self.assertIn("Hvilken primær stack bygger du på?", stdout.getvalue())
+
+    def test_init_command_no_input_defaults_to_python(self) -> None:
+        """Scenario CLI-INIT-NO-INPUT: init with --no-input defaults to python without prompting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_stdin = io.StringIO("2\n")
+            fake_stdin.isatty = lambda: True  # type: ignore[assignment]
+            stdout = io.StringIO()
+            with patch("sys.stdin", fake_stdin), redirect_stdout(stdout):
+                exit_code = main(["init", "-w", tmpdir, "--no-input"])
+            self.assertEqual(exit_code, 0)
+            created_file = Path(tmpdir) / "gauntlet.toml"
+            self.assertTrue(created_file.exists())
+            self.assertIn('stack = "python"', created_file.read_text())
+            self.assertNotIn("Hvilken primær stack bygger du på?", stdout.getvalue())
+
+    def test_init_command_non_interactive_defaults_to_python(self) -> None:
+        """Scenario CLI-INIT-NON-TTY: init in non-interactive stdin defaults to python without prompting."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fake_stdin = io.StringIO("")
+            fake_stdin.isatty = lambda: False  # type: ignore[assignment]
+            stdout = io.StringIO()
+            with patch("sys.stdin", fake_stdin), redirect_stdout(stdout):
+                exit_code = main(["init", "-w", tmpdir])
+            self.assertEqual(exit_code, 0)
+            created_file = Path(tmpdir) / "gauntlet.toml"
+            self.assertTrue(created_file.exists())
+            self.assertIn('stack = "python"', created_file.read_text())
+            self.assertNotIn("Hvilken primær stack bygger du på?", stdout.getvalue())
+
+    def test_init_command_autodetected_stack_skips_prompt(self) -> None:
+        """Scenario CLI-INIT-AUTODETECT: init in workspace with package.json skips prompt and uses typescript."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            (Path(tmpdir) / "package.json").write_text("{}", encoding="utf-8")
+            fake_stdin = io.StringIO("1\n")  # Would pick python if prompted
+            fake_stdin.isatty = lambda: True  # type: ignore[assignment]
+            stdout = io.StringIO()
+            with patch("sys.stdin", fake_stdin), redirect_stdout(stdout):
+                exit_code = main(["init", "-w", tmpdir])
+            self.assertEqual(exit_code, 0)
+            created_file = Path(tmpdir) / "gauntlet.toml"
+            self.assertTrue(created_file.exists())
+            self.assertIn('stack = "typescript"', created_file.read_text())
+            self.assertNotIn("Hvilken primær stack bygger du på?", stdout.getvalue())
 
     def test_tree_hash_command(self) -> None:
         """Scenario CLI-01: tree-hash prints tree hash and returns 0."""
@@ -284,7 +342,7 @@ class TestCliAcceptance(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             tests_dir = ws / "tests"
             tests_dir.mkdir(parents=True, exist_ok=True)
             (tests_dir / "test_sample.py").write_text(
@@ -311,7 +369,7 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-05: verify with --diagnostics-json outputs structured json in isolated workspace."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             tests_dir = ws / "tests"
             tests_dir.mkdir(parents=True, exist_ok=True)
             (tests_dir / "test_sample.py").write_text(
@@ -341,7 +399,7 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-05-ROLE: verify with --diagnostics-json includes next_role and handoff_prompt on pass."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             # Remove bootstrap task so only done task exists
             if (ws / "tasks/001-bootstrap.md").exists():
                 (ws / "tasks/001-bootstrap.md").unlink()
@@ -390,7 +448,7 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-06: Full passing verify prints a clean Session Handoff prompt block."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             # Create a task with all criteria marked resolved
             task_file = ws / "tasks/001-done-task.md"
             task_file.write_text(
@@ -438,7 +496,7 @@ class TestCliAcceptance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             # Scaffold workspace in tmp
-            main(["init", "-w", str(tmp_path), "--harness", "antigravity"])
+            main(["init", "-w", str(tmp_path), "--harness", "antigravity", "--no-input"])
             # Create sample task
             tasks_dir = tmp_path / "tasks"
             tasks_dir.mkdir(parents=True, exist_ok=True)
@@ -501,7 +559,9 @@ class TestCliAcceptance(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             stdout = io.StringIO()
             with redirect_stdout(stdout):
-                exit_code = main(["init", "-w", tmpdir, "--harness", "antigravity", "--json"])
+                exit_code = main(
+                    ["init", "-w", tmpdir, "--harness", "antigravity", "--json", "--no-input"]
+                )
             self.assertEqual(exit_code, 0)
             data = json.loads(stdout.getvalue())
             self.assertEqual(data["harness"], "antigravity")
@@ -564,7 +624,7 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-04: verify runs layers in isolated workspace and returns 0 on success."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             # Resolve task criteria
             (ws / "tasks/001-bootstrap.md").write_text(
                 "# Task 001: Initial Project Bootstrap & Setup\n- [x] Done 1\n- [x] Done 2\n",
@@ -899,7 +959,7 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-08: verify with --test-target produces PARTIAL verdict."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             tests_dir = ws / "tests"
             tests_dir.mkdir(parents=True, exist_ok=True)
             (tests_dir / "test_dummy.py").write_text(
@@ -929,7 +989,7 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-09: verify with unresolved acceptance criteria produces INCOMPLETE verdict and exit code 1."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             # Create a task with an unresolved criterion
             task_file = ws / "tasks/001-open-task.md"
             task_file.write_text(
@@ -1092,7 +1152,7 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-15: verify fails with FAILED verdict if test execution modifies source workspace."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             # Create a task
             task_file = ws / "tasks/001-mutation.md"
             task_file.write_text(
@@ -1124,7 +1184,7 @@ class TestCliAcceptance(unittest.TestCase):
         """Scenario CLI-16: verify marks run as PARTIAL if an optional layer fails."""
         with tempfile.TemporaryDirectory() as tmpdir:
             ws = Path(tmpdir)
-            main(["init", "-w", str(ws), "--harness", "antigravity"])
+            main(["init", "-w", str(ws), "--harness", "antigravity", "--no-input"])
             task_file = ws / "tasks/001-opt.md"
             task_file.write_text(
                 "---\ntype: Task Package\ntitle: Opt\ndescription: d\nstatus: draft\ntags: [t]\n"
